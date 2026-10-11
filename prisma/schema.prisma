@@ -1,0 +1,92 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ServiceSession {
+  id              String             @id @default(cuid())
+  title           String             @default("Sunday Worship Service")
+  startedAt       DateTime           @default(now())
+  endedAt         DateTime?
+  isActive        Boolean            @default(true)
+  peakViewersYT   Int                @default(0)
+  peakViewersIG   Int                @default(0)
+  notes           String?
+  messages        BroadcastMessage[]
+  prayerRequests  PrayerRequest[]
+  visitors        VisitorLog[]
+  reports         ServiceReport[]
+}
+
+model BroadcastMessage {
+  id          String          @id @default(cuid())
+  sessionId   String?
+  session     ServiceSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  content     String
+  target      String          @default("BOTH") // "BOTH" | "YOUTUBE" | "INSTAGRAM"
+  status      String          @default("SENT") // "SENT" | "FAILED" | "SIMULATED"
+  sentAt      DateTime        @default(now())
+  ytStatus    String?
+  igStatus    String?
+}
+
+model PresetTemplate {
+  id          String   @id @default(cuid())
+  label       String
+  category    String   @default("GENERAL") // "GREETING", "GIVING", "CONNECT", "SALVATION", "GENERAL"
+  content     String
+  sortOrder   Int      @default(0)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model PrayerRequest {
+  id                String          @id @default(cuid())
+  sessionId         String?
+  session           ServiceSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  requesterName     String
+  requestText       String
+  platform          String          @default("BOTH") // "YOUTUBE", "INSTAGRAM", "MODERATOR"
+  status            String          @default("OPEN") // "OPEN", "PRAYED", "FOLLOW_UP"
+  aiDraftedResponse String?
+  createdAt         DateTime        @default(now())
+}
+
+model VisitorLog {
+  id          String          @id @default(cuid())
+  sessionId   String?
+  session     ServiceSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name        String
+  location    String?
+  platform    String          @default("YOUTUBE") // "YOUTUBE", "INSTAGRAM"
+  notes       String?
+  connectedAt DateTime        @default(now())
+}
+
+model ServiceReport {
+  id                 String         @id @default(cuid())
+  sessionId          String         @unique
+  session            ServiceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  totalAttendance    Int            @default(0)
+  totalPrayers       Int            @default(0)
+  totalVisitors      Int            @default(0)
+  totalMessagesSent  Int            @default(0)
+  aiExecutiveSummary String?
+  pastorTakeaways    String?
+  generatedAt        DateTime       @default(now())
+}
+
+model AppConfig {
+  id                   String  @id @default("default")
+  churchName           String  @default("Online Church")
+  defaultTranslation   String  @default("NIV")
+  youtubeApiKey        String?
+  youtubeLiveChatId    String?
+  instagramAccessToken String?
+  instagramLiveVideoId String?
+  geminiApiKey         String?
+}
