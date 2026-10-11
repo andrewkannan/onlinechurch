@@ -20,6 +20,7 @@ model ServiceSession {
   prayerRequests  PrayerRequest[]
   visitors        VisitorLog[]
   reports         ServiceReport[]
+  sermonCues      SermonCue[]
 }
 
 model BroadcastMessage {
@@ -90,3 +91,17 @@ model AppConfig {
   instagramLiveVideoId String?
   geminiApiKey         String?
 }
+
+model SermonCue {
+  id          String          @id @default(cuid())
+  sessionId   String?
+  session     ServiceSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  cueType     String          @default("MAIN_POINT") // "MAIN_POINT", "SCRIPTURE", "QUOTE", "PROPHETIC", "GENERAL"
+  label       String
+  content     String
+  sortOrder   Int             @default(0)
+  isReleased  Boolean         @default(false)
+  releasedAt  DateTime?
+  createdAt   DateTime        @default(now())
+}
+

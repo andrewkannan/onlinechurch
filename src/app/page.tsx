@@ -6,25 +6,34 @@ import LiveReportCard from "@/components/LiveReportCard";
 import UnifiedOutbox from "@/components/UnifiedOutbox";
 import QuickPresetBar from "@/components/QuickPresetBar";
 import AiAssistantDock from "@/components/AiAssistantDock";
+import SermonCueDeck, { SermonCueItem } from "@/components/SermonCueDeck";
+import PropheticDeck from "@/components/PropheticDeck";
+import { FileText, Sparkles, MessageSquare, Flame } from "lucide-react";
 
 export default function DashboardPage() {
   const [activeMessage, setActiveMessage] = useState("");
   const [serviceSession, setServiceSession] = useState<any>(null);
   const [presets, setPresets] = useState<any[]>([]);
+  const [sermonCues, setSermonCues] = useState<SermonCueItem[]>([]);
   const [recentBroadcasts, setRecentBroadcasts] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [visitors, setVisitors] = useState<any[]>([]);
 
+  // Workspace Mode Toggles
+  const [leftTab, setLeftTab] = useState<"CUE_DECK" | "CUSTOM_OUTBOX">("CUE_DECK");
+  const [rightTab, setRightTab] = useState<"PROPHETIC" | "AI_ASSISTANT">("PROPHETIC");
+
   // Fetch initial data
   const fetchData = async () => {
     try {
-      const [serviceRes, presetsRes, broadcastRes, prayersRes, visitorsRes] =
+      const [serviceRes, presetsRes, broadcastRes, prayersRes, visitorsRes, cuesRes] =
         await Promise.all([
           fetch("/api/service"),
           fetch("/api/presets"),
           fetch("/api/broadcast"),
           fetch("/api/prayers"),
           fetch("/api/visitors"),
+          fetch("/api/sermon-notes"),
         ]);
 
       const serviceData = await serviceRes.json();
@@ -32,12 +41,14 @@ export default function DashboardPage() {
       const broadcastData = await broadcastRes.json();
       const prayersData = await prayersRes.json();
       const visitorsData = await visitorsRes.json();
+      const cuesData = await cuesRes.json();
 
       if (serviceData.service) setServiceSession(serviceData.service);
       if (presetsData.presets) setPresets(presetsData.presets);
       if (broadcastData.messages) setRecentBroadcasts(broadcastData.messages);
       if (prayersData.prayers) setPrayers(prayersData.prayers);
       if (visitorsData.visitors) setVisitors(visitorsData.visitors);
+      if (cuesData.cues) setSermonCues(cuesData.cues);
     } catch (err) {
       console.error("Failed to load initial data:", err);
     }
@@ -76,7 +87,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Instant broadcast trigger from preset or AI tool
+  // Instant broadcast trigger from preset, cue, or AI tool
   const handleInstantBroadcast = async (content: string) => {
     try {
       const res = await fetch("/api/broadcast", {
@@ -95,6 +106,11 @@ export default function DashboardPage() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // Release cue directly
+  const handleReleaseCue = async (cue: SermonCueItem) => {
+    await handleInstantBroadcast(cue.content);
   };
 
   return (
@@ -137,32 +153,128 @@ export default function DashboardPage() {
           onVisitorAdded={(v) => setVisitors((prev) => [v, ...prev])}
         />
 
-        {/* Core Workspace: Outbox + AI Assistant Grid */}
+        {/* Core Workspace Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Unified Outbox + Quick Presets (7 cols) */}
-          <div className="lg:col-span-7 space-y-6">
-            <UnifiedOutbox
-              messageContent={activeMessage}
-              onChangeContent={setActiveMessage}
-              sessionId={serviceSession?.id}
-              recentMessages={recentBroadcasts}
-              onBroadcastSuccess={fetchData}
-            />
+          {/* Left Column: Sermon Cue Deck / Custom Outbox (7 cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Left Column Switcher Tabs */}
+            <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-1.5 rounded-xl">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setLeftTab("CUE_DECK")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                    leftTab === "CUE_DECK"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Pastor's Sermon Notes ({sermonCues.length})</span>
+                </button>
 
-            <QuickPresetBar
-              presets={presets}
-              onSelectPreset={(content) => setActiveMessage(content)}
-              onInstantBroadcast={handleInstantBroadcast}
-            />
+                <button
+                  onClick={() => setLeftTab("CUSTOM_OUTBOX")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                    leftTab === "CUSTOM_OUTBOX"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Manual Outbox & Presets</span>
+                </button>
+              </div>
+
+              <span className="text-[11px] text-slate-500 hidden sm:inline mr-2">
+                {leftTab === "CUE_DECK" ? "1-Click Teleprompter Mode" : "Free Typing Mode"}
+              </span>
+            </div>
+
+            {/* Left Content View */}
+            {leftTab === "CUE_DECK" ? (
+              <SermonCueDeck
+                cues={sermonCues}
+                onReleaseCue={handleReleaseCue}
+                onPushToOutbox={(text) => {
+                  setActiveMessage(text);
+                  setLeftTab("CUSTOM_OUTBOX");
+                }}
+                onCuesUpdated={fetchData}
+                sessionId={serviceSession?.id}
+              />
+            ) : (
+              <div className="space-y-4">
+                <UnifiedOutbox
+                  messageContent={activeMessage}
+                  onChangeContent={setActiveMessage}
+                  sessionId={serviceSession?.id}
+                  recentMessages={recentBroadcasts}
+                  onBroadcastSuccess={fetchData}
+                />
+
+                <QuickPresetBar
+                  presets={presets}
+                  onSelectPreset={(content) => setActiveMessage(content)}
+                  onInstantBroadcast={handleInstantBroadcast}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Right Column: AI Live Ministry Assistant (5 cols) */}
-          <div className="lg:col-span-5">
-            <AiAssistantDock
-              onPushToOutbox={(text) => setActiveMessage(text)}
-              onInstantBroadcast={handleInstantBroadcast}
-              prayers={prayers}
-            />
+          {/* Right Column: Prophetic Deck / AI Assistant (5 cols) */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Right Column Switcher Tabs */}
+            <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-1.5 rounded-xl">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setRightTab("PROPHETIC")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                    rightTab === "PROPHETIC"
+                      ? "bg-red-600 text-white shadow-sm shadow-red-600/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>Prophetic Flow Deck</span>
+                </button>
+
+                <button
+                  onClick={() => setRightTab("AI_ASSISTANT")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                    rightTab === "AI_ASSISTANT"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Scripture & Prayer AI</span>
+                </button>
+              </div>
+
+              <span className="text-[10px] text-slate-500 mr-2">
+                {rightTab === "PROPHETIC" ? "Spirit-Led Declarations" : "Gemini 3.8"}
+              </span>
+            </div>
+
+            {/* Right Content View */}
+            {rightTab === "PROPHETIC" ? (
+              <PropheticDeck
+                onPushToOutbox={(text) => {
+                  setActiveMessage(text);
+                  setLeftTab("CUSTOM_OUTBOX");
+                }}
+                onInstantBroadcast={handleInstantBroadcast}
+              />
+            ) : (
+              <AiAssistantDock
+                onPushToOutbox={(text) => {
+                  setActiveMessage(text);
+                  setLeftTab("CUSTOM_OUTBOX");
+                }}
+                onInstantBroadcast={handleInstantBroadcast}
+                prayers={prayers}
+              />
+            )}
           </div>
         </div>
       </main>

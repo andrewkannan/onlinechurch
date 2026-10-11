@@ -216,3 +216,130 @@ Format your response into two distinct sections:
     };
   }
 }
+
+export interface ParsedSermonCue {
+  cueType: "MAIN_POINT" | "SCRIPTURE" | "QUOTE" | "PROPHETIC" | "CALL_TO_ACTION";
+  label: string;
+  content: string;
+}
+
+/**
+ * AI Sermon Notes / PDF Parser
+ * Takes raw notes, headings, and scripture references from Pastor's PDF
+ * and transforms them into an ordered sequence of ready-to-blast chat cues.
+ */
+export async function parseSermonNotesToCues(
+  notesText: string,
+  translation: string = "NIV"
+): Promise<ParsedSermonCue[]> {
+  const client = getGeminiClient();
+
+  // Fallback cues if Gemini API key is not yet set
+  const fallbackCues: ParsedSermonCue[] = [
+    {
+      cueType: "MAIN_POINT",
+      label: "Sermon Title & Introduction",
+      content: "📍 Today's Message: Open your hearts to receive what God has in store today!",
+    },
+    {
+      cueType: "SCRIPTURE",
+      label: "Key Scripture",
+      content: `📖 Opening our Bibles together! Follow along in ${translation} as Pastor reads.`,
+    },
+    {
+      cueType: "PROPHETIC",
+      label: "Prophetic Agreement",
+      content: "🔥 If you receive this word today, type AMEN in the chat! Let faith arise in your home! 🙌",
+    },
+  ];
+
+  if (!client || !notesText.trim()) return fallbackCues;
+
+  try {
+    const prompt = `You are an expert online church media director and prophetic stream coordinator.
+Pastor has prepared sermon notes for today's service.
+Transform these notes into an ordered sequence of concise, punchy "Chat Cue Cards" that an online moderator can blast to YouTube and Instagram live chat with 1 click as Pastor speaks.
+
+Rules:
+1. For each scripture reference mentioned, format it with verse text and reference (e.g. 📖 "Trust in the Lord..." - Prov 3:5).
+2. For each main sermon point, add 📍 and make it punchy and memorable.
+3. For key pastoral quotes, add 🗣️ and keep under 180 chars.
+4. Add 1 or 2 prophetic faith decrees / chat calls (e.g. 🔥 "Type AMEN if you claim this promise!").
+5. Return ONLY a valid JSON array of objects with keys: "cueType", "label", "content".
+   Valid cueTypes: "MAIN_POINT", "SCRIPTURE", "QUOTE", "PROPHETIC", "CALL_TO_ACTION".
+   Do NOT wrap in markdown formatting, just plain JSON.
+
+Pastor's Sermon Notes:
+"""
+${notesText}
+"""`;
+
+    const interaction = await client.interactions.create({
+      model: "gemini-3.8-flash",
+      input: prompt,
+    });
+
+    let raw = interaction.output_text?.trim() || "";
+    // Clean potential markdown backticks
+    if (raw.startsWith("```json")) {
+      raw = raw.replace(/^```json/, "").replace(/```$/, "").trim();
+    } else if (raw.startsWith("```")) {
+      raw = raw.replace(/^```/, "").replace(/```$/, "").trim();
+    }
+
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return fallbackCues;
+  } catch (error) {
+    console.error("Gemini sermon notes parse error:", error);
+    return fallbackCues;
+  }
+}
+
+/**
+ * AI Prophetic Decrees Generator
+ * Rapidly generates 3 fiery, scripture-grounded prophetic decrees based on a real-time service theme.
+ */
+export async function generatePropheticDecrees(
+  keywordOrTheme: string
+): Promise<string[]> {
+  const client = getGeminiClient();
+  const defaultDecrees = [
+    `🔥 PROPHETIC DECLARATION: We declare God's supernatural breakthrough over you and your household right now! Type AMEN! 🙌`,
+    `🕊️ THE LORD SAYS: "Fear not, for I am with you; be not dismayed, for I am your God." Receive His peace right now in the chat! ✨`,
+    `⚔️ We break every chain of heaviness, sickness, and anxiety in Jesus' mighty name! Receive joy and healing today! ✝️`,
+  ];
+
+  if (!client || !keywordOrTheme.trim()) return defaultDecrees;
+
+  try {
+    const prompt = `You are a prophetic online church stream intercessor and armor-bearer.
+The pastor is preaching or ministering on the theme: "${keywordOrTheme}".
+Generate 3 powerful, Christ-centered, scripture-backed prophetic declarations/decrees for the moderator to release into YouTube and Instagram live chat to shift the spiritual atmosphere.
+Rules:
+- Keep each decree under 180 characters.
+- Start with an anointed emoji (🔥, 🕊️, ⚔️, 🩸, ✝️, 🙌).
+- Grounded in faith, victory, healing, peace, or breakthrough in Jesus' name.
+- Encourage chat agreement (e.g., "Type AMEN", "Receive this in faith!").
+- Return ONLY 3 decrees, one per line, with no extra numbers or notes.`;
+
+    const interaction = await client.interactions.create({
+      model: "gemini-3.8-flash",
+      input: prompt,
+    });
+
+    const lines =
+      interaction.output_text
+        ?.split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 10) || [];
+
+    return lines.length >= 3 ? lines.slice(0, 3) : defaultDecrees;
+  } catch (error) {
+    console.error("Gemini prophetic generator error:", error);
+    return defaultDecrees;
+  }
+}
+
