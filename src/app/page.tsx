@@ -8,7 +8,7 @@ import QuickPresetBar from "@/components/QuickPresetBar";
 import AiAssistantDock from "@/components/AiAssistantDock";
 import SermonCueDeck, { SermonCueItem } from "@/components/SermonCueDeck";
 import PropheticDeck from "@/components/PropheticDeck";
-import { FileText, Sparkles, MessageSquare, Flame } from "lucide-react";
+import { FileText, Sparkles, MessageSquare, Flame, Edit3, Check, X } from "lucide-react";
 
 export default function DashboardPage() {
   const [activeMessage, setActiveMessage] = useState("");
@@ -18,6 +18,10 @@ export default function DashboardPage() {
   const [recentBroadcasts, setRecentBroadcasts] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [visitors, setVisitors] = useState<any[]>([]);
+
+  // Inline service title edit state
+  const [editingServiceTitle, setEditingServiceTitle] = useState(false);
+  const [serviceTitleInput, setServiceTitleInput] = useState("");
 
   // Workspace Mode Toggles
   const [leftTab, setLeftTab] = useState<"CUE_DECK" | "CUSTOM_OUTBOX">("CUE_DECK");
@@ -43,7 +47,10 @@ export default function DashboardPage() {
       const visitorsData = await visitorsRes.json();
       const cuesData = await cuesRes.json();
 
-      if (serviceData.service) setServiceSession(serviceData.service);
+      if (serviceData.service) {
+        setServiceSession(serviceData.service);
+        setServiceTitleInput(serviceData.service.title || "Sunday Worship & Word Service");
+      }
       if (presetsData.presets) setPresets(presetsData.presets);
       if (broadcastData.messages) setRecentBroadcasts(broadcastData.messages);
       if (prayersData.prayers) setPrayers(prayersData.prayers);
@@ -57,6 +64,30 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Save edited service title to database
+  const handleSaveServiceTitle = async () => {
+    if (!serviceSession || !serviceTitleInput.trim()) {
+      setEditingServiceTitle(false);
+      return;
+    }
+    const newTitle = serviceTitleInput.trim();
+    setServiceSession((prev: any) => ({ ...prev, title: newTitle }));
+    setEditingServiceTitle(false);
+
+    try {
+      await fetch("/api/service", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: serviceSession.id,
+          title: newTitle,
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to update service title:", e);
+    }
+  };
 
   // Update live viewer counts
   const handleUpdateStats = async (newStats: { peakYT?: number; peakIG?: number }) => {
@@ -114,28 +145,75 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
-      <Navbar churchName="Grace Online Church" isLive={serviceSession?.isActive ?? true} />
+    <div className="min-h-screen bg-slate-950 flex flex-col w-full">
+      <Navbar isLive={serviceSession?.isActive ?? true} />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-4 sm:py-6 space-y-5">
         {/* Service Session Title & Status Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4">
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="text-xs text-indigo-400 font-semibold tracking-wide uppercase">
               Current Active Service
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              {serviceSession?.title || "Sunday Live Worship Service"}
-            </h2>
+
+            {editingServiceTitle ? (
+              <div className="flex items-center gap-2 mt-1 max-w-xl">
+                <input
+                  type="text"
+                  value={serviceTitleInput}
+                  onChange={(e) => setServiceTitleInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveServiceTitle();
+                    if (e.key === "Escape") setEditingServiceTitle(false);
+                  }}
+                  autoFocus
+                  className="flex-1 bg-slate-800 border border-indigo-500 rounded-xl px-3 py-1.5 text-base font-bold text-white focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveServiceTitle}
+                  className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition"
+                  title="Save Service Title"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingServiceTitle(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition"
+                  title="Cancel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-0.5">
+                <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight truncate">
+                  {serviceSession?.title || "Sunday Worship & Word Service"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setServiceTitleInput(
+                      serviceSession?.title || "Sunday Worship & Word Service"
+                    );
+                    setEditingServiceTitle(true);
+                  }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  title="Rename Active Service Title"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">
-              Broadcasting to:
-            </span>
-            <span className="px-2 py-1 rounded-md text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <span className="text-xs text-slate-400">Broadcasting to:</span>
+            <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
               YouTube Live
             </span>
-            <span className="px-2 py-1 rounded-md text-xs font-semibold bg-pink-500/20 text-pink-400 border border-pink-500/30">
+            <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-pink-500/20 text-pink-400 border border-pink-500/30">
               Instagram Live
             </span>
           </div>
@@ -153,13 +231,13 @@ export default function DashboardPage() {
           onVisitorAdded={(v) => setVisitors((prev) => [v, ...prev])}
         />
 
-        {/* Core Workspace Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Core Workspace Grid - Full-Screen Responsive */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 items-start">
           {/* Left Column: Sermon Cue Deck / Custom Outbox (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
             {/* Left Column Switcher Tabs */}
-            <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-1.5 rounded-xl">
-              <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 p-1.5 rounded-xl">
+              <div className="flex items-center gap-1 flex-wrap">
                 <button
                   onClick={() => setLeftTab("CUE_DECK")}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
@@ -169,7 +247,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>Pastor's Sermon Notes ({sermonCues.length})</span>
+                  <span>Pastor&apos;s Sermon Notes ({sermonCues.length})</span>
                 </button>
 
                 <button
@@ -224,8 +302,8 @@ export default function DashboardPage() {
           {/* Right Column: Prophetic Deck / AI Assistant (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             {/* Right Column Switcher Tabs */}
-            <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-1.5 rounded-xl">
-              <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 p-1.5 rounded-xl">
+              <div className="flex items-center gap-1 flex-wrap">
                 <button
                   onClick={() => setRightTab("PROPHETIC")}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
@@ -251,7 +329,7 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <span className="text-[10px] text-slate-500 mr-2">
+              <span className="text-[10px] text-slate-500 hidden sm:inline mr-2">
                 {rightTab === "PROPHETIC" ? "Spirit-Led Declarations" : "Gemini 3.8"}
               </span>
             </div>

@@ -19,14 +19,29 @@ export async function POST(req: NextRequest) {
     let ytResult = null;
     let igResult = null;
 
+    let appCfg = null;
+    try {
+      appCfg = await db.appConfig.findUnique({ where: { id: "default" } });
+    } catch {
+      // ignore if db not ready
+    }
+
     // Send to YouTube if requested
     if (target === "BOTH" || target === "YOUTUBE") {
-      ytResult = await sendYouTubeChatMessage(trimmed);
+      ytResult = await sendYouTubeChatMessage(
+        trimmed,
+        appCfg?.youtubeLiveChatId || undefined,
+        appCfg?.youtubeApiKey || undefined
+      );
     }
 
     // Send to Instagram if requested
     if (target === "BOTH" || target === "INSTAGRAM") {
-      igResult = await sendInstagramLiveComment(trimmed);
+      igResult = await sendInstagramLiveComment(
+        trimmed,
+        appCfg?.instagramLiveVideoId || undefined,
+        appCfg?.instagramAccessToken || undefined
+      );
     }
 
     // Determine overall status

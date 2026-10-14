@@ -93,10 +93,10 @@ export default function ReportsPage() {
     (service?.peakViewersYT || 0) + (service?.peakViewersIG || 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
-      <Navbar churchName="Grace Online Church" />
+    <div className="min-h-screen bg-slate-950 flex flex-col w-full">
+      <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-6 space-y-6">
         {/* Reports Header & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
           <div>

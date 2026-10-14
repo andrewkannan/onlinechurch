@@ -1,11 +1,24 @@
 import { GoogleGenAI } from "@google/genai";
+import { db } from "@/lib/db";
 
+let cachedKey: string | null = null;
 let genAIClient: GoogleGenAI | null = null;
 
-export function getGeminiClient(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
+export async function getGeminiClient(): Promise<GoogleGenAI | null> {
+  let apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    try {
+      const cfg = await db.appConfig.findUnique({ where: { id: "default" } });
+      if (cfg?.geminiApiKey) {
+        apiKey = cfg.geminiApiKey;
+      }
+    } catch {
+      // ignore if db not ready
+    }
+  }
   if (!apiKey) return null;
-  if (!genAIClient) {
+  if (!genAIClient || cachedKey !== apiKey) {
+    cachedKey = apiKey;
     genAIClient = new GoogleGenAI({ apiKey });
   }
   return genAIClient;
@@ -20,7 +33,7 @@ export async function lookupAndFormatScripture(
   translation: string = "NIV",
   churchName?: string
 ): Promise<{ text: string; reference: string; success: boolean }> {
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
   if (!client) {
     return {
       success: false,
@@ -67,7 +80,7 @@ export async function draftPrayerResponse(
   requesterName: string,
   requestText: string
 ): Promise<{ reply: string; success: boolean }> {
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
   if (!client) {
     return {
       success: false,
@@ -116,7 +129,7 @@ Guidelines:
 export async function generateSermonQuestions(
   topicOrTitle: string
 ): Promise<string[]> {
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
   const defaultQuestions = [
     `💬 Family question: What is one word that describes what God is speaking to you today?`,
     `💬 Where are you tuning in from today? Let us know in the chat!`,
@@ -164,7 +177,7 @@ export async function generateServiceSummaryReport(serviceData: {
   visitors: Array<{ name: string; location?: string | null }>;
   messagesBroadcasted: number;
 }): Promise<{ summary: string; actionItems: string }> {
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
   const totalViewers = serviceData.attendanceYT + serviceData.attendanceIG;
 
   if (!client) {
@@ -232,7 +245,7 @@ export async function parseSermonNotesToCues(
   notesText: string,
   translation: string = "NIV"
 ): Promise<ParsedSermonCue[]> {
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
 
   // Fallback cues if Gemini API key is not yet set
   const fallbackCues: ParsedSermonCue[] = [
@@ -305,7 +318,7 @@ ${notesText}
 export async function generatePropheticDecrees(
   keywordOrTheme: string
 ): Promise<string[]> {
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
   const defaultDecrees = [
     `🔥 PROPHETIC DECLARATION: We declare God's supernatural breakthrough over you and your household right now! Type AMEN! 🙌`,
     `🕊️ THE LORD SAYS: "Fear not, for I am with you; be not dismayed, for I am your God." Receive His peace right now in the chat! ✨`,

@@ -82,14 +82,17 @@ model ServiceReport {
 }
 
 model AppConfig {
-  id                   String  @id @default("default")
-  churchName           String  @default("Online Church")
-  defaultTranslation   String  @default("NIV")
+  id                   String   @id @default("default")
+  churchName           String   @default("Grace Online Church")
+  subtitle             String   @default("Live Stream Broadcast & Ministry Hub")
+  logoUrl              String?
+  defaultTranslation   String   @default("NIV")
   youtubeApiKey        String?
   youtubeLiveChatId    String?
   instagramAccessToken String?
   instagramLiveVideoId String?
   geminiApiKey         String?
+  updatedAt            DateTime @updatedAt @default(now())
 }
 
 model SermonCue {
