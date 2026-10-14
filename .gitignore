@@ -33,6 +33,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# SQLite db
+# SQLite db & local config store
 *.db
 *.db-journal
+prisma/church-config-store.json

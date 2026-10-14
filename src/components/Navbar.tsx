@@ -15,6 +15,12 @@ import {
   X,
   Trash2,
 } from "lucide-react";
+import {
+  fetchChurchConfig,
+  saveChurchConfig,
+  processLogoImageFile,
+  getLocalChurchConfig,
+} from "@/lib/clientConfig";
 
 interface NavbarProps {
   churchName?: string;
@@ -26,8 +32,12 @@ export default function Navbar({
   isLive = true,
 }: NavbarProps) {
   const pathname = usePathname();
-  const [churchName, setChurchName] = useState(propChurchName || "Grace Online Church");
-  const [subtitle, setSubtitle] = useState("Live Stream Broadcast & Ministry Hub");
+  const [churchName, setChurchName] = useState(
+    propChurchName || "Grace Online Church"
+  );
+  const [subtitle, setSubtitle] = useState(
+    "Live Stream Broadcast & Ministry Hub"
+  );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [dbConnected, setDbConnected] = useState<boolean>(true);
 
@@ -40,25 +50,28 @@ export default function Navbar({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadConfig = async () => {
-    try {
-      const res = await fetch("/api/settings");
-      const data = await res.json();
-      if (data.config) {
-        setChurchName(data.config.churchName || "Grace Online Church");
-        setSubtitle(data.config.subtitle || "Live Stream Broadcast & Ministry Hub");
-        setLogoUrl(data.config.logoUrl || null);
-      }
-      setDbConnected(Boolean(data.dbConnected));
-    } catch {
-      setDbConnected(false);
+    // Instant load from local cache if available
+    const cached = getLocalChurchConfig();
+    if (cached) {
+      setChurchName(cached.churchName || "Grace Online Church");
+      setSubtitle(cached.subtitle || "Live Stream Broadcast & Ministry Hub");
+      setLogoUrl(cached.logoUrl || null);
     }
+
+    // Sync with database
+    const { config, dbConnected: isOnline } = await fetchChurchConfig();
+    setChurchName(config.churchName || "Grace Online Church");
+    setSubtitle(config.subtitle || "Live Stream Broadcast & Ministry Hub");
+    setLogoUrl(config.logoUrl || null);
+    setDbConnected(isOnline);
   };
 
   useEffect(() => {
     loadConfig();
     const handleConfigUpdate = () => loadConfig();
     window.addEventListener("church-config-updated", handleConfigUpdate);
-    return () => window.removeEventListener("church-config-updated", handleConfigUpdate);
+    return () =>
+      window.removeEventListener("church-config-updated", handleConfigUpdate);
   }, []);
 
   const openQuickEdit = () => {
@@ -68,44 +81,44 @@ export default function Navbar({
     setShowEditModal(true);
   };
 
-  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setEditLogo(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const dataUrl = await processLogoImageFile(file);
+      setEditLogo(dataUrl);
+    } catch (err) {
+      console.error("Failed to process logo image:", err);
+    }
   };
 
   const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedName = editName.trim() || "Online Church";
+    const trimmedSubtitle =
+      editSubtitle.trim() || "Live Stream Broadcast & Ministry Hub";
+
     setSaving(true);
+    // Apply immediately to UI
+    setChurchName(trimmedName);
+    setSubtitle(trimmedSubtitle);
+    setLogoUrl(editLogo);
+
     try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          churchName: editName,
-          subtitle: editSubtitle,
-          logoUrl: editLogo,
-        }),
+      const { config, dbConnected: isOnline } = await saveChurchConfig({
+        churchName: trimmedName,
+        subtitle: trimmedSubtitle,
+        logoUrl: editLogo,
       });
-      const data = await res.json();
-      if (data.config) {
-        setChurchName(data.config.churchName);
-        setSubtitle(data.config.subtitle || "Live Stream Broadcast & Ministry Hub");
-        setLogoUrl(data.config.logoUrl || null);
-        setDbConnected(true);
-        window.dispatchEvent(new Event("church-config-updated"));
-        setShowEditModal(false);
-      }
-    } catch (err) {
-      console.error("Failed to save branding:", err);
+      setChurchName(config.churchName);
+      setSubtitle(config.subtitle);
+      setLogoUrl(config.logoUrl);
+      setDbConnected(isOnline);
     } finally {
       setSaving(false);
+      setShowEditModal(false);
     }
   };
 
@@ -137,7 +150,11 @@ export default function Navbar({
 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-bold text-base sm:text-lg text-white tracking-tight truncate">
+                <h1
+                  onClick={openQuickEdit}
+                  className="font-bold text-base sm:text-lg text-white tracking-tight truncate cursor-pointer hover:text-indigo-300 transition"
+                  title="Click to edit church name"
+                >
                   {churchName}
                 </h1>
                 <button
@@ -169,13 +186,13 @@ export default function Navbar({
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${
                 dbConnected
                   ? "bg-emerald-950/50 border-emerald-800/60 text-emerald-300"
-                  : "bg-red-950/50 border-red-800/60 text-red-300"
+                  : "bg-amber-950/50 border-amber-800/60 text-amber-300"
               }`}
-              title={dbConnected ? "SQLite Database Connected" : "Database Disconnected"}
+              title="Database & Storage Active"
             >
               <Database className="w-3.5 h-3.5" />
               <span className="font-medium">
-                {dbConnected ? "DB Connected" : "DB Offline"}
+                {dbConnected ? "DB Connected" : "Local Sync Active"}
               </span>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300">
@@ -296,7 +313,7 @@ export default function Navbar({
                       )}
                     </div>
                     <span className="text-[11px] text-slate-400">
-                      PNG, JPG, SVG, or WebP (Saved to database)
+                      PNG, JPG, SVG, or WebP (Auto-optimized & saved)
                     </span>
                   </div>
                 </div>

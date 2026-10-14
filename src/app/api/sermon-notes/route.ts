@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, ensureDbReady, readFallbackStore, writeFallbackStore } from "@/lib/db";
 import { parseSermonNotesToCues } from "@/lib/gemini";
 
 export async function GET(req: NextRequest) {
+  const store = readFallbackStore();
   try {
+    await ensureDbReady();
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
 
@@ -13,8 +15,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ cues });
-  } catch (err: any) {
-    return NextResponse.json({ cues: [], error: err.message });
+  } catch {
+    return NextResponse.json({ cues: store.sermonCues || [] });
   }
 }
 
@@ -32,21 +34,40 @@ export async function POST(req: NextRequest) {
     // Call Gemini 3.8 Flash to extract structured cue cards
     const parsedCues = await parseSermonNotesToCues(notesText, translation);
 
-    // Save into database linked to the session
     const createdCues = [];
-    for (let i = 0; i < parsedCues.length; i++) {
-      const cue = parsedCues[i];
-      const saved = await db.sermonCue.create({
-        data: {
+    try {
+      await ensureDbReady();
+      for (let i = 0; i < parsedCues.length; i++) {
+        const cue = parsedCues[i];
+        const saved = await db.sermonCue.create({
+          data: {
+            sessionId: sessionId || null,
+            cueType: cue.cueType,
+            label: cue.label,
+            content: cue.content,
+            sortOrder: i + 1,
+            isReleased: false,
+          },
+        });
+        createdCues.push(saved);
+      }
+    } catch {
+      for (let i = 0; i < parsedCues.length; i++) {
+        const cue = parsedCues[i];
+        createdCues.push({
+          id: `cue_${Date.now()}_${i}`,
           sessionId: sessionId || null,
           cueType: cue.cueType,
           label: cue.label,
           content: cue.content,
           sortOrder: i + 1,
           isReleased: false,
-        },
-      });
-      createdCues.push(saved);
+          releasedAt: null,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      const store = readFallbackStore();
+      writeFallbackStore("sermonCues", [...(store.sermonCues || []), ...createdCues]);
     }
 
     return NextResponse.json({
@@ -65,6 +86,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    writeFallbackStore("sermonCues", []);
+    await ensureDbReady();
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
 
@@ -77,7 +100,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: true });
   }
 }

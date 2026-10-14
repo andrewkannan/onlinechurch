@@ -15,6 +15,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { YouTubeIcon, InstagramIcon } from "@/components/Icons";
+import {
+  fetchChurchConfig,
+  saveChurchConfig,
+  processLogoImageFile,
+} from "@/lib/clientConfig";
 
 export default function SettingsPage() {
   const [churchName, setChurchName] = useState("Grace Online Church");
@@ -37,47 +42,42 @@ export default function SettingsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchSettings = async () => {
+  const loadSettings = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/settings");
-      const data = await res.json();
-      if (data.config) {
-        setChurchName(data.config.churchName || "Grace Online Church");
-        setSubtitle(data.config.subtitle || "Live Stream Broadcast & Ministry Hub");
-        setLogoUrl(data.config.logoUrl || null);
-        setDefaultTranslation(data.config.defaultTranslation || "NIV");
-        setGeminiKey(data.config.geminiApiKey || "");
-        setYoutubeApiKey(data.config.youtubeApiKey || "");
-        setYoutubeLiveChatId(data.config.youtubeLiveChatId || "");
-        setInstagramToken(data.config.instagramAccessToken || "");
-        setInstagramLiveVideoId(data.config.instagramLiveVideoId || "");
-      }
-      setDbConnected(Boolean(data.dbConnected));
-    } catch {
-      setDbConnected(false);
+      const { config, dbConnected: isOnline } = await fetchChurchConfig();
+      setChurchName(config.churchName || "Grace Online Church");
+      setSubtitle(config.subtitle || "Live Stream Broadcast & Ministry Hub");
+      setLogoUrl(config.logoUrl || null);
+      setDefaultTranslation(config.defaultTranslation || "NIV");
+      setGeminiKey(config.geminiApiKey || "");
+      setYoutubeApiKey(config.youtubeApiKey || "");
+      setYoutubeLiveChatId(config.youtubeLiveChatId || "");
+      setInstagramToken(config.instagramAccessToken || "");
+      setInstagramLiveVideoId(config.instagramLiveVideoId || "");
+      setDbConnected(isOnline);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSettings();
-    const handleExternalUpdate = () => fetchSettings();
+    loadSettings();
+    const handleExternalUpdate = () => loadSettings();
     window.addEventListener("church-config-updated", handleExternalUpdate);
-    return () => window.removeEventListener("church-config-updated", handleExternalUpdate);
+    return () =>
+      window.removeEventListener("church-config-updated", handleExternalUpdate);
   }, []);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setLogoUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const dataUrl = await processLogoImageFile(file);
+      setLogoUrl(dataUrl);
+    } catch (err) {
+      console.error("Failed to process logo:", err);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -86,38 +86,31 @@ export default function SettingsPage() {
     setFeedback(null);
 
     try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          churchName,
-          subtitle,
-          logoUrl,
-          defaultTranslation,
-          geminiApiKey: geminiKey,
-          youtubeApiKey,
-          youtubeLiveChatId,
-          instagramAccessToken: instagramToken,
-          instagramLiveVideoId,
-        }),
+      const { config, dbConnected: isOnline } = await saveChurchConfig({
+        churchName,
+        subtitle,
+        logoUrl,
+        defaultTranslation,
+        geminiApiKey: geminiKey,
+        youtubeApiKey,
+        youtubeLiveChatId,
+        instagramAccessToken: instagramToken,
+        instagramLiveVideoId,
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to save settings");
-      }
-
-      setDbConnected(true);
-      window.dispatchEvent(new Event("church-config-updated"));
+      setChurchName(config.churchName);
+      setSubtitle(config.subtitle);
+      setLogoUrl(config.logoUrl);
+      setDbConnected(isOnline);
       setFeedback({
         type: "success",
-        text: "Church name, logo, and platform credentials saved to SQLite database!",
+        text: "Church name, logo, and platform credentials saved successfully!",
       });
       setTimeout(() => setFeedback(null), 5000);
     } catch (err: any) {
       setFeedback({
         type: "error",
-        text: err.message || "Could not save configuration to database",
+        text: err.message || "Could not save configuration",
       });
     } finally {
       setSaving(false);
@@ -145,14 +138,14 @@ export default function SettingsPage() {
             className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-semibold shrink-0 ${
               dbConnected
                 ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
-                : "bg-red-950/60 border-red-800 text-red-300"
+                : "bg-amber-950/60 border-amber-800 text-amber-300"
             }`}
           >
             <Database className="w-4 h-4" />
             <span>
               {dbConnected
                 ? "Database Connected (SQLite Active)"
-                : "Database Disconnected"}
+                : "Local Storage Sync Active"}
             </span>
           </div>
         </div>
@@ -160,7 +153,7 @@ export default function SettingsPage() {
         {loading ? (
           <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
-            <span>Loading church configuration from database...</span>
+            <span>Loading church configuration...</span>
           </div>
         ) : (
           <form onSubmit={handleSave} className="space-y-6">
@@ -458,7 +451,7 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                   <span className="text-xs text-slate-400">
-                    All changes are saved directly to your local SQLite database (`dev.db`).
+                    All changes are saved directly to your database and synced across all screens.
                   </span>
                 )}
               </div>
@@ -471,7 +464,7 @@ export default function SettingsPage() {
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Saving to Database...</span>
+                    <span>Saving...</span>
                   </>
                 ) : (
                   <>
