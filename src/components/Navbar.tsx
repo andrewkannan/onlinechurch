@@ -14,6 +14,7 @@ import {
   Database,
   X,
   Trash2,
+  Target,
 } from "lucide-react";
 import {
   fetchChurchConfig,
@@ -210,10 +211,10 @@ export default function Navbar({
           </div>
 
           {/* Navigation Tabs */}
-          <nav className="flex items-center gap-1 bg-slate-800/60 p-1 rounded-xl border border-slate-700/60 w-full sm:w-auto justify-center">
+          <nav className="flex items-center gap-1 bg-slate-800/60 p-1 rounded-xl border border-slate-700/60 w-full sm:w-auto justify-center overflow-x-auto">
             <Link
               href="/"
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
                 pathname === "/"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-white hover:bg-slate-800"
@@ -223,19 +224,30 @@ export default function Navbar({
               <span>Broadcast</span>
             </Link>
             <Link
+              href="/roadmap"
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
+                pathname === "/roadmap"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              <Target className="w-4 h-4" />
+              <span>Timeline & Goals</span>
+            </Link>
+            <Link
               href="/reports"
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
                 pathname === "/reports"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-white hover:bg-slate-800"
               }`}
             >
               <BarChart3 className="w-4 h-4" />
-              <span>Reports</span>
+              <span>Reports & Graphs</span>
             </Link>
             <Link
               href="/settings"
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
                 pathname === "/settings"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-white hover:bg-slate-800"
