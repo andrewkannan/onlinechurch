@@ -600,6 +600,96 @@ export default function CrewCheckAndQcPage() {
     (l) => l.status === "WAITING_DIRECTOR"
   ).length;
 
+  const DEPT_THEME: Record<
+    string,
+    {
+      label: string;
+      icon: any;
+      text: string;
+      bar: string;
+      pill: string;
+      filterActive: string;
+      cardUnchecked: string;
+      cardChecked: string;
+      cardSelected: string;
+      checkboxChecked: string;
+    }
+  > = {
+    CAMERA: {
+      label: "Camera",
+      icon: Camera,
+      text: "text-amber-400",
+      bar: "bg-amber-500",
+      pill: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+      filterActive: "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20",
+      cardUnchecked:
+        "bg-slate-900/95 border-slate-800 border-l-4 border-l-amber-500 hover:border-amber-500/50",
+      cardChecked:
+        "bg-amber-950/35 border-amber-500/60 border-l-4 border-l-amber-400 shadow-sm shadow-amber-500/10",
+      cardSelected: "bg-amber-950/50 border-amber-400 ring-1 ring-amber-400/50",
+      checkboxChecked: "bg-amber-500 text-slate-950",
+    },
+    AUDIO: {
+      label: "Audio",
+      icon: Mic,
+      text: "text-cyan-400",
+      bar: "bg-cyan-400",
+      pill: "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40",
+      filterActive: "bg-cyan-400 text-slate-950 shadow-md shadow-cyan-400/20",
+      cardUnchecked:
+        "bg-slate-900/95 border-slate-800 border-l-4 border-l-cyan-400 hover:border-cyan-400/50",
+      cardChecked:
+        "bg-cyan-950/35 border-cyan-400/60 border-l-4 border-l-cyan-300 shadow-sm shadow-cyan-400/10",
+      cardSelected: "bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50",
+      checkboxChecked: "bg-cyan-400 text-slate-950",
+    },
+    MODERATOR: {
+      label: "Moderator",
+      icon: MessageSquare,
+      text: "text-violet-400",
+      bar: "bg-violet-500",
+      pill: "bg-violet-500/20 text-violet-300 border border-violet-500/40",
+      filterActive: "bg-violet-600 text-white shadow-md shadow-violet-600/20",
+      cardUnchecked:
+        "bg-slate-900/95 border-slate-800 border-l-4 border-l-violet-500 hover:border-violet-500/50",
+      cardChecked:
+        "bg-violet-950/35 border-violet-500/60 border-l-4 border-l-violet-400 shadow-sm shadow-violet-500/10",
+      cardSelected:
+        "bg-violet-950/50 border-violet-400 ring-1 ring-violet-400/50",
+      checkboxChecked: "bg-violet-500 text-white",
+    },
+    QC: {
+      label: "QC",
+      icon: Eye,
+      text: "text-emerald-400",
+      bar: "bg-emerald-500",
+      pill: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
+      filterActive:
+        "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20",
+      cardUnchecked:
+        "bg-slate-900/95 border-slate-800 border-l-4 border-l-emerald-500 hover:border-emerald-500/50",
+      cardChecked:
+        "bg-emerald-950/35 border-emerald-500/60 border-l-4 border-l-emerald-400 shadow-sm shadow-emerald-500/10",
+      cardSelected:
+        "bg-emerald-950/50 border-emerald-400 ring-1 ring-emerald-400/50",
+      checkboxChecked: "bg-emerald-500 text-slate-950",
+    },
+    DIRECTOR: {
+      label: "Director",
+      icon: Clapperboard,
+      text: "text-rose-400",
+      bar: "bg-rose-500",
+      pill: "bg-rose-500/20 text-rose-300 border border-rose-500/40",
+      filterActive: "bg-rose-600 text-white shadow-md shadow-rose-600/20",
+      cardUnchecked:
+        "bg-slate-900/95 border-slate-800 border-l-4 border-l-rose-500 hover:border-rose-500/50",
+      cardChecked:
+        "bg-rose-950/35 border-rose-500/60 border-l-4 border-l-rose-400 shadow-sm shadow-rose-500/10",
+      cardSelected: "bg-rose-950/50 border-rose-400 ring-1 ring-rose-400/50",
+      checkboxChecked: "bg-rose-500 text-white",
+    },
+  };
+
   const stationsMeta: {
     role: CrewRole;
     label: string;
@@ -607,7 +697,7 @@ export default function CrewCheckAndQcPage() {
     color: string;
   }[] = [
     { role: "CAMERA", label: "Camera", icon: Camera, color: "text-amber-400" },
-    { role: "AUDIO", label: "Audio", icon: Mic, color: "text-sky-400" },
+    { role: "AUDIO", label: "Audio", icon: Mic, color: "text-cyan-400" },
     {
       role: "MODERATOR",
       label: "Moderator",
@@ -645,13 +735,16 @@ export default function CrewCheckAndQcPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowLoginModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 transition"
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                DEPT_THEME[myIdentity.role]?.pill ||
+                "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40"
+              }`}
             >
               <Smartphone className="w-3.5 h-3.5" />
               <span>
                 {myIdentity.name} ({myIdentity.role})
               </span>
-              <span className="text-[10px] underline ml-1 text-indigo-400">
+              <span className="text-[10px] underline ml-1 opacity-80">
                 Switch Role
               </span>
             </button>
@@ -780,9 +873,10 @@ export default function CrewCheckAndQcPage() {
               </div>
             )}
 
-            {/* 5 Compact Station Cards */}
+            {/* 5 Color-Coded Department Station Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               {stationsMeta.map((st) => {
+                const theme = DEPT_THEME[st.role];
                 const Icon = st.icon;
                 const items = checklists.filter((c) => c.role === st.role);
                 const done = items.filter((c) => c.checked).length;
@@ -803,40 +897,34 @@ export default function CrewCheckAndQcPage() {
                     }
                     className={`cursor-pointer rounded-xl p-3 border transition ${
                       isSelected
-                        ? "bg-indigo-950/50 border-indigo-500"
+                        ? theme.cardSelected
                         : pct === 100
-                        ? "bg-emerald-950/20 border-emerald-500/40"
-                        : "bg-slate-900 border-slate-800"
+                        ? theme.cardChecked
+                        : theme.cardUnchecked
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <Icon className={`w-3.5 h-3.5 ${st.color}`} />
+                      <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
+                        <Icon className={`w-4 h-4 ${theme.text}`} />
                         {st.label}
                       </span>
-                      <span
-                        className={`text-xs font-black ${
-                          pct === 100 ? "text-emerald-400" : "text-amber-400"
-                        }`}
-                      >
+                      <span className={`text-xs font-black ${theme.text}`}>
                         {pct}%
                       </span>
                     </div>
 
                     <div className="w-full h-1.5 bg-slate-800 rounded-full my-2 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${
-                          pct === 100 ? "bg-emerald-500" : "bg-amber-500"
-                        }`}
+                        className={`h-full rounded-full transition-all ${theme.bar}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] text-slate-400">
-                      <span className="truncate">
+                    <div className="flex items-center justify-between text-[10px] text-slate-300">
+                      <span className="truncate font-medium">
                         {crew ? `● ${crew.name}` : "No login"}
                       </span>
-                      <span>
+                      <span className={`font-bold ${theme.text}`}>
                         {done}/{items.length}
                       </span>
                     </div>
@@ -845,97 +933,106 @@ export default function CrewCheckAndQcPage() {
               })}
             </div>
 
-            {/* Filter & Quick Actions Bar */}
+            {/* Department Color Filter & Quick Actions Bar */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   onClick={() => setStationFilter("ALL")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                     stationFilter === "ALL"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-slate-900 text-slate-400 border border-slate-800"
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-white"
                   }`}
                 >
                   All ({totalChecks})
                 </button>
-                {stationsMeta.map((st) => (
-                  <button
-                    key={st.role}
-                    onClick={() => setStationFilter(st.role)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                      stationFilter === st.role
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-900 text-slate-400 border border-slate-800"
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
+                {stationsMeta.map((st) => {
+                  const theme = DEPT_THEME[st.role];
+                  const isSelected = stationFilter === st.role;
+                  return (
+                    <button
+                      key={st.role}
+                      onClick={() => setStationFilter(st.role)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition ${
+                        isSelected ? theme.filterActive : theme.pill
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="flex items-center gap-2">
                 {stationFilter !== "ALL" && (
                   <button
                     onClick={() => handleCheckAllStation(stationFilter)}
-                    className="px-3 py-1 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold"
+                    className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition ${
+                      DEPT_THEME[stationFilter]?.filterActive ||
+                      "bg-emerald-600 text-white"
+                    }`}
                   >
                     ✓ Check All {stationFilter}
                   </button>
                 )}
                 <button
                   onClick={() => setShowAddCheckModal(true)}
-                  className="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
                 >
                   + Add Check
                 </button>
               </div>
             </div>
 
-            {/* ULTRA-CLEAN 1-LINE TAP TILES (Zero Clutter) */}
+            {/* DEPARTMENT COLOR-CODED 1-LINE TAP TILES (Crystal Clear, No Line-Through) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {visibleChecklists.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleToggleCheck(item.id)}
-                  className={`cursor-pointer rounded-xl p-3 border transition flex items-center justify-between gap-3 select-none ${
-                    item.checked
-                      ? "bg-emerald-950/20 border-emerald-500/40"
-                      : "bg-slate-900 border-slate-700 hover:border-indigo-500"
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition ${
-                        item.checked
-                          ? "bg-emerald-500 text-slate-950"
-                          : "bg-slate-800 border border-slate-600 text-transparent"
-                      }`}
-                    >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    </div>
-                    <div className="min-w-0">
+              {visibleChecklists.map((item) => {
+                const theme = DEPT_THEME[item.role] || DEPT_THEME.CAMERA;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleToggleCheck(item.id)}
+                    className={`cursor-pointer rounded-xl p-3 border transition flex items-center justify-between gap-3 select-none ${
+                      item.checked ? theme.cardChecked : theme.cardUnchecked
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className={`text-xs font-bold truncate ${
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition ${
                           item.checked
-                            ? "text-slate-300 line-through"
-                            : "text-white"
+                            ? theme.checkboxChecked
+                            : "bg-slate-800 border border-slate-600 text-transparent"
                         }`}
                       >
-                        {item.task}
+                        <Check className="w-4 h-4 stroke-[3]" />
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        {item.role} • {item.detail}
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white truncate">
+                          {item.task}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${theme.pill}`}
+                          >
+                            {item.role}
+                          </span>
+                          <span className="text-[10px] text-slate-300 truncate">
+                            {item.detail}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {item.checked && item.checkedBy && (
-                    <span className="text-[10px] font-bold text-emerald-400 shrink-0">
-                      ✓ {item.checkedBy}
-                    </span>
-                  )}
-                </div>
-              ))}
+                    {item.checked && item.checkedBy && (
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 ${theme.pill}`}
+                      >
+                        ✓ {item.checkedBy}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1174,7 +1271,12 @@ export default function CrewCheckAndQcPage() {
                           >
                             {log.type}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-200">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              DEPT_THEME[log.station as CrewRole]?.pill ||
+                              "bg-slate-800 text-slate-200 border border-slate-700"
+                            }`}
+                          >
                             {log.platform} • {log.station}
                           </span>
                           <span className="text-[11px] text-slate-400">
@@ -1389,19 +1491,20 @@ export default function CrewCheckAndQcPage() {
             {/* Station Sign-Off Summary Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {stationsMeta.map((st) => {
+                const theme = DEPT_THEME[st.role];
                 const items = checklists.filter((c) => c.role === st.role);
                 const done = items.filter((c) => c.checked).length;
                 const crew = activeCrew.find((c) => c.role === st.role);
                 return (
                   <div
                     key={st.role}
-                    className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs"
+                    className={`rounded-xl p-3 text-xs border ${theme.cardChecked}`}
                   >
-                    <div className="font-bold text-white">{st.label}</div>
-                    <div className="text-emerald-400 font-semibold mt-0.5">
+                    <div className="font-extrabold text-white">{st.label}</div>
+                    <div className={`${theme.text} font-bold mt-0.5`}>
                       {done}/{items.length} Checked
                     </div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-[11px] text-slate-300">
                       Signed: {crew ? crew.name : "Team"}
                     </div>
                   </div>
@@ -1443,8 +1546,15 @@ export default function CrewCheckAndQcPage() {
                           {log.type}
                         </span>
                       </td>
-                      <td className="py-3 px-3 font-semibold text-slate-300">
-                        {log.station} ({log.platform})
+                      <td className="py-3 px-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            DEPT_THEME[log.station as CrewRole]?.pill ||
+                            "bg-slate-800 text-slate-200 border border-slate-700"
+                          }`}
+                        >
+                          {log.station} ({log.platform})
+                        </span>
                       </td>
                       <td className="py-3 px-3">
                         <div className="font-bold text-white">{log.title}</div>
