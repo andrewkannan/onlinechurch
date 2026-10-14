@@ -270,19 +270,14 @@ export default function LivePrayerChatQueue({
       )}
 
       {/* Top Header & View Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              <Zap className="w-3 h-3" /> AUTO-DETECT ACTIVE
-            </span>
-            <h3 className="text-base font-bold text-white tracking-tight">
-              Intelligent Prayer Auto-Queue & Platform Reply Router
-            </h3>
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Automatically detects prayer requests from YouTube & Instagram Live chat, pulls them into the queue, and routes your reply back to the exact source platform.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <Zap className="w-3 h-3" /> AUTO-PULL
+          </span>
+          <h3 className="text-sm font-bold text-white">
+            Prayer Queue & Platform Reply (IG → IG, YT → YT)
+          </h3>
         </div>
 
         <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
