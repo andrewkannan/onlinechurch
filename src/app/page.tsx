@@ -8,7 +8,17 @@ import QuickPresetBar from "@/components/QuickPresetBar";
 import AiAssistantDock from "@/components/AiAssistantDock";
 import SermonCueDeck, { SermonCueItem } from "@/components/SermonCueDeck";
 import PropheticDeck from "@/components/PropheticDeck";
-import { FileText, Sparkles, MessageSquare, Flame, Edit3, Check, X } from "lucide-react";
+import LivePrayerChatQueue from "@/components/LivePrayerChatQueue";
+import {
+  FileText,
+  Sparkles,
+  MessageSquare,
+  Flame,
+  Edit3,
+  Check,
+  X,
+  HeartHandshake,
+} from "lucide-react";
 
 export default function DashboardPage() {
   const [activeMessage, setActiveMessage] = useState("");
@@ -25,7 +35,9 @@ export default function DashboardPage() {
 
   // Workspace Mode Toggles
   const [leftTab, setLeftTab] = useState<"CUE_DECK" | "CUSTOM_OUTBOX">("CUE_DECK");
-  const [rightTab, setRightTab] = useState<"PROPHETIC" | "AI_ASSISTANT">("PROPHETIC");
+  const [rightTab, setRightTab] = useState<
+    "PRAYER_QUEUE" | "PROPHETIC" | "AI_ASSISTANT"
+  >("PRAYER_QUEUE");
 
   // Fetch initial data
   const fetchData = async () => {
@@ -299,43 +311,59 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Right Column: Prophetic Deck / AI Assistant (5 cols) */}
+          {/* Right Column: Auto-Prayer Queue / Prophetic Deck / AI Assistant (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             {/* Right Column Switcher Tabs */}
             <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 p-1.5 rounded-xl">
               <div className="flex items-center gap-1 flex-wrap">
                 <button
+                  onClick={() => setRightTab("PRAYER_QUEUE")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                    rightTab === "PRAYER_QUEUE"
+                      ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <HeartHandshake className="w-3.5 h-3.5" />
+                  <span>Auto-Prayer Queue ({prayers.length})</span>
+                </button>
+
+                <button
                   onClick={() => setRightTab("PROPHETIC")}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                     rightTab === "PROPHETIC"
                       ? "bg-red-600 text-white shadow-sm shadow-red-600/30"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
                   <Flame className="w-3.5 h-3.5" />
-                  <span>Prophetic Flow Deck</span>
+                  <span>Prophetic Flow</span>
                 </button>
 
                 <button
                   onClick={() => setRightTab("AI_ASSISTANT")}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                     rightTab === "AI_ASSISTANT"
                       ? "bg-indigo-600 text-white shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Scripture & Prayer AI</span>
+                  <span>Scripture AI</span>
                 </button>
               </div>
-
-              <span className="text-[10px] text-slate-500 hidden sm:inline mr-2">
-                {rightTab === "PROPHETIC" ? "Spirit-Led Declarations" : "Gemini 3.8"}
-              </span>
             </div>
 
             {/* Right Content View */}
-            {rightTab === "PROPHETIC" ? (
+            {rightTab === "PRAYER_QUEUE" ? (
+              <LivePrayerChatQueue
+                sessionId={serviceSession?.id}
+                onPrayerCountChange={(updatedPrayers) =>
+                  setPrayers(updatedPrayers)
+                }
+                onBroadcastLogged={fetchData}
+              />
+            ) : rightTab === "PROPHETIC" ? (
               <PropheticDeck
                 onPushToOutbox={(text) => {
                   setActiveMessage(text);
