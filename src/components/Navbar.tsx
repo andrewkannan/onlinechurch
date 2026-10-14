@@ -15,6 +15,7 @@ import {
   X,
   Trash2,
   Target,
+  ShieldCheck,
 } from "lucide-react";
 import {
   fetchChurchConfig,
@@ -222,6 +223,17 @@ export default function Navbar({
             >
               <Radio className="w-4 h-4" />
               <span>Broadcast</span>
+            </Link>
+            <Link
+              href="/crew"
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
+                pathname === "/crew"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Crew Check & QC</span>
             </Link>
             <Link
               href="/roadmap"
