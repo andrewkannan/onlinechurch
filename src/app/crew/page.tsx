@@ -718,6 +718,31 @@ export default function CrewCheckAndQcPage() {
     return checklists.filter((c) => c.role === stationFilter);
   }, [checklists, stationFilter]);
 
+  const uncheckedVisible = useMemo(
+    () => visibleChecklists.filter((c) => !c.checked),
+    [visibleChecklists]
+  );
+  const checkedVisible = useMemo(
+    () => visibleChecklists.filter((c) => c.checked),
+    [visibleChecklists]
+  );
+
+  // Stations that still have pending items (for Director fast reaction)
+  const pendingStations = useMemo(() => {
+    return stationsMeta
+      .map((st) => {
+        const items = checklists.filter((c) => c.role === st.role);
+        const remaining = items.filter((c) => !c.checked).length;
+        const crew = activeCrew.find((c) => c.role === st.role);
+        return {
+          ...st,
+          remaining,
+          crewName: crew ? crew.name : st.label,
+        };
+      })
+      .filter((s) => s.remaining > 0);
+  }, [checklists, activeCrew]);
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col w-full">
       <Navbar />
@@ -729,7 +754,7 @@ export default function CrewCheckAndQcPage() {
         </div>
       )}
 
-      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-4 space-y-4">
+      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-4 space-y-5">
         {/* COMPACT TOP BAR: Role Badge + 3 Fast Mode Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -803,7 +828,7 @@ export default function CrewCheckAndQcPage() {
             TAB 1: FAST PRE-LIVE CHECK & 100% READY ALERT
            =================================================================== */}
         {activeTab === "PRE_LIVE" && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* AUTOMATIC 100% READY ALERT BANNER */}
             {is100PercentReady ? (
               <div className="rounded-2xl p-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-slate-950 shadow-xl shadow-emerald-500/20 border-2 border-emerald-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-pulse">
@@ -839,29 +864,48 @@ export default function CrewCheckAndQcPage() {
                 </div>
               </div>
             ) : (
-              /* IN-PROGRESS BANNER (< 100%) */
-              <div className="rounded-2xl p-4 bg-slate-900/90 border border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl font-black text-amber-400">
+              /* IN-PROGRESS BANNER (< 100%) WITH INSTANT DIRECTOR CALLOUTS */
+              <div className="rounded-2xl p-4 bg-slate-900/95 border-2 border-amber-500/60 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-lg">
+                <div className="flex flex-wrap items-center gap-3.5">
+                  <div className="px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-2xl font-black text-amber-400">
                     {overallPct}%
                   </div>
                   <div>
-                    <div className="text-sm font-bold text-white">
-                      ⏳ Pre-Live Check: {completedChecks}/{totalChecks} Verified
-                      ({totalChecks - completedChecks} Remaining)
+                    <div className="text-sm font-extrabold text-white flex flex-wrap items-center gap-2">
+                      <span>
+                        🚨 {totalChecks - completedChecks} NOT COMPLETED
+                      </span>
+                      <span className="text-xs font-semibold text-slate-400">
+                        ({completedChecks}/{totalChecks} Verified)
+                      </span>
                     </div>
-                    <div className="text-xs text-slate-400">
-                      Tap your station below to complete checks
+                    {/* Instant Callout of Which Dept / Crew Member is Holding Up Go-Live */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      <span className="text-[11px] font-bold text-rose-300">
+                        Waiting on:
+                      </span>
+                      {pendingStations.map((ps) => {
+                        const theme = DEPT_THEME[ps.role];
+                        return (
+                          <button
+                            key={ps.role}
+                            onClick={() => setStationFilter(ps.role)}
+                            className={`px-2 py-0.5 rounded-md text-[11px] font-extrabold transition ${theme.pill}`}
+                          >
+                            ⚠️ {ps.label}: {ps.crewName} ({ps.remaining} left)
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleCheckAllStation("ALL")}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-md transition"
                   >
-                    ✓ Check All 100%
+                    ✓ Complete All Remaining ({totalChecks - completedChecks})
                   </button>
                   <button
                     onClick={handleResetChecklists}
@@ -873,13 +917,14 @@ export default function CrewCheckAndQcPage() {
               </div>
             )}
 
-            {/* 5 Color-Coded Department Station Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            {/* 5 Color-Coded Department Station Cards (Highlights Incomplete Stations) */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {stationsMeta.map((st) => {
                 const theme = DEPT_THEME[st.role];
                 const Icon = st.icon;
                 const items = checklists.filter((c) => c.role === st.role);
                 const done = items.filter((c) => c.checked).length;
+                const remaining = items.length - done;
                 const pct =
                   items.length > 0
                     ? Math.round((done / items.length) * 100)
@@ -895,37 +940,45 @@ export default function CrewCheckAndQcPage() {
                         stationFilter === st.role ? "ALL" : st.role
                       )
                     }
-                    className={`cursor-pointer rounded-xl p-3 border transition ${
+                    className={`cursor-pointer rounded-xl p-3.5 border transition ${
                       isSelected
                         ? theme.cardSelected
-                        : pct === 100
-                        ? theme.cardChecked
-                        : theme.cardUnchecked
+                        : remaining > 0
+                        ? "bg-rose-950/25 border-2 border-amber-500/80 shadow-md shadow-amber-500/10"
+                        : theme.cardChecked
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
                         <Icon className={`w-4 h-4 ${theme.text}`} />
                         {st.label}
                       </span>
-                      <span className={`text-xs font-black ${theme.text}`}>
-                        {pct}%
-                      </span>
+                      {remaining > 0 ? (
+                        <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-black animate-pulse">
+                          ⚠️ {remaining} LEFT
+                        </span>
+                      ) : (
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-black ${theme.pill}`}
+                        >
+                          ✓ DONE
+                        </span>
+                      )}
                     </div>
 
-                    <div className="w-full h-1.5 bg-slate-800 rounded-full my-2 overflow-hidden">
+                    <div className="w-full h-2 bg-slate-800 rounded-full my-2.5 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${theme.bar}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] text-slate-300">
-                      <span className="truncate font-medium">
+                    <div className="flex items-center justify-between text-[11px] text-slate-300">
+                      <span className="truncate font-semibold">
                         {crew ? `● ${crew.name}` : "No login"}
                       </span>
-                      <span className={`font-bold ${theme.text}`}>
-                        {done}/{items.length}
+                      <span className={`font-extrabold ${theme.text}`}>
+                        {done}/{items.length} ({pct}%)
                       </span>
                     </div>
                   </div>
@@ -934,7 +987,7 @@ export default function CrewCheckAndQcPage() {
             </div>
 
             {/* Department Color Filter & Quick Actions Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   onClick={() => setStationFilter("ALL")}
@@ -949,15 +1002,23 @@ export default function CrewCheckAndQcPage() {
                 {stationsMeta.map((st) => {
                   const theme = DEPT_THEME[st.role];
                   const isSelected = stationFilter === st.role;
+                  const stRemaining = checklists.filter(
+                    (c) => c.role === st.role && !c.checked
+                  ).length;
                   return (
                     <button
                       key={st.role}
                       onClick={() => setStationFilter(st.role)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 ${
                         isSelected ? theme.filterActive : theme.pill
                       }`}
                     >
-                      {st.label}
+                      <span>{st.label}</span>
+                      {stRemaining > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black">
+                          {stRemaining}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -984,56 +1045,135 @@ export default function CrewCheckAndQcPage() {
               </div>
             </div>
 
-            {/* DEPARTMENT COLOR-CODED 1-LINE TAP TILES (Crystal Clear, No Line-Through) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {visibleChecklists.map((item) => {
-                const theme = DEPT_THEME[item.role] || DEPT_THEME.CAMERA;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => handleToggleCheck(item.id)}
-                    className={`cursor-pointer rounded-xl p-3 border transition flex items-center justify-between gap-3 select-none ${
-                      item.checked ? theme.cardChecked : theme.cardUnchecked
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition ${
-                          item.checked
-                            ? theme.checkboxChecked
-                            : "bg-slate-800 border border-slate-600 text-transparent"
-                        }`}
-                      >
-                        <Check className="w-4 h-4 stroke-[3]" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-white truncate">
-                          {item.task}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${theme.pill}`}
-                          >
-                            {item.role}
-                          </span>
-                          <span className="text-[10px] text-slate-300 truncate">
-                            {item.detail}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {item.checked && item.checkedBy && (
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 ${theme.pill}`}
-                      >
-                        ✓ {item.checkedBy}
-                      </span>
-                    )}
+            {/* ===============================================================
+                ZONE 1 (TOP PRIORITY): 🚨 NOT COMPLETED — NEEDS ACTION
+               =============================================================== */}
+            {uncheckedVisible.length > 0 && (
+              <div className="rounded-2xl p-5 bg-rose-950/20 border-2 border-rose-500/60 shadow-xl shadow-rose-950/30 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-500/30 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-2.5 py-1 rounded-lg bg-rose-500 text-white text-xs font-black uppercase tracking-wide animate-pulse">
+                      🚨 NOT COMPLETED ({uncheckedVisible.length})
+                    </span>
+                    <span className="text-xs sm:text-sm font-bold text-rose-200">
+                      Action Required Before Go-Live — Tap any item to mark done
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+
+                  <button
+                    onClick={() => handleCheckAllStation(stationFilter)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition shadow"
+                  >
+                    ✓ Mark All {uncheckedVisible.length} Done Now
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {uncheckedVisible.map((item) => {
+                    const theme = DEPT_THEME[item.role] || DEPT_THEME.CAMERA;
+                    const crew = activeCrew.find((c) => c.role === item.role);
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleToggleCheck(item.id)}
+                        className="cursor-pointer rounded-xl p-4 bg-slate-950/95 border-2 border-rose-500/80 hover:border-amber-400 shadow-lg flex items-center justify-between gap-3 select-none transition"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-rose-500/20 border-2 border-rose-400 flex items-center justify-center shrink-0 text-rose-300 font-black text-xs">
+                            !
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs sm:text-sm font-extrabold text-white truncate">
+                              {item.task}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${theme.pill}`}
+                              >
+                                {item.role}
+                              </span>
+                              <span className="text-[10px] font-bold text-amber-300">
+                                👤 {crew ? crew.name : item.role}
+                              </span>
+                              <span className="text-[10px] text-slate-400 truncate">
+                                • {item.detail}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <span className="px-2.5 py-1.5 rounded-lg bg-rose-500 hover:bg-emerald-500 text-white hover:text-slate-950 text-[10px] font-black uppercase shrink-0 transition shadow">
+                          Tap Done
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ===============================================================
+                ZONE 2 (SEPARATED BELOW): ✅ COMPLETED & VERIFIED BY DEPT
+               =============================================================== */}
+            {checkedVisible.length > 0 && (
+              <div className="rounded-2xl p-5 bg-slate-900/50 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-black uppercase">
+                      ✅ COMPLETED & VERIFIED ({checkedVisible.length})
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      Color-coded by department • Tap any item to uncheck
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {checkedVisible.map((item) => {
+                    const theme = DEPT_THEME[item.role] || DEPT_THEME.CAMERA;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleToggleCheck(item.id)}
+                        className={`cursor-pointer rounded-xl p-3.5 border transition flex items-center justify-between gap-3 select-none ${theme.cardChecked}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition ${theme.checkboxChecked}`}
+                          >
+                            <Check className="w-4 h-4 stroke-[3]" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-white truncate">
+                              {item.task}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${theme.pill}`}
+                              >
+                                {item.role}
+                              </span>
+                              <span className="text-[10px] text-slate-300 truncate">
+                                {item.detail}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {item.checkedBy && (
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 ${theme.pill}`}
+                          >
+                            ✓ {item.checkedBy}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
