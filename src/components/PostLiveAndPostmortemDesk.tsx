@@ -268,7 +268,7 @@ export default function PostLiveAndPostmortemDesk({
     setFbDept(myIdentity.role || "CAMERA");
   }, [myIdentity.role]);
 
-  // Live service telemetry for Moderator Lead's Weekly Report
+  // Live service telemetry, comments, and prayers for Moderator Lead's Weekly Report
   const [liveTelemetry, setLiveTelemetry] = useState({
     peakYT: 145,
     peakIG: 88,
@@ -276,6 +276,39 @@ export default function PostLiveAndPostmortemDesk({
     prayersCovered: 6,
     totalVisitors: 9,
   });
+  const [chatComments, setChatComments] = useState<
+    Array<{
+      id: string;
+      platform: "YOUTUBE" | "INSTAGRAM";
+      authorName: string;
+      authorHandle: string;
+      text: string;
+      timestamp: string;
+      isPrayerRequest: boolean;
+      prayerCategory?: string;
+      urgency?: string;
+      replied?: boolean;
+      replyText?: string;
+    }>
+  >([]);
+
+  // Meeting Report View & Filter States (QC Solved/Unsolved + Moderator Views/Comments/Feedbacks)
+  const [reportDeckFocus, setReportDeckFocus] = useState<
+    "SPLIT" | "QC_ONLY" | "MOD_ONLY"
+  >("SPLIT");
+  const [qcReportStatusFilter, setQcReportStatusFilter] = useState<
+    "ALL" | "UNSOLVED" | "SOLVED"
+  >("ALL");
+  const [qcReportStationFilter, setQcReportStationFilter] = useState<string>("ALL");
+  const [modReportTab, setModReportTab] = useState<
+    "COMMENTS" | "FEEDBACKS" | "VIEWS_SUMMARY"
+  >("COMMENTS");
+  const [modCommentFilter, setModCommentFilter] = useState<
+    "ALL" | "YOUTUBE" | "INSTAGRAM" | "PRAYER"
+  >("ALL");
+  const [modFeedbackFilter, setModFeedbackFilter] = useState<
+    "ALL" | "MODERATOR" | "WIN" | "BOTTLENECK"
+  >("ALL");
 
   // Editable Custody Notes state
   const [qcNotesDraft, setQcNotesDraft] = useState(
@@ -312,21 +345,26 @@ export default function PostLiveAndPostmortemDesk({
     }
   }, [weeklyCustody]);
 
-  // Fetch live service/prayer/visitor counts for Moderator Lead report
+  // Fetch live service views, viewer comments (/api/live-chat), prayers, and visitors for Moderator Lead report
   useEffect(() => {
     async function loadMinistryMetrics() {
       try {
-        const [srvRes, pryRes, visRes] = await Promise.all([
+        const [srvRes, pryRes, visRes, chatRes] = await Promise.all([
           fetch("/api/service", { cache: "no-store" }),
           fetch("/api/prayers", { cache: "no-store" }),
           fetch("/api/visitors", { cache: "no-store" }),
+          fetch("/api/live-chat", { cache: "no-store" }),
         ]);
         const srv = srvRes.ok ? await srvRes.json() : null;
         const pry = pryRes.ok ? await pryRes.json() : [];
         const vis = visRes.ok ? await visRes.json() : [];
+        const chatData = chatRes.ok ? await chatRes.json() : null;
 
         const prayersArr = Array.isArray(pry) ? pry : [];
         const visitorsArr = Array.isArray(vis) ? vis : [];
+        const messagesArr = Array.isArray(chatData?.messages)
+          ? chatData.messages
+          : [];
 
         setLiveTelemetry({
           peakYT: srv?.session?.peakViewersYT ?? 145,
@@ -336,12 +374,13 @@ export default function PostLiveAndPostmortemDesk({
             .length,
           totalVisitors: visitorsArr.length,
         });
+        setChatComments(messagesArr);
       } catch {
         // fallback metrics retained
       }
     }
     loadMinistryMetrics();
-  }, []);
+  }, [mode]);
 
   // Computed Shutdown Metrics
   const totalShutdown = shutdownChecks.length;
@@ -568,6 +607,32 @@ export default function PostLiveAndPostmortemDesk({
       const updated = await res.json();
       onRefreshData(updated);
       onTriggerToast("Added to Next-Week Pre-Flight Checklist");
+    }
+  };
+
+  const handleToggleQcLogStatus = async (
+    id: string,
+    currentStatus: string
+  ) => {
+    const nextStatus =
+      currentStatus === "RESOLVED" ? "IN_PROGRESS" : "RESOLVED";
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "UPDATE_QC_STATUS",
+        id,
+        status: nextStatus,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      onRefreshData(updated);
+      onTriggerToast(
+        nextStatus === "RESOLVED"
+          ? "QC Log marked as SOLVED"
+          : "QC Log reopened as UNSOLVED"
+      );
     }
   };
 
@@ -1035,99 +1100,173 @@ export default function PostLiveAndPostmortemDesk({
   }
 
   // =========================================================================
-  // VIEW B: POSTMORTEM CORNER & WEEKLY REPORT CUSTODY (QC LEAD + MOD LEAD)
+  // VIEW B: MEETING REPORT — QC (ALL LOGS: SOLVED & UNSOLVED) + MODERATOR (VIEWS, COMMENTS & FEEDBACKS)
   // =========================================================================
   const bothLeadsSignedOff =
     weeklyCustody.qcLeadSignedOff && weeklyCustody.modLeadSignedOff;
 
+  // QC Reported Logs Breakdown: Solved vs. Unsolved
+  const solvedQcLogs = qcLogs.filter((l) => l.status === "RESOLVED");
+  const unsolvedQcLogs = qcLogs.filter((l) => l.status !== "RESOLVED");
+
+  const filteredQcReportLogs = qcLogs.filter((log) => {
+    if (qcReportStatusFilter === "SOLVED" && log.status !== "RESOLVED") {
+      return false;
+    }
+    if (qcReportStatusFilter === "UNSOLVED" && log.status === "RESOLVED") {
+      return false;
+    }
+    if (
+      qcReportStationFilter !== "ALL" &&
+      log.station !== qcReportStationFilter
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  // Moderator Views, Comments & Feedbacks Breakdown
+  const totalCombinedViews = liveTelemetry.peakYT + liveTelemetry.peakIG;
+  const ytSharePct =
+    totalCombinedViews > 0
+      ? Math.round((liveTelemetry.peakYT / totalCombinedViews) * 100)
+      : 50;
+  const igSharePct = 100 - ytSharePct;
+
+  const filteredModComments = chatComments.filter((msg) => {
+    if (modCommentFilter === "YOUTUBE" && msg.platform !== "YOUTUBE") {
+      return false;
+    }
+    if (modCommentFilter === "INSTAGRAM" && msg.platform !== "INSTAGRAM") {
+      return false;
+    }
+    if (modCommentFilter === "PRAYER" && !msg.isPrayerRequest) {
+      return false;
+    }
+    return true;
+  });
+
+  const filteredModFeedbacks = postmortemFeedback.filter((fb) => {
+    if (modFeedbackFilter === "MODERATOR" && fb.department !== "MODERATOR") {
+      return false;
+    }
+    if (modFeedbackFilter === "WIN" && fb.category !== "WIN") {
+      return false;
+    }
+    if (modFeedbackFilter === "BOTTLENECK" && fb.category === "WIN") {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
-      {/* Top Custody Hero Banner: QC Lead & Moderator Lead Hold the Weekly Report */}
-      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 sm:p-7 space-y-6">
+      {/* Top Custody Header Bar: QC Lead & Moderator Lead Co-Custody */}
+      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-400">
-                Postmortem Corner · Team Debrief &amp; Weekly Custody
+                Meeting Report · Postmortem Corner
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/[0.06] text-zinc-200 border border-white/[0.08]">
                 {weeklyCustody.weekLabel}
               </span>
-              {bothLeadsSignedOff ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                  Report Held by QC Lead &amp; Moderator Lead
-                </span>
-              ) : (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                  Awaiting Co-Custodian Sign-Off
-                </span>
-              )}
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                  bothLeadsSignedOff
+                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                }`}
+              >
+                {bothLeadsSignedOff
+                  ? "Held by QC Lead & Moderator Lead ✓"
+                  : "Awaiting Custodian Sign-Off"}
+              </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-[-0.025em]">
-              Postmortem Team Meeting, Feedback &amp; Weekly Held Report
+              Weekly Meeting Report · QC Logs &amp; Moderator Engagement
             </h2>
             <p className="text-xs text-zinc-400">
-              Quality Control Lead ({weeklyCustody.qcLeadName} ·{" "}
-              {weeklyCustody.qcLeadCallsign}) and Moderator Lead (
-              {weeklyCustody.modLeadName} · {weeklyCustody.modLeadCallsign})
-              jointly hold this week&apos;s report for mid-week follow-up and
-              Saturday rehearsal.
+              QC Lead ({weeklyCustody.qcLeadName}) reviews all reported logs (
+              <span className="text-emerald-300 font-medium">
+                {solvedQcLogs.length} Solved
+              </span>{" "}
+              ·{" "}
+              <span className="text-rose-300 font-medium">
+                {unsolvedQcLogs.length} Unsolved
+              </span>
+              ) and Moderator Lead ({weeklyCustody.modLeadName}) holds stream
+              views ({totalCombinedViews}), comments ({chatComments.length}),
+              and feedbacks ({postmortemFeedback.length}).
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => onSwitchMode("SHUTDOWN")}
-              className="px-4 py-2 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 text-xs font-medium border border-white/[0.08] transition"
-            >
-              Shutdown Check ({shutdownPct}%)
-            </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* View Mode Switcher: Split vs QC Only vs Moderator Only */}
+            <div className="flex items-center bg-[#09090b] p-1 rounded-full border border-white/[0.08]">
+              {(
+                [
+                  { id: "SPLIT", label: "Split View" },
+                  {
+                    id: "QC_ONLY",
+                    label: `QC Report (${qcLogs.length})`,
+                  },
+                  {
+                    id: "MOD_ONLY",
+                    label: `Moderator Report (${chatComments.length + postmortemFeedback.length})`,
+                  },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setReportDeckFocus(tab.id)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition ${
+                    reportDeckFocus === tab.id
+                      ? "bg-white text-black"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
               onClick={onExportCsv}
-              className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.08] transition"
+              className="px-3.5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.08] transition"
             >
               Export CSV
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.08] transition"
-            >
-              Print
             </button>
             {canArchiveReport && (
               <button
                 type="button"
                 onClick={handleArchiveWeeklyReport}
-                className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition shadow-sm"
+                className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition shadow-sm"
               >
-                Lock &amp; Hold Weekly Report
+                Lock &amp; Hold Report
               </button>
             )}
           </div>
         </div>
 
-        {/* 3-Card Weekly Report Custody Sign-Off Bar (QC Lead + Moderator Lead + Director) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* 3-Card Custodian Sign-Off Strip */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           {/* Custodian 1: QC Lead */}
           <div className="rounded-2xl p-4 bg-[#0f1512] border border-emerald-500/30 border-l-[3px] border-l-emerald-400 flex items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                  Weekly Report Custodian 1 · QC Lead
-                </span>
-              </div>
-              <div className="text-sm font-semibold text-white mt-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                Custodian 1 · QC Lead
+              </span>
+              <div className="text-sm font-semibold text-white mt-0.5">
                 {weeklyCustody.qcLeadName} ({weeklyCustody.qcLeadCallsign})
               </div>
               <div className="text-[11px] text-zinc-400 mt-0.5">
                 {weeklyCustody.qcLeadSignedOff
-                  ? `Holding Technical Report · Signed ${
-                      weeklyCustody.qcLeadSignedAt || "Today"
-                    }`
-                  : "Pending QC Lead Sign-Off"}
+                  ? `Signed ${weeklyCustody.qcLeadSignedAt || "Today"}`
+                  : `${solvedQcLogs.length} Solved · ${unsolvedQcLogs.length} Unsolved`}
               </div>
             </div>
             {canEditQcCustody ? (
@@ -1150,7 +1289,7 @@ export default function PostLiveAndPostmortemDesk({
               </button>
             ) : (
               <span className="px-3 py-1 rounded-full bg-white/[0.05] text-[10px] font-semibold text-zinc-400 border border-white/[0.08]">
-                {weeklyCustody.qcLeadSignedOff ? "QC Signed ✓" : "QC Only"}
+                {weeklyCustody.qcLeadSignedOff ? "QC Signed ✓" : "QC Lead"}
               </span>
             )}
           </div>
@@ -1158,20 +1297,16 @@ export default function PostLiveAndPostmortemDesk({
           {/* Custodian 2: Moderator Lead */}
           <div className="rounded-2xl p-4 bg-[#131118] border border-violet-500/30 border-l-[3px] border-l-violet-400 flex items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-400">
-                  Weekly Report Custodian 2 · Moderator Lead
-                </span>
-              </div>
-              <div className="text-sm font-semibold text-white mt-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-400">
+                Custodian 2 · Moderator Lead
+              </span>
+              <div className="text-sm font-semibold text-white mt-0.5">
                 {weeklyCustody.modLeadName} ({weeklyCustody.modLeadCallsign})
               </div>
               <div className="text-[11px] text-zinc-400 mt-0.5">
                 {weeklyCustody.modLeadSignedOff
-                  ? `Holding Engagement & Prayer Report · Signed ${
-                      weeklyCustody.modLeadSignedAt || "Today"
-                    }`
-                  : "Pending Moderator Lead Sign-Off"}
+                  ? `Signed ${weeklyCustody.modLeadSignedAt || "Today"}`
+                  : `${totalCombinedViews} Views · ${chatComments.length} Comments · ${postmortemFeedback.length} Feedbacks`}
               </div>
             </div>
             {canEditModCustody ? (
@@ -1194,7 +1329,7 @@ export default function PostLiveAndPostmortemDesk({
               </button>
             ) : (
               <span className="px-3 py-1 rounded-full bg-white/[0.05] text-[10px] font-semibold text-zinc-400 border border-white/[0.08]">
-                {weeklyCustody.modLeadSignedOff ? "MOD Signed ✓" : "MOD Only"}
+                {weeklyCustody.modLeadSignedOff ? "MOD Signed ✓" : "MOD Lead"}
               </span>
             )}
           </div>
@@ -1202,20 +1337,16 @@ export default function PostLiveAndPostmortemDesk({
           {/* Technical Director Sign-Off */}
           <div className="rounded-2xl p-4 bg-[#161013] border border-rose-500/30 border-l-[3px] border-l-rose-400 flex items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-400">
-                  Master Control · Technical Director
-                </span>
-              </div>
-              <div className="text-sm font-semibold text-white mt-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-400">
+                Master Control · Director
+              </span>
+              <div className="text-sm font-semibold text-white mt-0.5">
                 {weeklyCustody.directorName} (TD-01)
               </div>
               <div className="text-[11px] text-zinc-400 mt-0.5">
                 {weeklyCustody.directorApproved
-                  ? `Postmortem Approved · ${
-                      weeklyCustody.directorApprovedAt || "Today"
-                    }`
-                  : "Reviewing Postmortem Action Plan"}
+                  ? `Approved ${weeklyCustody.directorApprovedAt || "Today"}`
+                  : "Reviewing Action Plan"}
               </div>
             </div>
             {isDirector ? (
@@ -1245,268 +1376,759 @@ export default function PostLiveAndPostmortemDesk({
         </div>
       </div>
 
-      {/* Co-Custodian Dual Report Decks: QC Lead Report (Left) + Moderator Lead Report (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* PILLAR 1: QC LEAD WEEKLY TECHNICAL REPORT */}
-        <div className="bg-[#121215] border border-white/[0.08] border-t-2 border-t-emerald-400 rounded-3xl p-6 space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
-                Custodian 1 · Quality Control Lead ({weeklyCustody.qcLeadName})
-              </span>
-              <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                Weekly Stream Health &amp; Technical QC Report
-              </h3>
+      {/* MAIN MEETING REPORT DECKS: QC REPORT (LEFT) + MODERATOR REPORT (RIGHT) */}
+      <div
+        className={`grid grid-cols-1 ${
+          reportDeckFocus === "SPLIT" ? "lg:grid-cols-2" : ""
+        } gap-6 items-start`}
+      >
+        {/* ================================================================= */}
+        {/* DECK 1: QC REPORT — ALL LOGS REPORTED (SOLVED & UNSOLVED)         */}
+        {/* ================================================================= */}
+        {reportDeckFocus !== "MOD_ONLY" && (
+          <div className="bg-[#121215] border border-white/[0.08] border-t-2 border-t-emerald-400 rounded-3xl p-6 space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                  QC Report · {weeklyCustody.qcLeadName} (
+                  {weeklyCustody.qcLeadCallsign})
+                </span>
+                <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  All Reported QC Logs · Solved &amp; Unsolved
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 bg-[#09090b] border border-white/[0.08] rounded-2xl px-3 py-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-zinc-400">
+                  Health Score
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  disabled={!canEditQcCustody}
+                  value={streamScoreDraft}
+                  onChange={(e) => setStreamScoreDraft(Number(e.target.value))}
+                  aria-label="Stream Health Score"
+                  className="w-12 bg-transparent text-sm font-semibold text-emerald-400 text-right tabular-nums focus:outline-none disabled:opacity-75"
+                />
+                <span className="text-xs text-zinc-500">/100</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 bg-[#09090b] border border-white/[0.08] rounded-2xl px-3 py-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-zinc-400">
-                QC Score
-              </span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                disabled={!canEditQcCustody}
-                value={streamScoreDraft}
-                onChange={(e) => setStreamScoreDraft(Number(e.target.value))}
-                aria-label="Stream Health Score"
-                className="w-12 bg-transparent text-sm font-semibold text-emerald-400 text-right tabular-nums focus:outline-none disabled:opacity-75"
-              />
-              <span className="text-xs text-zinc-500">/100</span>
-            </div>
-          </div>
 
-          {/* QC KPI Strip */}
-          <div className="grid grid-cols-4 gap-2.5">
-            <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
-              <div className="text-[10px] text-zinc-500 uppercase">
-                Pre-Flight
+            {/* QC 4-Metric Summary Strip */}
+            <div className="grid grid-cols-4 gap-2.5">
+              <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
+                <div className="text-[10px] text-zinc-500 uppercase">
+                  Total Reported
+                </div>
+                <div className="text-lg font-semibold text-white tabular-nums mt-0.5">
+                  {qcLogs.length}
+                </div>
               </div>
-              <div className="text-lg font-semibold text-white tabular-nums mt-0.5">
-                {preFlightPct}%
+              <div className="rounded-2xl p-3 bg-[#0b1611] border border-emerald-500/25">
+                <div className="text-[10px] text-emerald-400 uppercase font-semibold">
+                  Solved Logs
+                </div>
+                <div className="text-lg font-semibold text-emerald-300 tabular-nums mt-0.5">
+                  {solvedQcLogs.length}
+                </div>
+              </div>
+              <div className="rounded-2xl p-3 bg-[#171012] border border-rose-500/25">
+                <div className="text-[10px] text-rose-400 uppercase font-semibold">
+                  Unsolved Logs
+                </div>
+                <div className="text-lg font-semibold text-rose-300 tabular-nums mt-0.5">
+                  {unsolvedQcLogs.length}
+                </div>
+              </div>
+              <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
+                <div className="text-[10px] text-zinc-500 uppercase">
+                  Pre / Shutdown
+                </div>
+                <div className="text-sm font-semibold text-zinc-200 tabular-nums mt-1">
+                  {preFlightPct}% · {shutdownPct}%
+                </div>
               </div>
             </div>
-            <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
-              <div className="text-[10px] text-zinc-500 uppercase">
-                Safe Strike
-              </div>
-              <div className="text-lg font-semibold text-white tabular-nums mt-0.5">
-                {shutdownPct}%
-              </div>
-            </div>
-            <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
-              <div className="text-[10px] text-zinc-500 uppercase">
-                Faults / Fixes
-              </div>
-              <div className="text-lg font-semibold text-amber-400 tabular-nums mt-0.5">
-                {qcLogs.filter((l) => l.type !== "ACHIEVEMENT").length}
-              </div>
-            </div>
-            <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
-              <div className="text-[10px] text-zinc-500 uppercase">
-                Stream Wins
-              </div>
-              <div className="text-lg font-semibold text-emerald-400 tabular-nums mt-0.5">
-                {qcLogs.filter((l) => l.type === "ACHIEVEMENT").length}
-              </div>
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-              QC Lead Weekly Technical Summary (Held for Saturday Rehearsal)
-            </label>
-            <textarea
-              rows={3}
-              readOnly={!canEditQcCustody}
-              value={qcNotesDraft}
-              onChange={(e) => setQcNotesDraft(e.target.value)}
-              placeholder="Record weekly stream stability, audio loudness, camera framing, and action items..."
-              className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3.5 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
-            />
-          </div>
-
-          <div className="flex justify-end">
-            {canEditQcCustody ? (
-              <button
-                type="button"
-                onClick={() =>
-                  handleUpdateCustody({
-                    qcSummaryNotes: qcNotesDraft,
-                    streamHealthScore: Number(streamScoreDraft) || 96,
-                    qcLeadSignedOff: true,
-                  })
-                }
-                className="px-4 py-2 rounded-full bg-emerald-400 text-black hover:bg-emerald-300 text-xs font-semibold transition"
-              >
-                Save &amp; Hold QC Report
-              </button>
-            ) : (
-              <span className="text-[11px] text-zinc-500">
-                Managed by QC Lead ({weeklyCustody.qcLeadName} ·{" "}
-                {weeklyCustody.qcLeadCallsign})
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* PILLAR 2: MODERATOR LEAD WEEKLY ENGAGEMENT & PASTORAL REPORT */}
-        <div className="bg-[#121215] border border-white/[0.08] border-t-2 border-t-violet-400 rounded-3xl p-6 space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-400">
-                Custodian 2 · Moderator Lead ({weeklyCustody.modLeadName})
-              </span>
-              <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                Weekly Live Chat, Prayer Queue &amp; Visitor Report
-              </h3>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-violet-500/12 text-violet-300 border border-violet-500/25 text-[11px] font-semibold tabular-nums">
-              {liveTelemetry.peakYT + liveTelemetry.peakIG} Peak Live
-            </span>
-          </div>
-
-          {/* Moderator KPI Strip */}
-          <div className="grid grid-cols-4 gap-2.5">
-            <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
-              <div className="text-[10px] text-zinc-500 uppercase">
-                YouTube Peak
-              </div>
-              <div className="text-lg font-semibold text-white tabular-nums mt-0.5">
-                {liveTelemetry.peakYT}
-              </div>
-            </div>
-            <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
-              <div className="text-[10px] text-zinc-500 uppercase">
-                Instagram Peak
-              </div>
-              <div className="text-lg font-semibold text-white tabular-nums mt-0.5">
-                {liveTelemetry.peakIG}
-              </div>
-            </div>
-            <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
-              <div className="text-[10px] text-zinc-500 uppercase">
-                Prayers Covered
-              </div>
-              <div className="text-lg font-semibold text-violet-300 tabular-nums mt-0.5">
-                {liveTelemetry.prayersCovered}/{liveTelemetry.totalPrayers}
-              </div>
-            </div>
-            <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
-              <div className="text-[10px] text-zinc-500 uppercase">
-                New Visitors
-              </div>
-              <div className="text-lg font-semibold text-emerald-400 tabular-nums mt-0.5">
-                {liveTelemetry.totalVisitors}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                Moderator Weekly Chat Summary
-              </label>
-              <textarea
-                rows={3}
-                readOnly={!canEditModCustody}
-                value={modNotesDraft}
-                onChange={(e) => setModNotesDraft(e.target.value)}
-                placeholder="Summarize YT/IG chat response, scripture cue engagement..."
-                className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                Mid-Week Prayer &amp; Visitor Follow-Up
-              </label>
-              <textarea
-                rows={3}
-                readOnly={!canEditModCustody}
-                value={prayerFollowUpDraft}
-                onChange={(e) => setPrayerFollowUpDraft(e.target.value)}
-                placeholder="List prayer requests & visitors held for mid-week pastoral care..."
-                className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            {canEditModCustody ? (
-              <button
-                type="button"
-                onClick={() =>
-                  handleUpdateCustody({
-                    modSummaryNotes: modNotesDraft,
-                    prayerFollowUpNotes: prayerFollowUpDraft,
-                    modLeadSignedOff: true,
-                  })
-                }
-                className="px-4 py-2 rounded-full bg-violet-400 text-black hover:bg-violet-300 text-xs font-semibold transition"
-              >
-                Save &amp; Hold Moderator Report
-              </button>
-            ) : (
-              <span className="text-[11px] text-zinc-500">
-                Managed by Moderator Lead ({weeklyCustody.modLeadName} ·{" "}
-                {weeklyCustody.modLeadCallsign})
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* POSTMORTEM CORNER: TEAM MEETING & FEEDBACK BOARD */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left (5 cols): Submit Team Feedback & Meeting Takeaways */}
-        <div className="lg:col-span-5 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
-          <div>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-              Postmortem Corner · Crew Debrief Input
-            </span>
-            <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
-              Log Team Meeting Feedback
-            </h3>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Share station wins, bottlenecks, or next-week improvements during
-              the post-service meeting.
-            </p>
-          </div>
-
-          <form onSubmit={handleAddFeedback} className="space-y-3.5">
-            {/* Category Segmented Pills */}
-            <div className="grid grid-cols-3 gap-1.5 bg-[#09090b] p-1 rounded-2xl border border-white/[0.08]">
-              {(
-                [
-                  { id: "WIN", label: "Broadcast Win" },
-                  { id: "BOTTLENECK", label: "Bottleneck" },
-                  { id: "ACTION_IDEA", label: "Next Week Idea" },
-                ] as const
-              ).map((cat) => (
+            {/* Solved vs Unsolved Filter Tabs + Station Filter */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex items-center gap-1 bg-[#09090b] p-1 rounded-2xl border border-white/[0.08]">
                 <button
-                  key={cat.id}
                   type="button"
-                  onClick={() => setFbCategory(cat.id)}
-                  className={`py-2 rounded-xl text-xs font-semibold transition ${
-                    fbCategory === cat.id
+                  onClick={() => setQcReportStatusFilter("ALL")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                    qcReportStatusFilter === "ALL"
                       ? "bg-white text-black"
                       : "text-zinc-400 hover:text-white"
                   }`}
                 >
-                  {cat.label}
+                  All Logs ({qcLogs.length})
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setQcReportStatusFilter("UNSOLVED")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                    qcReportStatusFilter === "UNSOLVED"
+                      ? "bg-rose-500 text-white"
+                      : "text-rose-300 hover:bg-rose-500/10"
+                  }`}
+                >
+                  Unsolved ({unsolvedQcLogs.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQcReportStatusFilter("SOLVED")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                    qcReportStatusFilter === "SOLVED"
+                      ? "bg-emerald-400 text-black"
+                      : "text-emerald-300 hover:bg-emerald-500/10"
+                  }`}
+                >
+                  Solved ({solvedQcLogs.length})
+                </button>
+              </div>
+
+              <select
+                value={qcReportStationFilter}
+                onChange={(e) => setQcReportStationFilter(e.target.value)}
+                aria-label="Filter QC Logs by Department"
+                className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-zinc-200 focus:outline-none"
+              >
+                <option value="ALL">All Stations</option>
+                <option value="CAMERA">Camera</option>
+                <option value="AUDIO">Audio</option>
+                <option value="MODERATOR">Moderator</option>
+                <option value="DIRECTOR">Director</option>
+              </select>
             </div>
 
+            {/* All Reported QC Logs List (Solved & Unsolved) */}
+            <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+              {filteredQcReportLogs.length === 0 ? (
+                <div className="rounded-2xl p-6 bg-[#09090b] border border-white/[0.06] text-center text-xs text-zinc-500">
+                  No QC logs match the selected filter.
+                </div>
+              ) : (
+                filteredQcReportLogs.map((log) => {
+                  const isSolved = log.status === "RESOLVED";
+                  const stStyle =
+                    DEPT_STYLES[log.station] || DEPT_STYLES.CAMERA;
+                  return (
+                    <div
+                      key={log.id}
+                      className={`rounded-2xl p-4 border transition space-y-2.5 ${
+                        isSolved
+                          ? "bg-[#0b130f] border-emerald-500/25 border-l-[3px] border-l-emerald-400"
+                          : "bg-[#161012] border-rose-500/30 border-l-[3px] border-l-rose-400"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              isSolved
+                                ? "bg-emerald-400 text-black"
+                                : "bg-rose-500 text-white"
+                            }`}
+                          >
+                            {isSolved ? "SOLVED ✓" : "UNSOLVED"}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${stStyle.pill}`}
+                          >
+                            {log.station} · {log.platform}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                              log.type === "ISSUE"
+                                ? "bg-rose-500/15 text-rose-300"
+                                : log.type === "ACHIEVEMENT"
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : "bg-amber-500/15 text-amber-300"
+                            }`}
+                          >
+                            {log.type}
+                          </span>
+                          <span className="text-[11px] font-mono text-zinc-400 tabular-nums">
+                            {log.streamTimestamp}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {log.screenshotUrl && (
+                            <button
+                              type="button"
+                              onClick={() => onPreviewFrame(log)}
+                              className="px-2.5 py-1 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-zinc-200 text-[10px] font-semibold transition"
+                            >
+                              View Frame
+                            </button>
+                          )}
+                          {!isSolved &&
+                            !log.pushedToRoadmap &&
+                            log.type !== "ACHIEVEMENT" && (
+                              <button
+                                type="button"
+                                onClick={() => onPushToRoadmap(log.id)}
+                                className="px-2.5 py-1 rounded-full bg-white/[0.08] hover:bg-white hover:text-black text-zinc-200 text-[10px] font-semibold transition"
+                              >
+                                + Roadmap
+                              </button>
+                            )}
+                          {canEditQcCustody && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleToggleQcLogStatus(log.id, log.status)
+                              }
+                              className={`px-3 py-1 rounded-full text-[10px] font-semibold transition ${
+                                isSolved
+                                  ? "bg-white/[0.07] hover:bg-rose-500/20 text-zinc-300 hover:text-rose-200 border border-white/[0.1]"
+                                  : "bg-emerald-400 hover:bg-emerald-300 text-black"
+                              }`}
+                            >
+                              {isSolved ? "Mark Unsolved" : "Mark Solved ✓"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs font-semibold text-white">
+                          {log.title}
+                        </div>
+                        {log.description && (
+                          <div className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                            {log.description}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/[0.06] text-[11px]">
+                        <div className="text-zinc-300">
+                          <span className="text-zinc-500 mr-1">
+                            Resolution / Action:
+                          </span>
+                          {log.actionToTake ? (
+                            <span className="font-medium text-zinc-200">
+                              {log.actionToTake}
+                            </span>
+                          ) : (
+                            <span className="text-amber-400 font-medium">
+                              Pending Director Directive
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-zinc-400">
+                          Owner:{" "}
+                          <span className="text-zinc-200 font-medium">
+                            {log.assignedTo}
+                          </span>{" "}
+                          ·{" "}
+                          <span className="text-zinc-500">
+                            {log.timelineToSolve}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* QC Weekly Summary Notes */}
+            <div className="pt-2 border-t border-white/[0.08] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  QC Lead Weekly Summary Notes
+                </label>
+                {canEditQcCustody && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleUpdateCustody({
+                        qcSummaryNotes: qcNotesDraft,
+                        streamHealthScore: Number(streamScoreDraft) || 96,
+                        qcLeadSignedOff: true,
+                      })
+                    }
+                    className="px-3.5 py-1.5 rounded-full bg-emerald-400 text-black hover:bg-emerald-300 text-[11px] font-semibold transition"
+                  >
+                    Save &amp; Hold QC Report
+                  </button>
+                )}
+              </div>
+              <textarea
+                rows={2}
+                readOnly={!canEditQcCustody}
+                value={qcNotesDraft}
+                onChange={(e) => setQcNotesDraft(e.target.value)}
+                placeholder="Record weekly stream stability, solved vs unsolved technical items..."
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* DECK 2: MODERATOR REPORT — VIEWS, COMMENTS & FEEDBACKS            */}
+        {/* ================================================================= */}
+        {reportDeckFocus !== "QC_ONLY" && (
+          <div className="bg-[#121215] border border-white/[0.08] border-t-2 border-t-violet-400 rounded-3xl p-6 space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-400">
+                  Moderator Report · {weeklyCustody.modLeadName} (
+                  {weeklyCustody.modLeadCallsign})
+                </span>
+                <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  Stream Views, Audience Comments &amp; Feedbacks
+                </h3>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/30 text-xs font-semibold tabular-nums">
+                {totalCombinedViews} Total Peak Views
+              </span>
+            </div>
+
+            {/* Moderator 4-Metric Strip: Views, YT, IG, Comments & Feedbacks */}
+            <div className="grid grid-cols-4 gap-2.5">
+              <div className="rounded-2xl p-3 bg-[#13101c] border border-violet-500/25">
+                <div className="text-[10px] text-violet-300 uppercase font-semibold">
+                  Combined Views
+                </div>
+                <div className="text-lg font-semibold text-white tabular-nums mt-0.5">
+                  {totalCombinedViews}
+                </div>
+              </div>
+              <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
+                <div className="text-[10px] text-zinc-500 uppercase">
+                  YouTube Views
+                </div>
+                <div className="text-lg font-semibold text-rose-300 tabular-nums mt-0.5">
+                  {liveTelemetry.peakYT}
+                </div>
+              </div>
+              <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
+                <div className="text-[10px] text-zinc-500 uppercase">
+                  Instagram Views
+                </div>
+                <div className="text-lg font-semibold text-fuchsia-300 tabular-nums mt-0.5">
+                  {liveTelemetry.peakIG}
+                </div>
+              </div>
+              <div className="rounded-2xl p-3 bg-[#09090b] border border-white/[0.06]">
+                <div className="text-[10px] text-zinc-500 uppercase">
+                  Prayers / Visitors
+                </div>
+                <div className="text-sm font-semibold text-emerald-300 tabular-nums mt-1">
+                  {liveTelemetry.prayersCovered}/{liveTelemetry.totalPrayers} ·{" "}
+                  {liveTelemetry.totalVisitors} New
+                </div>
+              </div>
+            </div>
+
+            {/* Moderator Sub-Navigation: Comments vs Feedbacks vs Views Breakdown */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex items-center gap-1 bg-[#09090b] p-1 rounded-2xl border border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => setModReportTab("COMMENTS")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                    modReportTab === "COMMENTS"
+                      ? "bg-violet-400 text-black"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Live Comments ({chatComments.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModReportTab("FEEDBACKS")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                    modReportTab === "FEEDBACKS"
+                      ? "bg-violet-400 text-black"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Feedbacks ({postmortemFeedback.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModReportTab("VIEWS_SUMMARY")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                    modReportTab === "VIEWS_SUMMARY"
+                      ? "bg-violet-400 text-black"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Views &amp; Reach ({totalCombinedViews})
+                </button>
+              </div>
+
+              {modReportTab === "COMMENTS" && (
+                <select
+                  value={modCommentFilter}
+                  onChange={(e) =>
+                    setModCommentFilter(
+                      e.target.value as
+                        | "ALL"
+                        | "YOUTUBE"
+                        | "INSTAGRAM"
+                        | "PRAYER"
+                    )
+                  }
+                  aria-label="Filter Live Comments"
+                  className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-zinc-200 focus:outline-none"
+                >
+                  <option value="ALL">All Platforms</option>
+                  <option value="YOUTUBE">YouTube Comments</option>
+                  <option value="INSTAGRAM">Instagram Comments</option>
+                  <option value="PRAYER">Prayer Comments Only</option>
+                </select>
+              )}
+
+              {modReportTab === "FEEDBACKS" && (
+                <select
+                  value={modFeedbackFilter}
+                  onChange={(e) =>
+                    setModFeedbackFilter(
+                      e.target.value as
+                        | "ALL"
+                        | "MODERATOR"
+                        | "WIN"
+                        | "BOTTLENECK"
+                    )
+                  }
+                  aria-label="Filter Feedbacks"
+                  className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-zinc-200 focus:outline-none"
+                >
+                  <option value="ALL">All Feedbacks</option>
+                  <option value="MODERATOR">Moderator Only</option>
+                  <option value="WIN">Broadcast Wins</option>
+                  <option value="BOTTLENECK">Bottlenecks &amp; Ideas</option>
+                </select>
+              )}
+            </div>
+
+            {/* TAB 1: AUDIENCE LIVE COMMENTS (YOUTUBE & INSTAGRAM) */}
+            {modReportTab === "COMMENTS" && (
+              <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+                {filteredModComments.length === 0 ? (
+                  <div className="rounded-2xl p-6 bg-[#09090b] border border-white/[0.06] text-center text-xs text-zinc-500">
+                    No live stream comments match this filter.
+                  </div>
+                ) : (
+                  filteredModComments.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className="rounded-2xl p-4 bg-[#09090b] border border-white/[0.08] border-l-[3px] border-l-violet-400 space-y-2"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              msg.platform === "YOUTUBE"
+                                ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                                : "bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30"
+                            }`}
+                          >
+                            {msg.platform === "YOUTUBE" ? "YouTube" : "Instagram"}
+                          </span>
+                          <span className="text-xs font-semibold text-white">
+                            {msg.authorName}
+                          </span>
+                          <span className="text-[11px] font-mono text-zinc-500">
+                            {msg.authorHandle}
+                          </span>
+                          {msg.isPrayerRequest && (
+                            <span className="px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 text-[10px] font-semibold">
+                              Prayer · {msg.prayerCategory || "GENERAL"}
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            msg.replied
+                              ? "bg-emerald-500/15 text-emerald-300"
+                              : "bg-white/[0.06] text-zinc-400"
+                          }`}
+                        >
+                          {msg.replied ? "Replied ✓" : "Logged"}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-zinc-200 leading-relaxed">
+                        &ldquo;{msg.text}&rdquo;
+                      </p>
+
+                      {msg.replyText && (
+                        <div className="rounded-xl px-3 py-2 bg-[#131118] border border-violet-500/20 text-[11px] text-violet-200">
+                          <span className="text-violet-400 font-semibold mr-1.5">
+                            Moderator Reply:
+                          </span>
+                          {msg.replyText}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: TEAM & SERVICE FEEDBACKS */}
+            {modReportTab === "FEEDBACKS" && (
+              <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+                {filteredModFeedbacks.length === 0 ? (
+                  <div className="rounded-2xl p-6 bg-[#09090b] border border-white/[0.06] text-center text-xs text-zinc-500">
+                    No feedbacks match this filter.
+                  </div>
+                ) : (
+                  filteredModFeedbacks.map((fb) => {
+                    const deptStyle =
+                      DEPT_STYLES[fb.department] || DEPT_STYLES.MODERATOR;
+                    return (
+                      <div
+                        key={fb.id}
+                        className={`rounded-2xl p-4 bg-[#09090b] border border-white/[0.08] ${deptStyle.leftBorder} space-y-2`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                                fb.category === "WIN"
+                                  ? "bg-emerald-500/15 text-emerald-300"
+                                  : fb.category === "BOTTLENECK"
+                                  ? "bg-rose-500/15 text-rose-300"
+                                  : "bg-amber-500/15 text-amber-300"
+                              }`}
+                            >
+                              {fb.category === "WIN"
+                                ? "Win"
+                                : fb.category === "BOTTLENECK"
+                                ? "Bottleneck"
+                                : "Action Idea"}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${deptStyle.pill}`}
+                            >
+                              {deptStyle.label}
+                            </span>
+                            <span className="text-xs font-medium text-zinc-300">
+                              {fb.authorName} ({fb.authorCallsign})
+                            </span>
+                          </div>
+
+                          {fb.convertedToCheck ? (
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-[10px] font-semibold">
+                              In Pre-Flight ✓
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleConvertFeedbackToCheck(fb.id)}
+                              className="px-2.5 py-1 rounded-full bg-white/[0.07] hover:bg-white hover:text-black text-zinc-200 text-[10px] font-semibold border border-white/[0.1] transition"
+                            >
+                              + Pre-Flight Check
+                            </button>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-white leading-relaxed">
+                          {fb.comment}
+                        </p>
+
+                        {fb.actionItem && (
+                          <div className="rounded-xl px-3 py-2 bg-[#141418] border border-white/[0.06] text-[11px] text-zinc-300">
+                            <span className="text-zinc-500 font-semibold mr-1.5">
+                              Next Sunday Action:
+                            </span>
+                            {fb.actionItem}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: STREAM VIEWS & PASTORAL ENGAGEMENT BREAKDOWN */}
+            {modReportTab === "VIEWS_SUMMARY" && (
+              <div className="space-y-3.5">
+                <div className="rounded-2xl p-4 bg-[#09090b] border border-white/[0.08] space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-white">
+                      Platform Viewership Split ({totalCombinedViews} Peak Concurrent)
+                    </span>
+                    <span className="text-zinc-400 tabular-nums">
+                      YT {ytSharePct}% · IG {igSharePct}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 rounded-full bg-white/[0.06] overflow-hidden flex">
+                    <div
+                      className="h-full bg-rose-400"
+                      style={{ width: `${ytSharePct}%` }}
+                    />
+                    <div
+                      className="h-full bg-fuchsia-400"
+                      style={{ width: `${igSharePct}%` }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-1 text-xs">
+                    <div className="rounded-xl p-3 bg-[#141418] border border-white/[0.06]">
+                      <div className="text-[10px] text-rose-300 uppercase font-semibold">
+                        YouTube 16:9 Mainstream
+                      </div>
+                      <div className="text-base font-semibold text-white tabular-nums mt-0.5">
+                        {liveTelemetry.peakYT} Peak Viewers
+                      </div>
+                      <div className="text-[11px] text-zinc-400 mt-0.5">
+                        {
+                          chatComments.filter((c) => c.platform === "YOUTUBE")
+                            .length
+                        }{" "}
+                        live comments logged
+                      </div>
+                    </div>
+                    <div className="rounded-xl p-3 bg-[#141418] border border-white/[0.06]">
+                      <div className="text-[10px] text-fuchsia-300 uppercase font-semibold">
+                        Instagram Live (Blur Top/Bottom)
+                      </div>
+                      <div className="text-base font-semibold text-white tabular-nums mt-0.5">
+                        {liveTelemetry.peakIG} Peak Viewers
+                      </div>
+                      <div className="text-[11px] text-zinc-400 mt-0.5">
+                        {
+                          chatComments.filter((c) => c.platform === "INSTAGRAM")
+                            .length
+                        }{" "}
+                        live comments logged
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl p-4 bg-[#09090b] border border-white/[0.08]">
+                    <div className="text-[10px] text-violet-300 uppercase font-semibold">
+                      Prayer Queue Coverage
+                    </div>
+                    <div className="text-lg font-semibold text-white tabular-nums mt-1">
+                      {liveTelemetry.prayersCovered} of{" "}
+                      {liveTelemetry.totalPrayers} Prayed
+                    </div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">
+                      Auto-captured from YouTube &amp; Instagram chat
+                    </div>
+                  </div>
+                  <div className="rounded-2xl p-4 bg-[#09090b] border border-white/[0.08]">
+                    <div className="text-[10px] text-emerald-300 uppercase font-semibold">
+                      First-Time Visitors Connected
+                    </div>
+                    <div className="text-lg font-semibold text-white tabular-nums mt-1">
+                      {liveTelemetry.totalVisitors} Visitors
+                    </div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">
+                      Queued for mid-week pastoral follow-up
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Moderator Weekly Summary & Follow-Up Notes */}
+            <div className="pt-2 border-t border-white/[0.08] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  Moderator Lead Views, Comments &amp; Follow-Up Summary
+                </label>
+                {canEditModCustody && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleUpdateCustody({
+                        modSummaryNotes: modNotesDraft,
+                        prayerFollowUpNotes: prayerFollowUpDraft,
+                        modLeadSignedOff: true,
+                      })
+                    }
+                    className="px-3.5 py-1.5 rounded-full bg-violet-400 text-black hover:bg-violet-300 text-[11px] font-semibold transition"
+                  >
+                    Save &amp; Hold Moderator Report
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <textarea
+                  rows={2}
+                  readOnly={!canEditModCustody}
+                  value={modNotesDraft}
+                  onChange={(e) => setModNotesDraft(e.target.value)}
+                  placeholder="Summarize YT/IG viewership & comment engagement..."
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
+                />
+                <textarea
+                  rows={2}
+                  readOnly={!canEditModCustody}
+                  value={prayerFollowUpDraft}
+                  onChange={(e) => setPrayerFollowUpDraft(e.target.value)}
+                  placeholder="List prayer requests & visitor feedbacks held for mid-week care..."
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* LOG NEW MEETING FEEDBACK & AGREED NEXT-WEEK ACTION PLAN */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-7 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Add Feedback to Moderator &amp; Team Report
+              </span>
+              <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                Log Postmortem Feedback or Next-Week Action
+              </h3>
+            </div>
+          </div>
+
+          <form
+            onSubmit={handleAddFeedback}
+            className="grid grid-cols-1 sm:grid-cols-12 gap-3"
+          >
+            <div className="sm:col-span-4">
               <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
-                Department Station
+                Category
+              </label>
+              <select
+                value={fbCategory}
+                onChange={(e) =>
+                  setFbCategory(
+                    e.target.value as "WIN" | "BOTTLENECK" | "ACTION_IDEA"
+                  )
+                }
+                aria-label="Feedback Category"
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none"
+              >
+                <option value="WIN">Broadcast Win</option>
+                <option value="BOTTLENECK">Bottleneck</option>
+                <option value="ACTION_IDEA">Next Week Idea</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-4">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
+                Department
               </label>
               <select
                 value={fbDept}
                 onChange={(e) => setFbDept(e.target.value as CrewRole)}
                 aria-label="Target Department"
-                className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none"
               >
                 {ROLES_LIST.map((r) => (
                   <option key={r} value={r}>
@@ -1516,277 +2138,68 @@ export default function PostLiveAndPostmortemDesk({
               </select>
             </div>
 
-            <div>
+            <div className="sm:col-span-4">
               <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
-                Team Feedback / Observation
-              </label>
-              <textarea
-                rows={2}
-                required
-                value={fbComment}
-                onChange={(e) => setFbComment(e.target.value)}
-                placeholder="What happened during today's service?"
-                className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-white/30"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">
-                Action Item for Next Sunday (Optional)
+                Next Sunday Action (Optional)
               </label>
               <input
                 type="text"
                 value={fbActionItem}
                 onChange={(e) => setFbActionItem(e.target.value)}
-                placeholder="e.g. Add 9:16 frame tape on Cam 1 monitor"
+                placeholder="e.g. Check IG blur seam at 07:30 AM"
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
+              />
+            </div>
+
+            <div className="sm:col-span-9">
+              <input
+                type="text"
+                required
+                value={fbComment}
+                onChange={(e) => setFbComment(e.target.value)}
+                placeholder="Write feedback or observation from today's live stream..."
                 className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
               />
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-3 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
-            >
-              Post to Postmortem Board ({myIdentity.name})
-            </button>
-          </form>
-
-          {/* Director & Team Meeting Key Takeaways */}
-          <div className="pt-4 border-t border-white/[0.08] space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                Agreed Meeting Action Plan for Next Week
-              </label>
+            <div className="sm:col-span-3">
               <button
-                type="button"
-                onClick={() =>
-                  handleUpdateCustody({ meetingTakeaways: takeawaysDraft })
-                }
-                className="text-[11px] font-semibold text-white hover:text-zinc-300 underline underline-offset-2"
+                type="submit"
+                className="w-full h-full py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
               >
-                Save Plan
+                + Post Feedback
               </button>
             </div>
-            <textarea
-              rows={3}
-              value={takeawaysDraft}
-              onChange={(e) => setTakeawaysDraft(e.target.value)}
-              className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-zinc-200 leading-relaxed focus:outline-none focus:border-white/30"
-            />
-          </div>
+          </form>
         </div>
 
-        {/* Right (7 cols): Live Team Feedback Cards & 1-Click Pre-Flight Conversion */}
-        <div className="lg:col-span-7 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-4">
+        <div className="lg:col-span-5 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                All-Hands Retrospective
+                Master Control Sign-Off
               </span>
               <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                Team Meeting Feedback &amp; Next-Week Improvements (
-                {postmortemFeedback.length})
+                Agreed Next-Sunday Action Plan
               </h3>
             </div>
-            <span className="text-xs text-zinc-500">
-              Convert any item into a Pre-Flight Check for next week
-            </span>
+            <button
+              type="button"
+              onClick={() =>
+                handleUpdateCustody({ meetingTakeaways: takeawaysDraft })
+              }
+              className="px-3.5 py-1.5 rounded-full bg-white/[0.08] hover:bg-white hover:text-black text-xs font-semibold text-white transition"
+            >
+              Save Plan
+            </button>
           </div>
-
-          <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
-            {postmortemFeedback.map((fb) => {
-              const deptStyle =
-                DEPT_STYLES[fb.department] || DEPT_STYLES.CAMERA;
-              return (
-                <div
-                  key={fb.id}
-                  className={`rounded-2xl p-4 bg-[#09090b] border border-white/[0.08] ${deptStyle.leftBorder} space-y-2.5`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
-                          fb.category === "WIN"
-                            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
-                            : fb.category === "BOTTLENECK"
-                            ? "bg-rose-500/15 text-rose-300 border border-rose-500/25"
-                            : "bg-amber-500/15 text-amber-300 border border-amber-500/25"
-                        }`}
-                      >
-                        {fb.category === "WIN"
-                          ? "Win"
-                          : fb.category === "BOTTLENECK"
-                          ? "Bottleneck"
-                          : "Action Idea"}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${deptStyle.pill}`}
-                      >
-                        {deptStyle.label}
-                      </span>
-                      <span className="text-xs font-medium text-zinc-300">
-                        {fb.authorName}
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-500">
-                        ({fb.authorCallsign})
-                      </span>
-                    </div>
-
-                    {fb.convertedToCheck ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-[10px] font-semibold">
-                        Added to Pre-Flight ✓
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleConvertFeedbackToCheck(fb.id)}
-                        className="px-3 py-1 rounded-full bg-white/[0.07] hover:bg-white hover:text-black text-zinc-200 text-[11px] font-medium border border-white/[0.1] transition"
-                      >
-                        + Add to Next-Week Pre-Flight
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-white leading-relaxed">
-                    {fb.comment}
-                  </p>
-
-                  {fb.actionItem && (
-                    <div className="rounded-xl px-3 py-2 bg-[#141418] border border-white/[0.06] text-xs text-zinc-300">
-                      <span className="text-zinc-500 font-semibold mr-1.5">
-                        Next Sunday Action:
-                      </span>
-                      {fb.actionItem}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* TIMECODED STREAM QC INCIDENT TABLE */}
-      <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-              Timecoded Service Telemetry Log
-            </span>
-            <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
-              Stream QC Observations &amp; Director Directives ({qcLogs.length})
-            </h3>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-white/[0.08] text-[10px] text-zinc-500 uppercase tracking-wider">
-                <th className="py-3 px-3">Timecode</th>
-                <th className="py-3 px-3">Category</th>
-                <th className="py-3 px-3">Department</th>
-                <th className="py-3 px-3">Observation</th>
-                <th className="py-3 px-3">Frame</th>
-                <th className="py-3 px-3">Director Directive</th>
-                <th className="py-3 px-3">Assigned Operator</th>
-                <th className="py-3 px-3 text-right">Status / Roadmap</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.06]">
-              {qcLogs.map((log) => {
-                const stStyle =
-                  DEPT_STYLES[log.station] || DEPT_STYLES.CAMERA;
-                return (
-                  <tr key={log.id} className="hover:bg-white/[0.02]">
-                    <td className="py-3.5 px-3 text-zinc-400 whitespace-nowrap tabular-nums">
-                      {log.streamTimestamp}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                          log.type === "ISSUE"
-                            ? "bg-rose-500/15 text-rose-300"
-                            : log.type === "ACHIEVEMENT"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : "bg-amber-500/15 text-amber-300"
-                        }`}
-                      >
-                        {log.type}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold ${stStyle.pill}`}
-                      >
-                        {log.station} · {log.platform}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <div className="font-semibold text-white">
-                        {log.title}
-                      </div>
-                      {log.description && (
-                        <div className="text-[11px] text-zinc-400">
-                          {log.description}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      {log.screenshotUrl ? (
-                        <button
-                          type="button"
-                          onClick={() => onPreviewFrame(log)}
-                          className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-[11px] font-medium"
-                        >
-                          View Frame
-                        </button>
-                      ) : (
-                        <span className="text-zinc-600">—</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-3 font-medium text-zinc-200">
-                      {log.actionToTake || (
-                        <span className="text-amber-400">
-                          Awaiting Director
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <div className="text-white font-medium">
-                        {log.assignedTo}
-                      </div>
-                      <div className="text-[11px] text-zinc-400">
-                        {log.timelineToSolve}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-3 text-right space-x-2 whitespace-nowrap">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
-                          log.status === "RESOLVED"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : log.status === "WAITING_DIRECTOR"
-                            ? "bg-amber-500/15 text-amber-300"
-                            : "bg-white/[0.08] text-zinc-300"
-                        }`}
-                      >
-                        {log.status.replace("_", " ")}
-                      </span>
-                      {!log.pushedToRoadmap && log.type !== "ACHIEVEMENT" && (
-                        <button
-                          type="button"
-                          onClick={() => onPushToRoadmap(log.id)}
-                          className="px-2.5 py-0.5 rounded-full bg-white text-black hover:bg-zinc-200 text-[10px] font-semibold transition"
-                        >
-                          + Timeline
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <textarea
+            rows={4}
+            value={takeawaysDraft}
+            onChange={(e) => setTakeawaysDraft(e.target.value)}
+            placeholder="Key takeaways and assigned fixes for next Sunday..."
+            className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3.5 text-xs text-zinc-200 leading-relaxed focus:outline-none focus:border-white/30"
+          />
         </div>
       </div>
 
@@ -1799,8 +2212,7 @@ export default function PostLiveAndPostmortemDesk({
                 Weekly Report Vault
               </span>
               <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                Weekly Reports Held by QC Lead &amp; Moderator Lead (
-                {weeklyReportsArchive.length})
+                Locked Weekly Reports ({weeklyReportsArchive.length})
               </h3>
             </div>
           </div>
@@ -1817,8 +2229,8 @@ export default function PostLiveAndPostmortemDesk({
                       {rep.weekLabel}
                     </div>
                     <div className="text-[11px] text-zinc-500">
-                      Locked {rep.savedAt} · Held by {rep.qcLeadName} (
-                      {rep.qcLeadCallsign}) &amp; {rep.modLeadName} (
+                      Locked {rep.savedAt} · QC {rep.qcLeadName} (
+                      {rep.qcLeadCallsign}) &amp; MOD {rep.modLeadName} (
                       {rep.modLeadCallsign})
                     </div>
                   </div>
@@ -1867,14 +2279,6 @@ export default function PostLiveAndPostmortemDesk({
                     </span>
                     {rep.modSummaryNotes}
                   </div>
-                  {rep.meetingTakeaways && (
-                    <div className="text-zinc-400 pt-1 border-t border-white/[0.06] whitespace-pre-line">
-                      <span className="text-zinc-200 font-semibold block mb-0.5">
-                        Postmortem Action Plan:
-                      </span>
-                      {rep.meetingTakeaways}
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
