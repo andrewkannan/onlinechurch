@@ -10,6 +10,11 @@ import PostLiveAndPostmortemDesk, {
   ArchivedWeeklyReport,
 } from "@/components/PostLiveAndPostmortemDesk";
 import { useAuth } from "@/components/AuthProvider";
+import {
+  ROLE_ACCESS_MATRIX,
+  getRolePermissions,
+  canAccessCrewTab,
+} from "@/lib/rbac";
 
 type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
@@ -375,6 +380,13 @@ export default function CrewAndQcPage() {
     role: authUser?.role || "DIRECTOR",
   });
 
+  // Pre-Flight Filters
+  const [stationFilter, setStationFilter] = useState<"ALL" | CrewRole>("ALL");
+  const [phaseFilter, setPhaseFilter] = useState<"ALL" | PreFlightPhase>("ALL");
+  const [userFilter, setUserFilter] = useState<string>("ALL");
+  const [selectedMatrixRole, setSelectedMatrixRole] =
+    useState<CrewRole>("DIRECTOR");
+
   useEffect(() => {
     if (authUser) {
       setMyIdentity({
@@ -382,13 +394,14 @@ export default function CrewAndQcPage() {
         name: authUser.name,
         role: authUser.role,
       });
+      setStationFilter(authUser.role === "DIRECTOR" ? "ALL" : authUser.role);
+      setActiveTab((prev) =>
+        canAccessCrewTab(authUser.role, prev)
+          ? prev
+          : getRolePermissions(authUser.role).defaultCrewTab
+      );
     }
   }, [authUser]);
-
-  // Pre-Flight Filters
-  const [stationFilter, setStationFilter] = useState<"ALL" | CrewRole>("ALL");
-  const [phaseFilter, setPhaseFilter] = useState<"ALL" | PreFlightPhase>("ALL");
-  const [userFilter, setUserFilter] = useState<string>("ALL");
 
   // Modals & notifications
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -1087,6 +1100,12 @@ export default function CrewAndQcPage() {
     }).filter((s) => s.remaining > 0);
   }, [checklists, users]);
 
+  const myRoleSpec = getRolePermissions(myIdentity.role);
+  const isDirector = myIdentity.role === "DIRECTOR";
+  const canLogQc = myRoleSpec.capabilities.logLiveQcScreenshotsAndFaults;
+  const canTriageDirectorQueue =
+    myRoleSpec.capabilities.triageDirectorQueueDirectives;
+
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col w-full antialiased selection:bg-white selection:text-black">
       <Navbar />
@@ -1105,7 +1124,7 @@ export default function CrewAndQcPage() {
            =================================================================== */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-white/[0.08]">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                 Broadcast Operations
               </span>
@@ -1118,7 +1137,9 @@ export default function CrewAndQcPage() {
                 />
                 <span className="font-medium">{myIdentity.name}</span>
                 <span className="text-zinc-500">·</span>
-                <span className="text-zinc-400">{myIdentity.role}</span>
+                <span className="text-zinc-300 font-semibold">
+                  {myRoleSpec.title}
+                </span>
                 <button
                   type="button"
                   onClick={() => openSwitchModal()}
@@ -1127,148 +1148,173 @@ export default function CrewAndQcPage() {
                   Switch Account
                 </button>
               </div>
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${myRoleSpec.badgeColor}`}
+              >
+                {isDirector
+                  ? "Master Access · All Modules"
+                  : myIdentity.role === "QC" || myIdentity.role === "MODERATOR"
+                  ? `${myIdentity.role} Station + Weekly Report Custodian`
+                  : `${myIdentity.role} Station Scope`}
+              </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-white">
-              Pre-Flight Verification, Stream QC & Team Management
+              {isDirector
+                ? "Pre-Flight Verification, Stream QC & Team Management"
+                : `${DEPT_STYLES[myIdentity.role].label} Station Console — ${myIdentity.name}`}
             </h1>
           </div>
 
-          {/* Apple Segmented Control (6 Core Views) */}
+          {/* Apple Segmented Control (Role-Filtered Views) */}
           <div className="inline-flex items-center gap-1 bg-[#131316] p-1 rounded-full border border-white/[0.08] overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab("PRE_LIVE")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
-                activeTab === "PRE_LIVE"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <span>Pre-Flight Check</span>
-              <span
-                className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+            {canAccessCrewTab(myIdentity.role, "PRE_LIVE") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("PRE_LIVE")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                   activeTab === "PRE_LIVE"
-                    ? "bg-black/10 text-black font-bold"
-                    : is100PercentReady
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "bg-amber-500/20 text-amber-300"
+                    ? "bg-white text-black font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                {overallPct}%
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("QC_PAD")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
-                activeTab === "QC_PAD"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <span>Live QC & Queue</span>
-              {waitingDirectorCount > 0 && (
+                <span>Pre-Flight Check</span>
                 <span
                   className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
-                    activeTab === "QC_PAD"
-                      ? "bg-rose-500 text-white font-bold"
-                      : "bg-rose-500/20 text-rose-300"
+                    activeTab === "PRE_LIVE"
+                      ? "bg-black/10 text-black font-bold"
+                      : is100PercentReady
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-amber-500/20 text-amber-300"
                   }`}
                 >
-                  {waitingDirectorCount}
+                  {overallPct}%
                 </span>
-              )}
-            </button>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
-                activeTab === "POST_LIVE_SHUTDOWN"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <span>Post-Live Shutdown</span>
-              <span
-                className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+            {canAccessCrewTab(myIdentity.role, "QC_PAD") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("QC_PAD")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                  activeTab === "QC_PAD"
+                    ? "bg-white text-black font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <span>
+                  {canLogQc ? "Live QC & Queue" : "Assigned Directives"}
+                </span>
+                {waitingDirectorCount > 0 && (
+                  <span
+                    className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                      activeTab === "QC_PAD"
+                        ? "bg-rose-500 text-white font-bold"
+                        : "bg-rose-500/20 text-rose-300"
+                    }`}
+                  >
+                    {waitingDirectorCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {canAccessCrewTab(myIdentity.role, "POST_LIVE_SHUTDOWN") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                   activeTab === "POST_LIVE_SHUTDOWN"
-                    ? "bg-black/10 text-black font-bold"
-                    : is100PercentShutdown
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "bg-white/[0.06] text-zinc-400"
+                    ? "bg-white text-black font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                {shutdownPct}%
-              </span>
-            </button>
+                <span>Post-Live Shutdown</span>
+                <span
+                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                    activeTab === "POST_LIVE_SHUTDOWN"
+                      ? "bg-black/10 text-black font-bold"
+                      : is100PercentShutdown
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-white/[0.06] text-zinc-400"
+                  }`}
+                >
+                  {shutdownPct}%
+                </span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("MEETING_REPORT")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
-                activeTab === "MEETING_REPORT"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <span>Postmortem Corner</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+            {canAccessCrewTab(myIdentity.role, "MEETING_REPORT") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("MEETING_REPORT")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                   activeTab === "MEETING_REPORT"
-                    ? "bg-black/10 text-black"
-                    : weeklyCustody?.qcLeadSignedOff &&
-                      weeklyCustody?.modLeadSignedOff
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "bg-amber-500/20 text-amber-300"
+                    ? "bg-white text-black font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                QC+MOD
-              </span>
-            </button>
+                <span>Postmortem Corner</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                    activeTab === "MEETING_REPORT"
+                      ? "bg-black/10 text-black"
+                      : weeklyCustody?.qcLeadSignedOff &&
+                        weeklyCustody?.modLeadSignedOff
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-amber-500/20 text-amber-300"
+                  }`}
+                >
+                  QC+MOD
+                </span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("TEAM_ACCOUNTS")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
-                activeTab === "TEAM_ACCOUNTS"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <span>Team & Accounts</span>
-              <span
-                className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+            {canAccessCrewTab(myIdentity.role, "TEAM_ACCOUNTS") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("TEAM_ACCOUNTS")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                   activeTab === "TEAM_ACCOUNTS"
-                    ? "bg-black/10 text-black font-bold"
-                    : "bg-white/[0.06] text-zinc-400"
+                    ? "bg-white text-black font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                {users.length}
-              </span>
-            </button>
+                <span>Team & Access Control</span>
+                <span
+                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                    activeTab === "TEAM_ACCOUNTS"
+                      ? "bg-black/10 text-black font-bold"
+                      : "bg-white/[0.06] text-zinc-400"
+                  }`}
+                >
+                  {users.length}
+                </span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("TRAINING")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
-                activeTab === "TRAINING"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <span>Training Academy</span>
-              <span
-                className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+            {canAccessCrewTab(myIdentity.role, "TRAINING") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("TRAINING")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                   activeTab === "TRAINING"
-                    ? "bg-black/10 text-black font-bold"
-                    : "bg-white/[0.06] text-zinc-400"
+                    ? "bg-white text-black font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                5 Roles
-              </span>
-            </button>
+                <span>Training Academy</span>
+                <span
+                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                    activeTab === "TRAINING"
+                      ? "bg-black/10 text-black font-bold"
+                      : "bg-white/[0.06] text-zinc-400"
+                  }`}
+                >
+                  {isDirector ? "5 Roles" : myIdentity.role}
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1298,26 +1344,36 @@ export default function CrewAndQcPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleResetChecklists}
-                    className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 text-xs font-medium border border-white/[0.08] transition"
-                  >
-                    Reset Session
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleToggleGoLive}
-                    className={`px-5 py-2 rounded-full text-xs font-semibold transition ${
-                      directorSignOff.clearedToGoLive
-                        ? "bg-emerald-400 text-black"
-                        : "bg-white text-black hover:bg-zinc-200"
-                    }`}
-                  >
-                    {directorSignOff.clearedToGoLive
-                      ? `On Air Confirmed (${directorSignOff.clearedAt})`
-                      : "Director: Confirm On Air"}
-                  </button>
+                  {isDirector ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleResetChecklists}
+                        className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 text-xs font-medium border border-white/[0.08] transition"
+                      >
+                        Reset Session
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleToggleGoLive}
+                        className={`px-5 py-2 rounded-full text-xs font-semibold transition ${
+                          directorSignOff.clearedToGoLive
+                            ? "bg-emerald-400 text-black"
+                            : "bg-white text-black hover:bg-zinc-200"
+                        }`}
+                      >
+                        {directorSignOff.clearedToGoLive
+                          ? `On Air Confirmed (${directorSignOff.clearedAt})`
+                          : "Director: Confirm On Air"}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="px-4 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                      {directorSignOff.clearedToGoLive
+                        ? `Director Confirmed On Air (${directorSignOff.clearedAt})`
+                        : "Awaiting Director Final Go-Live"}
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
@@ -1378,20 +1434,32 @@ export default function CrewAndQcPage() {
                 </div>
 
                 <div className="flex items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleCheckAllStation("ALL")}
-                    className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
-                  >
-                    Verify All Remaining ({pendingCount})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetChecklists}
-                    className="px-4 py-2 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/[0.08] text-xs font-medium transition"
-                  >
-                    Reset
-                  </button>
+                  {isDirector ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleCheckAllStation("ALL")}
+                        className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                      >
+                        Verify All Remaining ({pendingCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetChecklists}
+                        className="px-4 py-2 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/[0.08] text-xs font-medium transition"
+                      >
+                        Reset
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleCheckAllStation(myIdentity.role)}
+                      className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                    >
+                      Verify My {DEPT_STYLES[myIdentity.role].label} Station
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1549,13 +1617,15 @@ export default function CrewAndQcPage() {
                   ))}
                 </select>
 
-                <button
-                  type="button"
-                  onClick={() => setShowAddCheckModal(true)}
-                  className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
-                >
-                  + Assign Check
-                </button>
+                {isDirector && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCheckModal(true)}
+                    className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                  >
+                    + Assign Check
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1813,7 +1883,8 @@ export default function CrewAndQcPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* LEFT (5 Cols): FAST 1-TAP QC INCIDENT LOGGER */}
+              {/* LEFT (5 Cols): FAST 1-TAP QC INCIDENT LOGGER (QC & DIRECTOR ONLY) */}
+              {canLogQc && (
               <div className="lg:col-span-5 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
                   <div>
@@ -1992,17 +2063,25 @@ export default function CrewAndQcPage() {
                   Send to Technical Director Queue
                 </button>
               </div>
+              )}
 
-              {/* RIGHT (7 Cols): TECHNICAL DIRECTOR DECISION QUEUE */}
-              <div className="lg:col-span-7 space-y-4">
+              {/* RIGHT (7 Cols or 12 Cols): TECHNICAL DIRECTOR DECISION QUEUE */}
+              <div
+                className={`${
+                  canLogQc ? "lg:col-span-7" : "lg:col-span-12"
+                } space-y-4`}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-[#121215] border border-white/[0.08] rounded-3xl p-5">
                   <div>
                     <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
-                      Technical Director Review
+                      {canTriageDirectorQueue
+                        ? "Technical Director Review"
+                        : `${myIdentity.role} Station Directives & Queue`}
                     </span>
                     <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                      Incident & Action Assignment Queue ({waitingDirectorCount}{" "}
-                      Awaiting Decision)
+                      {canTriageDirectorQueue
+                        ? `Incident & Action Assignment Queue (${waitingDirectorCount} Awaiting Decision)`
+                        : `Live Director Directives & Stream Log (${qcLogs.length} Items)`}
                     </h2>
                   </div>
 
@@ -2011,7 +2090,7 @@ export default function CrewAndQcPage() {
                     onClick={() => setActiveTab("MEETING_REPORT")}
                     className="px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.08] text-xs font-medium transition"
                   >
-                    Open Post-Show Log
+                    Open Postmortem Corner
                   </button>
                 </div>
 
@@ -2118,112 +2197,139 @@ export default function CrewAndQcPage() {
                           )}
                         </div>
 
-                        {log.type !== "ACHIEVEMENT" && (
-                          <div className="bg-[#09090b] border border-white/[0.07] rounded-xl p-3.5 space-y-3">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mr-1">
-                                Presets:
-                              </span>
-                              {DIRECTOR_ACTION_PRESETS.map((act) => (
-                                <button
-                                  key={act}
-                                  type="button"
-                                  onClick={() =>
+                        {log.type !== "ACHIEVEMENT" &&
+                          (canTriageDirectorQueue ? (
+                            <div className="bg-[#09090b] border border-white/[0.07] rounded-xl p-3.5 space-y-3">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mr-1">
+                                  Presets:
+                                </span>
+                                {DIRECTOR_ACTION_PRESETS.map((act) => (
+                                  <button
+                                    key={act}
+                                    type="button"
+                                    onClick={() =>
+                                      setDirectorDrafts((prev) => ({
+                                        ...prev,
+                                        [log.id]: {
+                                          ...draft,
+                                          actionToTake: act,
+                                        },
+                                      }))
+                                    }
+                                    className="px-2.5 py-1 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[10px] text-zinc-300 hover:text-white transition"
+                                  >
+                                    {act}
+                                  </button>
+                                ))}
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Director directive..."
+                                  value={draft.actionToTake}
+                                  onChange={(e) =>
                                     setDirectorDrafts((prev) => ({
                                       ...prev,
                                       [log.id]: {
                                         ...draft,
-                                        actionToTake: act,
+                                        actionToTake: e.target.value,
                                       },
                                     }))
                                   }
-                                  className="px-2.5 py-1 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[10px] text-zinc-300 hover:text-white transition"
+                                  className="sm:col-span-5 bg-[#141418] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none"
+                                />
+
+                                <select
+                                  value={draft.assignedTo}
+                                  onChange={(e) =>
+                                    setDirectorDrafts((prev) => ({
+                                      ...prev,
+                                      [log.id]: {
+                                        ...draft,
+                                        assignedTo: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  aria-label="Assign to operator"
+                                  className="sm:col-span-3 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
                                 >
-                                  {act}
-                                </button>
-                              ))}
-                            </div>
+                                  {users.map((u) => (
+                                    <option key={u.id} value={u.name}>
+                                      {u.name} ({u.role})
+                                    </option>
+                                  ))}
+                                </select>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                              <input
-                                type="text"
-                                placeholder="Director directive..."
-                                value={draft.actionToTake}
-                                onChange={(e) =>
-                                  setDirectorDrafts((prev) => ({
-                                    ...prev,
-                                    [log.id]: {
-                                      ...draft,
-                                      actionToTake: e.target.value,
-                                    },
-                                  }))
-                                }
-                                className="sm:col-span-5 bg-[#141418] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none"
-                              />
-
-                              <select
-                                value={draft.assignedTo}
-                                onChange={(e) =>
-                                  setDirectorDrafts((prev) => ({
-                                    ...prev,
-                                    [log.id]: {
-                                      ...draft,
-                                      assignedTo: e.target.value,
-                                    },
-                                  }))
-                                }
-                                aria-label="Assign to operator"
-                                className="sm:col-span-3 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                              >
-                                {users.map((u) => (
-                                  <option key={u.id} value={u.name}>
-                                    {u.name} ({u.role})
+                                <select
+                                  value={draft.timelineToSolve}
+                                  onChange={(e) =>
+                                    setDirectorDrafts((prev) => ({
+                                      ...prev,
+                                      [log.id]: {
+                                        ...draft,
+                                        timelineToSolve: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  aria-label="Target timeline"
+                                  className="sm:col-span-2 bg-[#141418] border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs text-amber-300 focus:outline-none"
+                                >
+                                  <option value="Immediate">Immediate</option>
+                                  <option value="Before Saturday Rehearsal">
+                                    Saturday
                                   </option>
-                                ))}
-                              </select>
+                                  <option value="By Next Sunday">
+                                    Next Sun
+                                  </option>
+                                </select>
 
-                              <select
-                                value={draft.timelineToSolve}
-                                onChange={(e) =>
-                                  setDirectorDrafts((prev) => ({
-                                    ...prev,
-                                    [log.id]: {
-                                      ...draft,
-                                      timelineToSolve: e.target.value,
-                                    },
-                                  }))
-                                }
-                                aria-label="Target timeline"
-                                className="sm:col-span-2 bg-[#141418] border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs text-amber-300 focus:outline-none"
-                              >
-                                <option value="Immediate">Immediate</option>
-                                <option value="Before Saturday Rehearsal">
-                                  Saturday
-                                </option>
-                                <option value="By Next Sunday">Next Sun</option>
-                              </select>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDirectorSaveDecision(
-                                    log.id,
-                                    log.status === "IN_PROGRESS"
-                                      ? "RESOLVED"
-                                      : "IN_PROGRESS"
-                                  )
-                                }
-                                className="sm:col-span-2 py-1.5 px-3 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
-                              >
-                                {isWaiting
-                                  ? "Assign"
-                                  : log.status === "IN_PROGRESS"
-                                  ? "Resolve"
-                                  : "Update"}
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDirectorSaveDecision(
+                                      log.id,
+                                      log.status === "IN_PROGRESS"
+                                        ? "RESOLVED"
+                                        : "IN_PROGRESS"
+                                    )
+                                  }
+                                  className="sm:col-span-2 py-1.5 px-3 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                                >
+                                  {isWaiting
+                                    ? "Assign"
+                                    : log.status === "IN_PROGRESS"
+                                    ? "Resolve"
+                                    : "Update"}
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="bg-[#09090b] border border-white/[0.06] rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                              <div>
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block">
+                                  Director Directive
+                                </span>
+                                <span className="font-medium text-white">
+                                  {log.actionToTake ||
+                                    "Awaiting Technical Director review"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-[11px] text-zinc-400">
+                                <span>
+                                  Assigned:{" "}
+                                  <strong className="text-zinc-200">
+                                    {log.assignedTo || "Pending"}
+                                  </strong>
+                                </span>
+                                <span>·</span>
+                                <span className="text-amber-300 font-medium">
+                                  {log.timelineToSolve || "Wait for Director"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     );
                   })}
@@ -2234,23 +2340,23 @@ export default function CrewAndQcPage() {
         )}
 
         {/* ===================================================================
-            VIEW 3: USER ACCOUNT MANAGEMENT, ROLES & TASK ASSIGNMENT
+            VIEW 3: USER ACCOUNT MANAGEMENT, ROLE ACCESS MATRIX & TASK ASSIGNMENT
+            (DIRECTOR EXCLUSIVE MODULE)
            =================================================================== */}
         {activeTab === "TEAM_ACCOUNTS" && (
           <div className="space-y-6">
             {/* Top Roster Header & Add Account Trigger */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#121215] border border-white/[0.08] rounded-3xl p-6">
               <div>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                  Identity, Access & Task Routing
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-400">
+                  Director Master Access Control & Identity Routing
                 </span>
                 <h2 className="text-lg font-semibold text-white tracking-tight mt-0.5">
-                  Production Team Accounts & Role Assignments ({users.length}{" "}
+                  Production Team Accounts, Passwords & Role Module Access ({users.length}{" "}
                   Operators)
                 </h2>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Manage operator roles, permissions, hardware stations, and
-                  assign pre-flight or live tasks directly to each user.
+                  Only the Technical Director (TD-01) manages all modules. Other roles are automatically scoped to their station modules to keep operations fast and focused.
                 </p>
               </div>
 
@@ -2270,6 +2376,132 @@ export default function CrewAndQcPage() {
                   {showNewUserForm ? "Cancel" : "+ New User Account"}
                 </button>
               </div>
+            </div>
+
+            {/* ROLE-BASED MODULE ACCESS CONTROL MATRIX (BENTO INSPECTOR) */}
+            <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                    Role-Based Access Control (RBAC) Architecture
+                  </span>
+                  <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                    Module & Feature Access Matrix by Department Role
+                  </h3>
+                </div>
+
+                {/* Role Selector Pills */}
+                <div className="inline-flex flex-wrap items-center gap-1.5 bg-[#09090b] p-1 rounded-full border border-white/[0.08]">
+                  {(
+                    ["DIRECTOR", "QC", "MODERATOR", "CAMERA", "AUDIO"] as const
+                  ).map((r) => {
+                    const spec = ROLE_ACCESS_MATRIX[r];
+                    const active = selectedMatrixRole === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setSelectedMatrixRole(r)}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 ${
+                          active
+                            ? "bg-white text-black font-semibold shadow-sm"
+                            : "text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        <span>{r}</span>
+                        <span
+                          className={`text-[10px] font-mono ${
+                            active ? "text-zinc-700" : "text-zinc-500"
+                          }`}
+                        >
+                          {spec.callsignPrefix}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {(() => {
+                const spec = ROLE_ACCESS_MATRIX[selectedMatrixRole];
+                return (
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#09090b] border border-white/[0.06] rounded-2xl p-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${spec.badgeColor}`}
+                          >
+                            {spec.role} · {spec.callsignPrefix}
+                          </span>
+                          <span className="text-sm font-semibold text-white">
+                            {spec.title}
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-400 leading-relaxed">
+                          {spec.summary}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[11px]">
+                          <span className="text-zinc-500 block text-[9px] uppercase font-semibold">
+                            Allowed Top-Level Pages
+                          </span>
+                          <span className="text-white font-mono">
+                            {spec.allowedRoutes.join(" , ")}
+                          </span>
+                        </div>
+                        <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[11px]">
+                          <span className="text-zinc-500 block text-[9px] uppercase font-semibold">
+                            Default Landing
+                          </span>
+                          <span className="text-emerald-300 font-mono">
+                            {spec.defaultLandingRoute} ({spec.defaultCrewTab})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                      {spec.moduleBreakdown.map((item) => {
+                        const badgeClass =
+                          item.accessLevel === "FULL_CONTROL"
+                            ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                            : item.accessLevel === "CUSTODIAN"
+                            ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
+                            : item.accessLevel === "STATION_ONLY"
+                            ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
+                            : item.accessLevel === "VIEW_ONLY"
+                            ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                            : "bg-zinc-800/80 text-zinc-500 border-white/[0.06]";
+                        return (
+                          <div
+                            key={item.module}
+                            className="rounded-2xl p-4 bg-[#09090b] border border-white/[0.06] flex flex-col justify-between gap-2.5"
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border ${badgeClass}`}
+                                >
+                                  {item.accessLevel.replace("_", " ")}
+                                </span>
+                              </div>
+                              <div className="text-xs font-semibold text-white">
+                                {item.module}
+                              </div>
+                              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                                {item.detail}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Collapsible Create User Account Drawer */}

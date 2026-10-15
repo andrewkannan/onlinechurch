@@ -7,7 +7,9 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { getLocalChurchConfig, fetchChurchConfig } from "@/lib/clientConfig";
+import { canAccessRoute, getRolePermissions } from "@/lib/rbac";
 
 export type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 export type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
@@ -76,13 +78,13 @@ const ROLE_BADGE_STYLES: Record<
     label: "Director",
   },
   CAMERA: {
-    dot: "bg-amber-400",
-    pill: "bg-amber-500/12 text-amber-300 border-amber-500/25",
+    dot: "bg-cyan-400",
+    pill: "bg-cyan-500/12 text-cyan-300 border-cyan-500/25",
     label: "Camera",
   },
   AUDIO: {
-    dot: "bg-sky-400",
-    pill: "bg-sky-500/12 text-sky-300 border-sky-500/25",
+    dot: "bg-amber-400",
+    pill: "bg-amber-500/12 text-amber-300 border-amber-500/25",
     label: "Audio",
   },
   MODERATOR: {
@@ -121,6 +123,8 @@ export default function AuthProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [rosterPreview, setRosterPreview] = useState<RosterPreviewItem[]>([]);
@@ -332,6 +336,12 @@ export default function AuthProvider({
       setLoginError(result.error || "Sign in failed.");
     } else {
       setLoginPassword("");
+      if (result.user) {
+        const spec = getRolePermissions(result.user.role);
+        if (!canAccessRoute(result.user.role, pathname)) {
+          router.push(spec.defaultLandingRoute);
+        }
+      }
     }
   };
 
@@ -350,6 +360,12 @@ export default function AuthProvider({
     } else {
       setShowSwitchModal(false);
       setSwitchPassword("");
+      if (result.user) {
+        const spec = getRolePermissions(result.user.role);
+        if (!canAccessRoute(result.user.role, pathname)) {
+          router.push(spec.defaultLandingRoute);
+        }
+      }
     }
   };
 
@@ -595,6 +611,10 @@ export default function AuthProvider({
     );
   }
 
+  const activeRoleSpec = getRolePermissions(user.role);
+  const routeAllowed =
+    pathname === "/login" || canAccessRoute(user.role, pathname);
+
   return (
     <AuthContext.Provider
       value={{
@@ -607,7 +627,76 @@ export default function AuthProvider({
         openCredentialsModal,
       }}
     >
-      {children}
+      {routeAllowed ? (
+        children
+      ) : (
+        <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col items-center justify-center p-6">
+          <div className="max-w-lg w-full bg-[#121215] border border-white/[0.1] rounded-3xl p-7 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-400">
+                  Role-Based Access Control
+                </div>
+                <h2 className="text-lg font-semibold text-white tracking-tight mt-0.5">
+                  Module Restricted for {user.role} Role
+                </h2>
+              </div>
+              <span
+                className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase border ${activeRoleSpec.badgeColor}`}
+              >
+                {user.callsign} · {user.role}
+              </span>
+            </div>
+
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              Signed in as <span className="font-semibold text-white">{user.name}</span> ({activeRoleSpec.title}). To keep your station fast and distraction-free, <span className="font-mono text-zinc-200">{pathname}</span> is reserved for authorized roles (such as <span className="text-rose-300 font-semibold">Technical Director · TD-01</span>).
+            </p>
+
+            <div className="bg-[#09090b] border border-white/[0.06] rounded-2xl p-4 space-y-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                Your Permitted Workspaces ({user.role})
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activeRoleSpec.allowedRoutes.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => router.push(r)}
+                    className="px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-white border border-white/[0.08] transition"
+                  >
+                    {r === "/"
+                      ? "Broadcast Studio (/)"
+                      : r === "/crew"
+                      ? "Pre-Flight, QC & Shutdown (/crew)"
+                      : r === "/roadmap"
+                      ? "Timeline & Goals (/roadmap)"
+                      : r === "/reports"
+                      ? "Analytics (/reports)"
+                      : r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => openSwitchModal("andrew")}
+                className="px-4 py-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.08] transition"
+              >
+                Switch to Director (TD-01)
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(activeRoleSpec.defaultLandingRoute)}
+                className="px-5 py-2.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+              >
+                Go to My Assigned Workspace →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Switch Operator / Sign In With Another Account Modal */}
       {showSwitchModal && (

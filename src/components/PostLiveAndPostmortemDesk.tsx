@@ -241,8 +241,20 @@ export default function PostLiveAndPostmortemDesk({
   onPushToRoadmap,
   onExportCsv,
 }: PostLiveAndPostmortemDeskProps) {
+  const isDirector = myIdentity.role === "DIRECTOR";
+  const canEditQcCustody =
+    myIdentity.role === "QC" || myIdentity.role === "DIRECTOR";
+  const canEditModCustody =
+    myIdentity.role === "MODERATOR" || myIdentity.role === "DIRECTOR";
+  const canArchiveReport =
+    myIdentity.role === "DIRECTOR" ||
+    myIdentity.role === "QC" ||
+    myIdentity.role === "MODERATOR";
+
   // Shutdown filter state
-  const [stationFilter, setStationFilter] = useState<"ALL" | CrewRole>("ALL");
+  const [stationFilter, setStationFilter] = useState<"ALL" | CrewRole>(
+    myIdentity.role === "DIRECTOR" ? "ALL" : myIdentity.role
+  );
   const [stageFilter, setStageFilter] = useState<"ALL" | ShutdownStage>("ALL");
   const [showAddShutdownModal, setShowAddShutdownModal] = useState(false);
   const [newShutRole, setNewShutRole] = useState<CrewRole>("CAMERA");
@@ -250,6 +262,11 @@ export default function PostLiveAndPostmortemDesk({
     useState<ShutdownStage>("GEAR_STRIKE");
   const [newShutTask, setNewShutTask] = useState("");
   const [newShutDetail, setNewShutDetail] = useState("");
+
+  useEffect(() => {
+    setStationFilter(myIdentity.role === "DIRECTOR" ? "ALL" : myIdentity.role);
+    setFbDept(myIdentity.role || "CAMERA");
+  }, [myIdentity.role]);
 
   // Live service telemetry for Moderator Lead's Weekly Report
   const [liveTelemetry, setLiveTelemetry] = useState({
@@ -1080,13 +1097,15 @@ export default function PostLiveAndPostmortemDesk({
             >
               Print
             </button>
-            <button
-              type="button"
-              onClick={handleArchiveWeeklyReport}
-              className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition shadow-sm"
-            >
-              Lock &amp; Hold Weekly Report
-            </button>
+            {canArchiveReport && (
+              <button
+                type="button"
+                onClick={handleArchiveWeeklyReport}
+                className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition shadow-sm"
+              >
+                Lock &amp; Hold Weekly Report
+              </button>
+            )}
           </div>
         </div>
 
@@ -1111,21 +1130,29 @@ export default function PostLiveAndPostmortemDesk({
                   : "Pending QC Lead Sign-Off"}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                handleUpdateCustody({
-                  qcLeadSignedOff: !weeklyCustody.qcLeadSignedOff,
-                })
-              }
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
-                weeklyCustody.qcLeadSignedOff
-                  ? "bg-emerald-400 text-black"
-                  : "bg-white/[0.08] text-white hover:bg-white hover:text-black"
-              }`}
-            >
-              {weeklyCustody.qcLeadSignedOff ? "Holding Report ✓" : "Sign & Hold"}
-            </button>
+            {canEditQcCustody ? (
+              <button
+                type="button"
+                onClick={() =>
+                  handleUpdateCustody({
+                    qcLeadSignedOff: !weeklyCustody.qcLeadSignedOff,
+                  })
+                }
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
+                  weeklyCustody.qcLeadSignedOff
+                    ? "bg-emerald-400 text-black"
+                    : "bg-white/[0.08] text-white hover:bg-white hover:text-black"
+                }`}
+              >
+                {weeklyCustody.qcLeadSignedOff
+                  ? "Holding Report ✓"
+                  : "Sign & Hold"}
+              </button>
+            ) : (
+              <span className="px-3 py-1 rounded-full bg-white/[0.05] text-[10px] font-semibold text-zinc-400 border border-white/[0.08]">
+                {weeklyCustody.qcLeadSignedOff ? "QC Signed ✓" : "QC Only"}
+              </span>
+            )}
           </div>
 
           {/* Custodian 2: Moderator Lead */}
@@ -1147,23 +1174,29 @@ export default function PostLiveAndPostmortemDesk({
                   : "Pending Moderator Lead Sign-Off"}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                handleUpdateCustody({
-                  modLeadSignedOff: !weeklyCustody.modLeadSignedOff,
-                })
-              }
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
-                weeklyCustody.modLeadSignedOff
-                  ? "bg-violet-400 text-black"
-                  : "bg-white/[0.08] text-white hover:bg-white hover:text-black"
-              }`}
-            >
-              {weeklyCustody.modLeadSignedOff
-                ? "Holding Report ✓"
-                : "Sign & Hold"}
-            </button>
+            {canEditModCustody ? (
+              <button
+                type="button"
+                onClick={() =>
+                  handleUpdateCustody({
+                    modLeadSignedOff: !weeklyCustody.modLeadSignedOff,
+                  })
+                }
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
+                  weeklyCustody.modLeadSignedOff
+                    ? "bg-violet-400 text-black"
+                    : "bg-white/[0.08] text-white hover:bg-white hover:text-black"
+                }`}
+              >
+                {weeklyCustody.modLeadSignedOff
+                  ? "Holding Report ✓"
+                  : "Sign & Hold"}
+              </button>
+            ) : (
+              <span className="px-3 py-1 rounded-full bg-white/[0.05] text-[10px] font-semibold text-zinc-400 border border-white/[0.08]">
+                {weeklyCustody.modLeadSignedOff ? "MOD Signed ✓" : "MOD Only"}
+              </span>
+            )}
           </div>
 
           {/* Technical Director Sign-Off */}
@@ -1185,21 +1218,29 @@ export default function PostLiveAndPostmortemDesk({
                   : "Reviewing Postmortem Action Plan"}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                handleUpdateCustody({
-                  directorApproved: !weeklyCustody.directorApproved,
-                })
-              }
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
-                weeklyCustody.directorApproved
-                  ? "bg-rose-400 text-black"
-                  : "bg-white/[0.08] text-white hover:bg-white hover:text-black"
-              }`}
-            >
-              {weeklyCustody.directorApproved ? "Approved ✓" : "Approve Plan"}
-            </button>
+            {isDirector ? (
+              <button
+                type="button"
+                onClick={() =>
+                  handleUpdateCustody({
+                    directorApproved: !weeklyCustody.directorApproved,
+                  })
+                }
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
+                  weeklyCustody.directorApproved
+                    ? "bg-rose-400 text-black"
+                    : "bg-white/[0.08] text-white hover:bg-white hover:text-black"
+                }`}
+              >
+                {weeklyCustody.directorApproved ? "Approved ✓" : "Approve Plan"}
+              </button>
+            ) : (
+              <span className="px-3 py-1 rounded-full bg-white/[0.05] text-[10px] font-semibold text-zinc-400 border border-white/[0.08]">
+                {weeklyCustody.directorApproved
+                  ? "Director Approved ✓"
+                  : "Director Only"}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -1225,10 +1266,11 @@ export default function PostLiveAndPostmortemDesk({
                 type="number"
                 min={0}
                 max={100}
+                disabled={!canEditQcCustody}
                 value={streamScoreDraft}
                 onChange={(e) => setStreamScoreDraft(Number(e.target.value))}
                 aria-label="Stream Health Score"
-                className="w-12 bg-transparent text-sm font-semibold text-emerald-400 text-right tabular-nums focus:outline-none"
+                className="w-12 bg-transparent text-sm font-semibold text-emerald-400 text-right tabular-nums focus:outline-none disabled:opacity-75"
               />
               <span className="text-xs text-zinc-500">/100</span>
             </div>
@@ -1276,27 +1318,35 @@ export default function PostLiveAndPostmortemDesk({
             </label>
             <textarea
               rows={3}
+              readOnly={!canEditQcCustody}
               value={qcNotesDraft}
               onChange={(e) => setQcNotesDraft(e.target.value)}
               placeholder="Record weekly stream stability, audio loudness, camera framing, and action items..."
-              className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3.5 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30"
+              className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3.5 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
             />
           </div>
 
           <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() =>
-                handleUpdateCustody({
-                  qcSummaryNotes: qcNotesDraft,
-                  streamHealthScore: Number(streamScoreDraft) || 96,
-                  qcLeadSignedOff: true,
-                })
-              }
-              className="px-4 py-2 rounded-full bg-emerald-400 text-black hover:bg-emerald-300 text-xs font-semibold transition"
-            >
-              Save &amp; Hold QC Report
-            </button>
+            {canEditQcCustody ? (
+              <button
+                type="button"
+                onClick={() =>
+                  handleUpdateCustody({
+                    qcSummaryNotes: qcNotesDraft,
+                    streamHealthScore: Number(streamScoreDraft) || 96,
+                    qcLeadSignedOff: true,
+                  })
+                }
+                className="px-4 py-2 rounded-full bg-emerald-400 text-black hover:bg-emerald-300 text-xs font-semibold transition"
+              >
+                Save &amp; Hold QC Report
+              </button>
+            ) : (
+              <span className="text-[11px] text-zinc-500">
+                Managed by QC Lead ({weeklyCustody.qcLeadName} ·{" "}
+                {weeklyCustody.qcLeadCallsign})
+              </span>
+            )}
           </div>
         </div>
 
@@ -1359,10 +1409,11 @@ export default function PostLiveAndPostmortemDesk({
               </label>
               <textarea
                 rows={3}
+                readOnly={!canEditModCustody}
                 value={modNotesDraft}
                 onChange={(e) => setModNotesDraft(e.target.value)}
                 placeholder="Summarize YT/IG chat response, scripture cue engagement..."
-                className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30"
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
               />
             </div>
             <div>
@@ -1371,28 +1422,36 @@ export default function PostLiveAndPostmortemDesk({
               </label>
               <textarea
                 rows={3}
+                readOnly={!canEditModCustody}
                 value={prayerFollowUpDraft}
                 onChange={(e) => setPrayerFollowUpDraft(e.target.value)}
                 placeholder="List prayer requests & visitors held for mid-week pastoral care..."
-                className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30"
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-2xl p-3 text-xs text-white leading-relaxed focus:outline-none focus:border-white/30 read-only:opacity-80"
               />
             </div>
           </div>
 
           <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() =>
-                handleUpdateCustody({
-                  modSummaryNotes: modNotesDraft,
-                  prayerFollowUpNotes: prayerFollowUpDraft,
-                  modLeadSignedOff: true,
-                })
-              }
-              className="px-4 py-2 rounded-full bg-violet-400 text-black hover:bg-violet-300 text-xs font-semibold transition"
-            >
-              Save &amp; Hold Moderator Report
-            </button>
+            {canEditModCustody ? (
+              <button
+                type="button"
+                onClick={() =>
+                  handleUpdateCustody({
+                    modSummaryNotes: modNotesDraft,
+                    prayerFollowUpNotes: prayerFollowUpDraft,
+                    modLeadSignedOff: true,
+                  })
+                }
+                className="px-4 py-2 rounded-full bg-violet-400 text-black hover:bg-violet-300 text-xs font-semibold transition"
+              >
+                Save &amp; Hold Moderator Report
+              </button>
+            ) : (
+              <span className="text-[11px] text-zinc-500">
+                Managed by Moderator Lead ({weeklyCustody.modLeadName} ·{" "}
+                {weeklyCustody.modLeadCallsign})
+              </span>
+            )}
           </div>
         </div>
       </div>

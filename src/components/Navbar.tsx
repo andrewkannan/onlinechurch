@@ -10,6 +10,7 @@ import {
   getLocalChurchConfig,
 } from "@/lib/clientConfig";
 import { useAuth } from "@/components/AuthProvider";
+import { canAccessRoute, getRolePermissions } from "@/lib/rbac";
 
 interface NavbarProps {
   churchName?: string;
@@ -18,8 +19,8 @@ interface NavbarProps {
 
 const ROLE_DOT_MAP: Record<string, string> = {
   DIRECTOR: "bg-rose-400",
-  CAMERA: "bg-amber-400",
-  AUDIO: "bg-sky-400",
+  CAMERA: "bg-cyan-400",
+  AUDIO: "bg-amber-400",
   MODERATOR: "bg-violet-400",
   QC: "bg-emerald-400",
 };
@@ -30,6 +31,9 @@ export default function Navbar({
 }: NavbarProps) {
   const pathname = usePathname();
   const { user, logout, openSwitchModal, openCredentialsModal } = useAuth();
+  const rolePerms = getRolePermissions(user?.role);
+  const canManageBranding =
+    rolePerms.capabilities.manageSystemBrandingAndSettings;
   const [churchName, setChurchName] = useState(
     propChurchName || "Grace Online Church"
   );
@@ -71,6 +75,7 @@ export default function Navbar({
   }, []);
 
   const openQuickEdit = () => {
+    if (!canManageBranding) return;
     setEditName(churchName);
     setEditSubtitle(subtitle);
     setEditLogo(logoUrl);
@@ -117,13 +122,17 @@ export default function Navbar({
     }
   };
 
-  const navItems = [
+  const allNavItems = [
     { href: "/", label: "Broadcast" },
     { href: "/crew", label: "Pre-Flight & QC" },
     { href: "/roadmap", label: "Timeline & Goals" },
     { href: "/reports", label: "Analytics" },
     { href: "/settings", label: "Settings" },
   ];
+
+  const navItems = allNavItems.filter((item) =>
+    canAccessRoute(user?.role, item.href)
+  );
 
   return (
     <>
@@ -134,8 +143,14 @@ export default function Navbar({
             <button
               type="button"
               onClick={openQuickEdit}
-              title="Edit church name and logo"
-              className="relative group w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.12] hover:border-white/30 flex items-center justify-center text-white font-semibold text-sm overflow-hidden shrink-0 transition"
+              title={
+                canManageBranding
+                  ? "Edit church name and logo (Director)"
+                  : churchName
+              }
+              className={`relative group w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.12] flex items-center justify-center text-white font-semibold text-sm overflow-hidden shrink-0 transition ${
+                canManageBranding ? "hover:border-white/30 cursor-pointer" : "cursor-default"
+              }`}
             >
               {logoUrl ? (
                 <img
@@ -148,27 +163,39 @@ export default function Navbar({
                   {churchName.slice(0, 2).toUpperCase()}
                 </span>
               )}
-              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-medium text-white transition">
-                Edit
-              </div>
+              {canManageBranding && (
+                <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-medium text-white transition">
+                  Edit
+                </div>
+              )}
             </button>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1
                   onClick={openQuickEdit}
-                  className="font-semibold text-[15px] sm:text-base text-white tracking-[-0.02em] truncate cursor-pointer hover:text-zinc-300 transition"
-                  title="Click to edit church name"
+                  className={`font-semibold text-[15px] sm:text-base text-white tracking-[-0.02em] truncate transition ${
+                    canManageBranding
+                      ? "cursor-pointer hover:text-zinc-300"
+                      : "cursor-default"
+                  }`}
+                  title={
+                    canManageBranding
+                      ? "Click to edit church name"
+                      : churchName
+                  }
                 >
                   {churchName}
                 </h1>
-                <button
-                  type="button"
-                  onClick={openQuickEdit}
-                  className="text-[11px] font-medium text-zinc-500 hover:text-zinc-300 transition"
-                >
-                  Edit
-                </button>
+                {canManageBranding && (
+                  <button
+                    type="button"
+                    onClick={openQuickEdit}
+                    className="text-[11px] font-medium text-zinc-500 hover:text-zinc-300 transition"
+                  >
+                    Edit
+                  </button>
+                )}
                 {isLive ? (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase bg-rose-500/15 text-rose-400 border border-rose-500/25">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
@@ -224,6 +251,9 @@ export default function Navbar({
                 </button>
                 <span className="text-zinc-500 font-mono text-[10px]">
                   {user.callsign}
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-white/[0.06] text-[9px] font-semibold uppercase tracking-wider text-zinc-300">
+                  {user.role === "DIRECTOR" ? "Master All" : user.role}
                 </span>
                 <span className="text-zinc-700">·</span>
                 <button
