@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import CrewTrainingAcademy from "@/components/CrewTrainingAcademy";
 import PostLiveAndPostmortemDesk, {
@@ -1205,7 +1206,7 @@ export default function CrewAndQcPage() {
             </div>
             <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-white">
               {isDirector
-                ? "Pre-Flight Verification, Stream QC & Team Management"
+                ? "Pre-Flight Verification & Live Stream QC"
                 : `${DEPT_STYLES[myIdentity.role].label} Station Console — ${myIdentity.name}`}
             </h1>
           </div>
@@ -1315,29 +1316,6 @@ export default function CrewAndQcPage() {
               </button>
             )}
 
-            {canAccessCrewTab(myIdentity.role, "TEAM_ACCOUNTS") && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("TEAM_ACCOUNTS")}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
-                  activeTab === "TEAM_ACCOUNTS"
-                    ? "bg-white text-black font-semibold shadow-sm"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                <span>Team & Access Control</span>
-                <span
-                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
-                    activeTab === "TEAM_ACCOUNTS"
-                      ? "bg-black/10 text-black font-bold"
-                      : "bg-white/[0.06] text-zinc-400"
-                  }`}
-                >
-                  {users.length}
-                </span>
-              </button>
-            )}
-
             {canAccessCrewTab(myIdentity.role, "TRAINING") && (
               <button
                 type="button"
@@ -1359,6 +1337,18 @@ export default function CrewAndQcPage() {
                   {isDirector ? "5 Roles" : myIdentity.role}
                 </span>
               </button>
+            )}
+
+            {canAccessCrewTab(myIdentity.role, "TEAM_ACCOUNTS") && (
+              <Link
+                href="/settings"
+                className="px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.1]"
+              >
+                <span>User Accounts (Settings)</span>
+                <span className="tabular-nums text-[11px] px-1.5 py-0.2 rounded-full bg-white/[0.08] text-zinc-300">
+                  {users.length}
+                </span>
+              </Link>
             )}
           </div>
         </div>
