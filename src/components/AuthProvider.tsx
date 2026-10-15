@@ -10,6 +10,11 @@ import React, {
 import { usePathname, useRouter } from "next/navigation";
 import { getLocalChurchConfig, fetchChurchConfig } from "@/lib/clientConfig";
 import { canAccessRoute, getRolePermissions } from "@/lib/rbac";
+import {
+  AI_ROBOT_AVATAR_PRESETS,
+  resolveRobotAvatarUrl,
+  generateCustomRobotAvatar,
+} from "@/lib/robotAvatars";
 
 export type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 export type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
@@ -28,6 +33,7 @@ export interface AuthenticatedUser {
   goStatus: "GO" | "STANDBY" | "HOLD";
   device: string;
   lastActiveAt: string;
+  avatarUrl?: string;
 }
 
 interface RosterPreviewItem {
@@ -38,6 +44,7 @@ interface RosterPreviewItem {
   role: CrewRole;
   permission: UserPermission;
   stationAssignment: string;
+  avatarUrl?: string;
 }
 
 interface AuthContextValue {
@@ -151,9 +158,10 @@ export default function AuthProvider({
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [switchSubmitting, setSwitchSubmitting] = useState(false);
 
-  // Update Own Credentials Modal state
+  // Update Own Credentials & AI Robotic Avatar Modal state
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [credUsername, setCredUsername] = useState("");
+  const [credAvatarUrl, setCredAvatarUrl] = useState("");
   const [credCurrentPassword, setCredCurrentPassword] = useState("");
   const [credNewPassword, setCredNewPassword] = useState("");
   const [credError, setCredError] = useState<string | null>(null);
@@ -173,6 +181,7 @@ export default function AuthProvider({
             role: authUser.role,
             permission: authUser.permission,
             callsign: authUser.callsign,
+            avatarUrl: authUser.avatarUrl,
           })
         );
       } else {
@@ -315,6 +324,7 @@ export default function AuthProvider({
   const openCredentialsModal = () => {
     if (!user) return;
     setCredUsername(user.username);
+    setCredAvatarUrl(user.avatarUrl || "");
     setCredCurrentPassword("");
     setCredNewPassword("");
     setCredError(null);
@@ -372,8 +382,14 @@ export default function AuthProvider({
   const handleSaveOwnCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!credCurrentPassword) {
-      setCredError("Enter your current password to confirm changes.");
+    const isCredentialChange =
+      credUsername.trim().toLowerCase() !== user.username.toLowerCase() ||
+      Boolean(credNewPassword.trim());
+
+    if (isCredentialChange && !credCurrentPassword) {
+      setCredError(
+        "Enter your current password to change username or password."
+      );
       return;
     }
     setCredSaving(true);
@@ -386,23 +402,25 @@ export default function AuthProvider({
         body: JSON.stringify({
           action: "UPDATE_CREDENTIALS",
           userId: user.id,
-          currentPassword: credCurrentPassword,
+          avatarOnly: !isCredentialChange,
+          currentPassword: credCurrentPassword || undefined,
           newUsername: credUsername.trim(),
           newPassword: credNewPassword.trim() || undefined,
+          avatarUrl: credAvatarUrl || user.avatarUrl,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setCredError(data.error || "Failed to update credentials.");
+        setCredError(data.error || "Failed to update account.");
       } else if (data.user) {
         setUser(data.user);
         syncLocalIdentity(data.user);
         setCredCurrentPassword("");
         setCredNewPassword("");
-        setCredSuccess("Account credentials updated.");
+        setCredSuccess("AI Robotic Profile & account settings updated.");
       }
     } catch (err: any) {
-      setCredError(err.message || "Failed to update credentials.");
+      setCredError(err.message || "Failed to update account.");
     } finally {
       setCredSaving(false);
     }
@@ -535,7 +553,7 @@ export default function AuthProvider({
             </form>
           </div>
 
-          {/* Station Roster Quick-Fill Helper Card */}
+          {/* Station Roster Quick-Fill Helper Card with Custom AI Robotic Profile Pics */}
           {rosterPreview.length > 0 && (
             <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
@@ -543,7 +561,7 @@ export default function AuthProvider({
                   Registered Team Accounts (Tap to Fill)
                 </span>
                 <span className="text-[11px] text-zinc-500">
-                  {rosterPreview.length} Stations
+                  {rosterPreview.length} AI Station Units
                 </span>
               </div>
 
@@ -568,27 +586,38 @@ export default function AuthProvider({
                         }
                         setLoginError(null);
                       }}
-                      className={`text-left rounded-2xl p-3 border transition flex items-center justify-between gap-2 ${
+                      className={`text-left rounded-2xl p-2.5 border transition flex items-center justify-between gap-2.5 ${
                         isSelected
                           ? "bg-white/[0.08] border-white/30"
                           : "bg-[#09090b] border-white/[0.06] hover:border-white/[0.16]"
                       }`}
                     >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${badge.dot}`}
-                          />
-                          <span className="text-xs font-semibold text-white truncate">
-                            {member.name}
-                          </span>
-                          <span className="text-[10px] font-mono text-zinc-400">
-                            {member.callsign}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-zinc-500 truncate mt-0.5 font-mono">
-                          @{member.username}
-                          {defaultPwd ? ` · ${defaultPwd}` : ""}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={resolveRobotAvatarUrl(
+                            member.avatarUrl,
+                            member.role,
+                            member.callsign
+                          )}
+                          alt={`${member.name} AI Robot`}
+                          className="w-10 h-10 rounded-xl object-cover border border-white/[0.12] shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${badge.dot}`}
+                            />
+                            <span className="text-xs font-semibold text-white truncate">
+                              {member.name}
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-400">
+                              {member.callsign}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-zinc-500 truncate mt-0.5 font-mono">
+                            @{member.username}
+                            {defaultPwd ? ` · ${defaultPwd}` : ""}
+                          </div>
                         </div>
                       </div>
                       <span
@@ -649,7 +678,16 @@ export default function AuthProvider({
             </div>
 
             <p className="text-xs text-zinc-300 leading-relaxed">
-              Signed in as <span className="font-semibold text-white">{user.name}</span> ({activeRoleSpec.title}). To keep your station fast and distraction-free, <span className="font-mono text-zinc-200">{pathname}</span> is reserved for authorized roles (such as <span className="text-rose-300 font-semibold">Technical Director · TD-01</span>).
+              Signed in as{" "}
+              <span className="font-semibold text-white">{user.name}</span> (
+              {activeRoleSpec.title}). To keep your station fast and
+              distraction-free,{" "}
+              <span className="font-mono text-zinc-200">{pathname}</span> is
+              reserved for authorized roles (such as{" "}
+              <span className="text-rose-300 font-semibold">
+                Technical Director · TD-01
+              </span>
+              ).
             </p>
 
             <div className="bg-[#09090b] border border-white/[0.06] rounded-2xl p-4 space-y-2">
@@ -799,18 +837,29 @@ export default function AuthProvider({
         </div>
       )}
 
-      {/* Self Account & Password Settings Modal */}
+      {/* Self Account, AI Robotic Avatar & Password Settings Modal */}
       {showCredentialsModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#121215] border border-white/[0.1] rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5">
+          <div className="bg-[#121215] border border-white/[0.1] rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                  Account Security
-                </span>
-                <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                  {user.name} · Login Credentials
-                </h3>
+              <div className="flex items-center gap-3">
+                <img
+                  src={resolveRobotAvatarUrl(
+                    credAvatarUrl || user.avatarUrl,
+                    user.role,
+                    user.callsign
+                  )}
+                  alt={`${user.name} AI Robot`}
+                  className="w-12 h-12 rounded-2xl object-cover border border-white/[0.15]"
+                />
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                    AI Robotic Profile &amp; Security
+                  </span>
+                  <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                    {user.name} ({user.callsign})
+                  </h3>
+                </div>
               </div>
               <button
                 type="button"
@@ -834,6 +883,59 @@ export default function AuthProvider({
             )}
 
             <form onSubmit={handleSaveOwnCredentials} className="space-y-4">
+              {/* Custom AI Robotic Avatar Selector */}
+              <div className="p-3.5 rounded-2xl bg-[#09090b] border border-white/[0.08] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                    Custom AI Robotic Profile Pic
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCredAvatarUrl(
+                        generateCustomRobotAvatar(
+                          user.callsign || user.name,
+                          user.role,
+                          Date.now()
+                        )
+                      )
+                    }
+                    className="px-2.5 py-1 rounded-full bg-white/[0.08] hover:bg-white hover:text-black text-[10px] font-semibold text-zinc-200 transition"
+                  >
+                    Synthesize Custom AI Robot ✦
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                  {AI_ROBOT_AVATAR_PRESETS.map((preset) => {
+                    const selected =
+                      (credAvatarUrl || user.avatarUrl) === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => setCredAvatarUrl(preset.id)}
+                        title={`${preset.name} (${preset.modelCode})`}
+                        className={`p-1 rounded-xl border transition flex flex-col items-center gap-1 ${
+                          selected
+                            ? "bg-white/[0.14] border-white"
+                            : "bg-[#141418] border-white/[0.06] hover:border-white/30"
+                        }`}
+                      >
+                        <img
+                          src={preset.dataUri}
+                          alt={preset.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                        <span className="text-[9px] font-mono text-zinc-400 truncate w-full text-center">
+                          {preset.modelCode}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
                   Username
@@ -847,31 +949,32 @@ export default function AuthProvider({
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                  Current Password (Required)
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={credCurrentPassword}
-                  onChange={(e) => setCredCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="w-full bg-[#09090b] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white/35"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
+                    Current Password (If changing login)
+                  </label>
+                  <input
+                    type="password"
+                    value={credCurrentPassword}
+                    onChange={(e) => setCredCurrentPassword(e.target.value)}
+                    placeholder="Current password"
+                    className="w-full bg-[#09090b] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/35"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                  New Password (Optional)
-                </label>
-                <input
-                  type="password"
-                  value={credNewPassword}
-                  onChange={(e) => setCredNewPassword(e.target.value)}
-                  placeholder="Leave blank to keep current password"
-                  className="w-full bg-[#09090b] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white/35"
-                />
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
+                    New Password (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    value={credNewPassword}
+                    onChange={(e) => setCredNewPassword(e.target.value)}
+                    placeholder="Keep current password"
+                    className="w-full bg-[#09090b] border border-white/[0.12] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/35"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -887,7 +990,7 @@ export default function AuthProvider({
                   disabled={credSaving}
                   className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                 >
-                  {credSaving ? "Saving..." : "Update Credentials"}
+                  {credSaving ? "Saving..." : "Save Profile & Avatar"}
                 </button>
               </div>
             </form>

@@ -27,6 +27,7 @@ export interface CrewUserAccount {
   goStatus: GoNoGoStatus;
   device: string;
   lastActiveAt: string;
+  avatarUrl?: string;
   completedLessons?: string[];
   certifiedRoles?: CrewRole[];
 }
@@ -93,6 +94,7 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "GO",
     device: "Mac Studio Console",
     lastActiveAt: "Active now",
+    avatarUrl: "bot-director-prime",
     completedLessons: [
       "flow-1",
       "flow-2",
@@ -119,6 +121,7 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "STANDBY",
     device: "iPhone 16 Pro",
     lastActiveAt: "1m ago",
+    avatarUrl: "bot-camera-optics",
     completedLessons: ["flow-1", "flow-2", "cam-1", "cam-2", "cam-3"],
     certifiedRoles: ["CAMERA"],
   },
@@ -137,6 +140,7 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "GO",
     device: "iPad Pro",
     lastActiveAt: "2m ago",
+    avatarUrl: "bot-audio-sonic",
     completedLessons: ["flow-1", "flow-2", "aud-1", "aud-2", "aud-3", "aud-4"],
     certifiedRoles: ["AUDIO"],
   },
@@ -155,6 +159,7 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "GO",
     device: "MacBook Air",
     lastActiveAt: "Active now",
+    avatarUrl: "bot-mod-nexus",
     completedLessons: ["flow-1", "mod-1", "mod-2"],
     certifiedRoles: [],
   },
@@ -173,6 +178,7 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "GO",
     device: "iPhone 16",
     lastActiveAt: "Active now",
+    avatarUrl: "bot-qc-sentinel",
     completedLessons: ["flow-1", "flow-2", "qc-1", "qc-2", "qc-3", "qc-4"],
     certifiedRoles: ["QC"],
   },
@@ -1167,6 +1173,27 @@ export function getCrewQcState() {
     migrated = true;
   }
 
+  // Ensure every user account has an AI Robotic Profile Pic
+  if (Array.isArray(store.crewQc.users)) {
+    const defaultRoleAvatarMap: Record<CrewRole, string> = {
+      DIRECTOR: "bot-director-prime",
+      CAMERA: "bot-camera-optics",
+      AUDIO: "bot-audio-sonic",
+      MODERATOR: "bot-mod-nexus",
+      QC: "bot-qc-sentinel",
+    };
+    store.crewQc.users = store.crewQc.users.map((u: CrewUserAccount) => {
+      if (!u.avatarUrl) {
+        migrated = true;
+        return {
+          ...u,
+          avatarUrl: defaultRoleAvatarMap[u.role] || "bot-camera-optics",
+        };
+      }
+      return u;
+    });
+  }
+
   if (migrated) {
     writeFallbackStore("crewQc", store.crewQc);
   }
@@ -1232,7 +1259,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. User Account Management: Add User (with Username & Password)
+    // 2. User Account Management: Add User (with Username, Password & AI Robotic Avatar)
     if (body.action === "ADD_USER" && body.user) {
       const u = body.user;
       const role = (u.role as CrewRole) || "CAMERA";
@@ -1255,6 +1282,14 @@ export async function POST(req: NextRequest) {
         ? `${baseUsername}${state.users.length + 1}`
         : baseUsername;
 
+      const defaultRoleAvatarMap: Record<CrewRole, string> = {
+        DIRECTOR: "bot-director-prime",
+        CAMERA: "bot-camera-optics",
+        AUDIO: "bot-audio-sonic",
+        MODERATOR: "bot-mod-nexus",
+        QC: "bot-qc-sentinel",
+      };
+
       const newUser: CrewUserAccount = {
         id: `usr-${Date.now()}`,
         username: finalUsername,
@@ -1273,13 +1308,17 @@ export async function POST(req: NextRequest) {
         goStatus: "STANDBY",
         device: String(u.device || "Mobile / Console").trim(),
         lastActiveAt: "Just added",
+        avatarUrl:
+          String(u.avatarUrl || "").trim() ||
+          defaultRoleAvatarMap[role] ||
+          "bot-camera-optics",
         completedLessons: [],
         certifiedRoles: [],
       };
       state.users = [...state.users, newUser];
     }
 
-    // 3. User Account Management: Update User Role, Permission, Station, Duty, Go Status, or Credentials
+    // 3. User Account Management: Update User Role, Permission, Station, Duty, Go Status, Avatar, or Credentials
     if (body.action === "UPDATE_USER" && body.id) {
       state.users = state.users.map((u) => {
         if (u.id !== body.id) return u;
@@ -1312,6 +1351,9 @@ export async function POST(req: NextRequest) {
           ...(body.status !== undefined ? { status: body.status as DutyStatus } : {}),
           ...(body.goStatus !== undefined
             ? { goStatus: body.goStatus as GoNoGoStatus }
+            : {}),
+          ...(body.avatarUrl !== undefined && String(body.avatarUrl).trim()
+            ? { avatarUrl: String(body.avatarUrl).trim() }
             : {}),
         };
         return updated;

@@ -11,6 +11,11 @@ import {
 } from "@/lib/clientConfig";
 import { useAuth } from "@/components/AuthProvider";
 import { ROLE_ACCESS_MATRIX, CrewRole } from "@/lib/rbac";
+import {
+  AI_ROBOT_AVATAR_PRESETS,
+  resolveRobotAvatarUrl,
+  generateCustomRobotAvatar,
+} from "@/lib/robotAvatars";
 
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
 type DutyStatus = "ON_DUTY" | "STANDBY" | "OFF_DUTY";
@@ -32,6 +37,7 @@ interface CrewUserAccount {
   goStatus: GoNoGoStatus;
   device: string;
   lastActiveAt: string;
+  avatarUrl?: string;
   completedLessons?: string[];
   certifiedRoles?: CrewRole[];
 }
@@ -167,6 +173,13 @@ export default function SettingsPage() {
   const [newUserPermission, setNewUserPermission] =
     useState<UserPermission>("OPERATOR");
   const [newUserStation, setNewUserStation] = useState("");
+  const [newUserAvatarUrl, setNewUserAvatarUrl] = useState<string>("");
+  const [newUserRobotSeed, setNewUserRobotSeed] = useState(1);
+
+  // Per-user AI Robot Synthesizer seed counter
+  const [userRobotSeeds, setUserRobotSeeds] = useState<Record<string, number>>(
+    {}
+  );
 
   // Inline Login Credential Drafts per User Card
   const [userCredDrafts, setUserCredDrafts] = useState<
@@ -264,6 +277,14 @@ export default function SettingsPage() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim()) return;
+    const computedCallsign =
+      newUserCallsign.trim() ||
+      `${DEPT_STYLES[newUserRole].code}-0${users.length + 1}`;
+    const avatarToSave = resolveRobotAvatarUrl(
+      newUserAvatarUrl,
+      newUserRole,
+      computedCallsign
+    );
     const res = await fetch("/api/crew-qc", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -277,14 +298,13 @@ export default function SettingsPage() {
           password: newUserPassword.trim() || "church123",
           email: newUserEmail,
           phone: newUserPhone,
-          callsign:
-            newUserCallsign.trim() ||
-            `${DEPT_STYLES[newUserRole].code}-0${users.length + 1}`,
+          callsign: computedCallsign,
           role: newUserRole,
           permission: newUserPermission,
           stationAssignment:
             newUserStation.trim() || `${DEPT_STYLES[newUserRole].label} Station`,
           status: "ON_DUTY",
+          avatarUrl: avatarToSave,
         },
       }),
     });
@@ -298,6 +318,7 @@ export default function SettingsPage() {
       setNewUserPhone("");
       setNewUserCallsign("");
       setNewUserStation("");
+      setNewUserAvatarUrl("");
       setShowNewUserForm(false);
       triggerToast(`Created user account for ${newUserName}`);
     }
@@ -334,7 +355,8 @@ export default function SettingsPage() {
 
   const handleUpdateUser = async (
     id: string,
-    patch: Partial<CrewUserAccount>
+    patch: Partial<CrewUserAccount>,
+    customToast?: string
   ) => {
     setUsers((prev) =>
       prev.map((u) => (u.id === id ? { ...u, ...patch } : u))
@@ -351,7 +373,59 @@ export default function SettingsPage() {
     if (res.ok) {
       const updated = await res.json();
       if (updated.users) setUsers(updated.users);
-      triggerToast("Updated user role & station settings");
+
+      // Sync active session in localStorage if updating the currently signed-in user
+      if (authUser && authUser.id === id) {
+        try {
+          const rawSession = localStorage.getItem("church_active_auth_user_v2");
+          if (rawSession) {
+            const parsed = JSON.parse(rawSession);
+            localStorage.setItem(
+              "church_active_auth_user_v2",
+              JSON.stringify({ ...parsed, ...patch })
+            );
+            window.dispatchEvent(new Event("church-auth-changed"));
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      triggerToast(customToast || "Updated user account settings");
+    }
+  };
+
+  const handleSynthesizeUserRobot = (user: CrewUserAccount) => {
+    const nextSeed = (userRobotSeeds[user.id] || 0) + 1;
+    setUserRobotSeeds((prev) => ({ ...prev, [user.id]: nextSeed }));
+    const customRobotUri = generateCustomRobotAvatar(
+      `${user.callsign || user.name}-${nextSeed}`,
+      user.role,
+      nextSeed
+    );
+    handleUpdateUser(
+      user.id,
+      { avatarUrl: customRobotUri },
+      `Synthesized new AI Robotic Profile Pic for ${user.name}`
+    );
+  };
+
+  const handleCustomUserAvatarUpload = async (
+    user: CrewUserAccount,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await processLogoImageFile(file);
+      await handleUpdateUser(
+        user.id,
+        { avatarUrl: dataUrl },
+        `Uploaded custom profile picture for ${user.name}`
+      );
+    } catch (err) {
+      console.error("Failed to process custom avatar:", err);
+      triggerToast("Failed to process image file");
     }
   };
 
@@ -768,6 +842,85 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* New Account AI Robotic Profile Pic Selector */}
+                <div className="p-3.5 rounded-2xl bg-[#09090b] border border-white/[0.08] space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-2xl overflow-hidden border border-white/[0.15] bg-black shrink-0">
+                        <img
+                          src={resolveRobotAvatarUrl(
+                            newUserAvatarUrl,
+                            newUserRole,
+                            newUserCallsign || DEPT_STYLES[newUserRole].code
+                          )}
+                          alt="New Operator AI Robot Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
+                          Custom AI Robotic Profile Pic
+                        </div>
+                        <div className="text-[11px] text-zinc-500">
+                          Choose a preset cybernetic droid or synthesize a custom AI robot for this account
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextSeed = newUserRobotSeed + 1;
+                        setNewUserRobotSeed(nextSeed);
+                        setNewUserAvatarUrl(
+                          generateCustomRobotAvatar(
+                            `${newUserCallsign || newUserName || "OP"}-${nextSeed}`,
+                            newUserRole,
+                            nextSeed
+                          )
+                        );
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white hover:text-black text-zinc-200 text-[11px] font-semibold border border-white/[0.12] transition"
+                    >
+                      Synthesize AI Robot ✦
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                    {AI_ROBOT_AVATAR_PRESETS.map((preset) => {
+                      const activeUri = resolveRobotAvatarUrl(
+                        newUserAvatarUrl,
+                        newUserRole,
+                        newUserCallsign || DEPT_STYLES[newUserRole].code
+                      );
+                      const isSelected = activeUri === preset.dataUri;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => setNewUserAvatarUrl(preset.dataUri)}
+                          className={`group rounded-xl p-1.5 border transition flex flex-col items-center gap-1 ${
+                            isSelected
+                              ? "bg-white/[0.12] border-white ring-1 ring-white/40"
+                              : "bg-[#141418] border-white/[0.06] hover:border-white/25"
+                          }`}
+                        >
+                          <div className="w-9 h-9 rounded-lg overflow-hidden bg-black">
+                            <img
+                              src={preset.dataUri}
+                              alt={preset.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <span className="text-[9px] font-medium text-zinc-300 truncate w-full text-center">
+                            {preset.name.split(" ")[0]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </form>
             )}
 
@@ -790,6 +943,11 @@ export default function SettingsPage() {
                   username: user.username || "",
                   password: "",
                 };
+                const resolvedUserAvatar = resolveRobotAvatarUrl(
+                  user.avatarUrl,
+                  user.role,
+                  user.callsign
+                );
 
                 return (
                   <div
@@ -797,18 +955,18 @@ export default function SettingsPage() {
                     className={`rounded-3xl p-6 bg-[#121215] border border-white/[0.08] ${style.topBorder} flex flex-col justify-between gap-5`}
                   >
                     <div className="space-y-4">
-                      {/* Header Row: Avatar, Name, @username, Callsign & Actions */}
+                      {/* Header Row: AI Robotic Profile Pic, Name, @username, Callsign & Actions */}
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex items-center gap-3.5">
-                          <div
-                            className={`w-11 h-11 rounded-2xl flex items-center justify-center font-semibold text-sm ${style.pill}`}
-                          >
-                            {user.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)
-                              .toUpperCase()}
+                          <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-white/[0.14] shadow-lg bg-black shrink-0">
+                            <img
+                              src={resolvedUserAvatar}
+                              alt={`${user.name} AI Robot Profile`}
+                              className="w-full h-full object-cover"
+                            />
+                            <span
+                              className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border border-black ${style.dot}`}
+                            />
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
@@ -862,6 +1020,78 @@ export default function SettingsPage() {
                               Remove
                             </button>
                           )}
+                        </div>
+                      </div>
+
+                      {/* 0. Custom AI Robotic Profile Picture Selector */}
+                      <div className="p-3.5 rounded-2xl bg-[#09090b] border border-white/[0.06] space-y-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-300">
+                              Custom AI Robotic Profile Pic
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-500">
+                              8 Cybernetic Droids + AI Synth
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleSynthesizeUserRobot(user)}
+                              className="px-2.5 py-1 rounded-lg bg-white/[0.08] hover:bg-white hover:text-black text-zinc-200 text-[10px] font-semibold border border-white/[0.1] transition"
+                            >
+                              Synthesize AI Robot ✦
+                            </button>
+                            <label className="cursor-pointer px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] text-zinc-300 text-[10px] font-medium border border-white/[0.08] transition">
+                              <span>Upload Custom</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                  handleCustomUserAvatarUpload(user, e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                          {AI_ROBOT_AVATAR_PRESETS.map((preset) => {
+                            const isSelected =
+                              resolvedUserAvatar === preset.dataUri;
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateUser(
+                                    user.id,
+                                    { avatarUrl: preset.dataUri },
+                                    `Assigned ${preset.name} to ${user.name}`
+                                  )
+                                }
+                                title={`${preset.name} — ${preset.description}`}
+                                className={`group rounded-xl p-1 border transition flex flex-col items-center gap-1 ${
+                                  isSelected
+                                    ? "bg-white/[0.14] border-white ring-1 ring-white/40"
+                                    : "bg-[#141418] border-white/[0.06] hover:border-white/25"
+                                }`}
+                              >
+                                <div className="w-8 h-8 rounded-lg overflow-hidden bg-black">
+                                  <img
+                                    src={preset.dataUri}
+                                    alt={preset.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <span className="text-[8px] font-mono text-zinc-300 truncate w-full text-center">
+                                  {preset.name.split(" ")[0]}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 

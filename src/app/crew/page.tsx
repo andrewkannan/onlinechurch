@@ -21,6 +21,7 @@ import {
   getMalaysiaBroadcastCountdown,
   MalaysiaBroadcastCountdown,
 } from "@/lib/malaysiaTime";
+import { resolveRobotAvatarUrl } from "@/lib/robotAvatars";
 
 type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
@@ -50,6 +51,7 @@ interface CrewUserAccount {
   goStatus: GoNoGoStatus;
   device: string;
   lastActiveAt: string;
+  avatarUrl?: string;
   completedLessons?: string[];
   certifiedRoles?: CrewRole[];
 }
@@ -1175,12 +1177,18 @@ export default function CrewAndQcPage() {
                 Broadcast Operations
               </span>
               <span className="text-zinc-700">/</span>
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-zinc-300">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    DEPT_STYLES[myIdentity.role]?.dot || "bg-white"
-                  }`}
-                />
+              <div className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-zinc-300">
+                <div className="w-5 h-5 rounded-full overflow-hidden border border-white/20 bg-black shrink-0">
+                  <img
+                    src={resolveRobotAvatarUrl(
+                      authUser?.avatarUrl,
+                      myIdentity.role,
+                      authUser?.callsign
+                    )}
+                    alt={`${myIdentity.name} AI Robot Profile`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <span className="font-medium">{myIdentity.name}</span>
                 <span className="text-zinc-500">·</span>
                 <span className="text-zinc-300 font-semibold">
@@ -1841,10 +1849,23 @@ export default function CrewAndQcPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/[0.05] text-zinc-400">
-                      <span className="truncate font-medium text-zinc-300">
-                        {leadUser ? leadUser.name : "Unassigned"}
-                      </span>
+                    <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-white/[0.05] text-zinc-400">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-5 h-5 rounded-md overflow-hidden border border-white/15 bg-black shrink-0">
+                          <img
+                            src={resolveRobotAvatarUrl(
+                              leadUser?.avatarUrl,
+                              role,
+                              leadUser?.callsign
+                            )}
+                            alt={`${leadUser?.name || style.label} AI Robot`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="truncate font-medium text-zinc-300">
+                          {leadUser ? leadUser.name : "Unassigned"}
+                        </span>
+                      </div>
                       <span className="text-[10px] font-mono text-zinc-500">
                         {leadUser ? leadUser.callsign : style.code}
                       </span>

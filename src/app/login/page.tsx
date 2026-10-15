@@ -3,13 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
+import { resolveRobotAvatarUrl } from "@/lib/robotAvatars";
 
 export default function LoginPage() {
   const { user, logout, openSwitchModal, openCredentialsModal } = useAuth();
 
-  // Note: When `user` is null, AuthProvider automatically renders the full-screen
-  // Apple-inspired Sign-In interface. When `user` is authenticated and visits `/login`,
-  // we show their active session status and quick navigation options.
   if (!user) {
     return null;
   }
@@ -17,17 +15,27 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 flex items-center justify-center p-6 antialiased">
       <div className="w-full max-w-md bg-[#121215] border border-white/[0.09] rounded-3xl p-7 shadow-2xl space-y-6">
-        <div className="space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-400">
-            Authenticated Session
-          </span>
-          <h1 className="text-xl font-semibold text-white tracking-tight">
-            Signed in as {user.name}
-          </h1>
-          <p className="text-xs text-zinc-400">
-            @{user.username} · {user.callsign} · {user.role} (
-            {user.stationAssignment})
-          </p>
+        <div className="flex items-center gap-4">
+          <img
+            src={resolveRobotAvatarUrl(
+              user.avatarUrl,
+              user.role,
+              user.callsign
+            )}
+            alt={`${user.name} AI Robot Avatar`}
+            className="w-16 h-16 rounded-2xl object-cover border border-white/[0.15] shrink-0"
+          />
+          <div className="space-y-1 min-w-0">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-400">
+              Authenticated AI Station Session
+            </span>
+            <h1 className="text-xl font-semibold text-white tracking-tight truncate">
+              {user.name}
+            </h1>
+            <p className="text-xs text-zinc-400 truncate">
+              @{user.username} · {user.callsign} · {user.role}
+            </p>
+          </div>
         </div>
 
         <div className="space-y-2.5">
@@ -59,7 +67,7 @@ export default function LoginPage() {
               onClick={openCredentialsModal}
               className="px-3.5 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 text-xs font-medium border border-white/[0.08] transition"
             >
-              Password
+              AI Avatar &amp; Login
             </button>
           </div>
           <button

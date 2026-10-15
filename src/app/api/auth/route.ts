@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       role: u.role,
       permission: u.permission,
       stationAssignment: u.stationAssignment,
+      avatarUrl: u.avatarUrl,
     }));
 
     if (!matchedUser) {
@@ -179,15 +180,19 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    // 3. Change / Update Username & Password
+    // 3. Change / Update Username, Password & AI Robotic Avatar
     if (body.action === "UPDATE_CREDENTIALS" && body.userId) {
       const targetUser = state.users.find((u) => u.id === body.userId);
       if (!targetUser) {
         return NextResponse.json({ error: "User not found." }, { status: 404 });
       }
 
-      // If not admin override, verify current password
-      if (!body.adminOverride && body.currentPassword !== undefined) {
+      // If not admin override and not avatar-only update, verify current password
+      if (
+        !body.adminOverride &&
+        !body.avatarOnly &&
+        body.currentPassword !== undefined
+      ) {
         if (targetUser.password !== String(body.currentPassword)) {
           return NextResponse.json(
             { error: "Current password does not match." },
@@ -227,12 +232,18 @@ export async function POST(req: NextRequest) {
           ? String(body.newPassword).trim()
           : targetUser.password;
 
+      const nextAvatarUrl =
+        body.avatarUrl && String(body.avatarUrl).trim()
+          ? String(body.avatarUrl).trim()
+          : targetUser.avatarUrl;
+
       state.users = state.users.map((u) =>
         u.id === targetUser.id
           ? {
               ...u,
               username: nextUsername,
               password: nextPassword,
+              avatarUrl: nextAvatarUrl,
             }
           : u
       );

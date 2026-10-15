@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import { canAccessRoute, getRolePermissions } from "@/lib/rbac";
 import { formatMYTClockWithSeconds } from "@/lib/malaysiaTime";
+import { resolveRobotAvatarUrl } from "@/lib/robotAvatars";
 
 interface NavbarProps {
   churchName?: string;
@@ -252,19 +253,25 @@ export default function Navbar({
             </nav>
 
             {user && (
-              <div className="flex items-center gap-1.5 bg-[#121215] border border-white/[0.08] rounded-full px-3 py-1 text-[11px]">
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    ROLE_DOT_MAP[user.role] || "bg-emerald-400"
-                  }`}
-                />
+              <div className="flex items-center gap-2 bg-[#121215] border border-white/[0.08] rounded-full pl-1.5 pr-3 py-1 text-[11px]">
                 <button
                   type="button"
                   onClick={openCredentialsModal}
-                  title="Update account username or password"
-                  className="font-semibold text-white hover:text-zinc-300 transition"
+                  title="Customize AI Robotic Profile Pic & Login Credentials"
+                  className="flex items-center gap-2 hover:opacity-90 transition"
                 >
-                  {user.name}
+                  <img
+                    src={resolveRobotAvatarUrl(
+                      user.avatarUrl,
+                      user.role,
+                      user.callsign
+                    )}
+                    alt={`${user.name} AI Robot Avatar`}
+                    className="w-6 h-6 rounded-full object-cover border border-white/[0.15] shrink-0"
+                  />
+                  <span className="font-semibold text-white hover:text-zinc-300 transition">
+                    {user.name}
+                  </span>
                 </button>
                 <span className="text-zinc-500 font-mono text-[10px]">
                   {user.callsign}
