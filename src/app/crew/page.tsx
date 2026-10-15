@@ -1,155 +1,389 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Navbar from "@/components/Navbar";
-import {
-  ShieldCheck,
-  Camera,
-  Mic,
-  MessageSquare,
-  Eye,
-  Clapperboard,
-  CheckCircle2,
-  Smartphone,
-  Plus,
-  RotateCcw,
-  Upload,
-  Monitor,
-  Clock,
-  ArrowUpRight,
-  Trophy,
-  Lightbulb,
-  Bug,
-  X,
-  Check,
-  Zap,
-  Crosshair,
-  Printer,
-  Download,
-  FileSpreadsheet,
-  BellRing,
-} from "lucide-react";
 
 type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
+type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
+type DutyStatus = "ON_DUTY" | "STANDBY" | "OFF_DUTY";
+type GoNoGoStatus = "GO" | "STANDBY" | "HOLD";
+type PreFlightPhase = "T-60M" | "T-30M" | "T-15M" | "T-5M";
 
-const LOCAL_CREW_USER_KEY = "church_live_hub_crew_identity_v1";
+interface CrewUserAccount {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  callsign: string;
+  role: CrewRole;
+  permission: UserPermission;
+  stationAssignment: string;
+  status: DutyStatus;
+  goStatus: GoNoGoStatus;
+  device: string;
+  lastActiveAt: string;
+}
 
-// 1-Tap Presets for Quality Checker (Zero typing required during live!)
-const QUICK_QC_CHIPS: {
+interface CrewChecklistItem {
+  id: string;
+  role: CrewRole;
+  phase: PreFlightPhase;
+  category: string;
+  task: string;
+  detail: string;
+  isCritical: boolean;
+  assignedToUserId: string;
+  assignedToName: string;
+  checked: boolean;
+  checkedBy?: string | null;
+  checkedAt?: string | null;
+}
+
+interface QcLogItem {
+  id: string;
+  serviceDate: string;
+  streamTimestamp: string;
+  type: "ISSUE" | "IMPROVEMENT" | "ACHIEVEMENT";
+  severity: "CRITICAL" | "MAJOR" | "MINOR" | "WIN";
+  platform: "YOUTUBE" | "INSTAGRAM" | "BOTH";
+  station:
+    | "CAMERA"
+    | "AUDIO"
+    | "MODERATOR"
+    | "LIGHTING"
+    | "NETWORK"
+    | "DIRECTOR";
+  title: string;
+  description: string;
+  actionToTake: string;
+  assignedTo: string;
+  timelineToSolve: string;
+  targetDate: string;
+  status: "WAITING_DIRECTOR" | "IN_PROGRESS" | "RESOLVED";
+  screenshotUrl?: string | null;
+  markerPos?: { x: number; y: number } | null;
+  loggedBy: string;
+  createdAt: string;
+  pushedToRoadmap?: boolean;
+}
+
+// Apple Pro Refined Department Color System (High contrast, non-neon, distinct per department)
+const DEPT_STYLES: Record<
+  string,
+  {
+    label: string;
+    code: string;
+    dot: string;
+    text: string;
+    bar: string;
+    topBorder: string;
+    leftBorder: string;
+    pill: string;
+    filterActive: string;
+    verifiedCard: string;
+    selectedCard: string;
+    checkSquare: string;
+  }
+> = {
+  CAMERA: {
+    label: "Camera",
+    code: "CAM",
+    dot: "bg-amber-400",
+    text: "text-amber-400",
+    bar: "bg-amber-400",
+    topBorder: "border-t-2 border-t-amber-400",
+    leftBorder: "border-l-[3px] border-l-amber-400",
+    pill: "bg-amber-500/12 text-amber-300 border border-amber-500/25",
+    filterActive: "bg-amber-400 text-black font-semibold",
+    verifiedCard:
+      "bg-[#141310] border border-amber-500/25 border-l-[3px] border-l-amber-400 hover:border-amber-400/50",
+    selectedCard: "bg-[#1a1710] border border-amber-400 ring-1 ring-amber-400/30",
+    checkSquare: "bg-amber-400 text-black",
+  },
+  AUDIO: {
+    label: "Audio",
+    code: "AUD",
+    dot: "bg-sky-400",
+    text: "text-sky-400",
+    bar: "bg-sky-400",
+    topBorder: "border-t-2 border-t-sky-400",
+    leftBorder: "border-l-[3px] border-l-sky-400",
+    pill: "bg-sky-500/12 text-sky-300 border border-sky-500/25",
+    filterActive: "bg-sky-400 text-black font-semibold",
+    verifiedCard:
+      "bg-[#0f1418] border border-sky-500/25 border-l-[3px] border-l-sky-400 hover:border-sky-400/50",
+    selectedCard: "bg-[#111a22] border border-sky-400 ring-1 ring-sky-400/30",
+    checkSquare: "bg-sky-400 text-black",
+  },
+  MODERATOR: {
+    label: "Moderator",
+    code: "MOD",
+    dot: "bg-violet-400",
+    text: "text-violet-400",
+    bar: "bg-violet-400",
+    topBorder: "border-t-2 border-t-violet-400",
+    leftBorder: "border-l-[3px] border-l-violet-400",
+    pill: "bg-violet-500/12 text-violet-300 border border-violet-500/25",
+    filterActive: "bg-violet-400 text-black font-semibold",
+    verifiedCard:
+      "bg-[#131118] border border-violet-500/25 border-l-[3px] border-l-violet-400 hover:border-violet-400/50",
+    selectedCard:
+      "bg-[#191424] border border-violet-400 ring-1 ring-violet-400/30",
+    checkSquare: "bg-violet-400 text-black",
+  },
+  QC: {
+    label: "Quality Control",
+    code: "QC",
+    dot: "bg-emerald-400",
+    text: "text-emerald-400",
+    bar: "bg-emerald-400",
+    topBorder: "border-t-2 border-t-emerald-400",
+    leftBorder: "border-l-[3px] border-l-emerald-400",
+    pill: "bg-emerald-500/12 text-emerald-300 border border-emerald-500/25",
+    filterActive: "bg-emerald-400 text-black font-semibold",
+    verifiedCard:
+      "bg-[#0f1512] border border-emerald-500/25 border-l-[3px] border-l-emerald-400 hover:border-emerald-400/50",
+    selectedCard:
+      "bg-[#111d17] border border-emerald-400 ring-1 ring-emerald-400/30",
+    checkSquare: "bg-emerald-400 text-black",
+  },
+  DIRECTOR: {
+    label: "Director",
+    code: "DIR",
+    dot: "bg-rose-400",
+    text: "text-rose-400",
+    bar: "bg-rose-400",
+    topBorder: "border-t-2 border-t-rose-400",
+    leftBorder: "border-l-[3px] border-l-rose-400",
+    pill: "bg-rose-500/12 text-rose-300 border border-rose-500/25",
+    filterActive: "bg-rose-400 text-black font-semibold",
+    verifiedCard:
+      "bg-[#161013] border border-rose-500/25 border-l-[3px] border-l-rose-400 hover:border-rose-400/50",
+    selectedCard: "bg-[#1f1317] border border-rose-400 ring-1 ring-rose-400/30",
+    checkSquare: "bg-rose-400 text-black",
+  },
+  LIGHTING: {
+    label: "Lighting",
+    code: "LX",
+    dot: "bg-amber-300",
+    text: "text-amber-300",
+    bar: "bg-amber-300",
+    topBorder: "border-t-2 border-t-amber-300",
+    leftBorder: "border-l-[3px] border-l-amber-300",
+    pill: "bg-amber-400/10 text-amber-200 border border-amber-400/25",
+    filterActive: "bg-amber-300 text-black font-semibold",
+    verifiedCard: "bg-[#141310] border border-amber-500/25",
+    selectedCard: "bg-[#1a1710] border border-amber-400",
+    checkSquare: "bg-amber-300 text-black",
+  },
+  NETWORK: {
+    label: "Network",
+    code: "NET",
+    dot: "bg-teal-400",
+    text: "text-teal-400",
+    bar: "bg-teal-400",
+    topBorder: "border-t-2 border-t-teal-400",
+    leftBorder: "border-l-[3px] border-l-teal-400",
+    pill: "bg-teal-500/12 text-teal-300 border border-teal-500/25",
+    filterActive: "bg-teal-400 text-black font-semibold",
+    verifiedCard: "bg-[#0f1515] border border-teal-500/25",
+    selectedCard: "bg-[#111d1d] border border-teal-400",
+    checkSquare: "bg-teal-400 text-black",
+  },
+};
+
+const ROLES_LIST: CrewRole[] = [
+  "CAMERA",
+  "AUDIO",
+  "MODERATOR",
+  "QC",
+  "DIRECTOR",
+];
+
+// Clean Broadcast QC Presets (Zero emojis, crisp broadcast terminology)
+const QUICK_QC_PRESETS: {
   label: string;
   type: "ISSUE" | "IMPROVEMENT" | "ACHIEVEMENT";
-  station: "CAMERA" | "AUDIO" | "MODERATOR" | "LIGHTING" | "NETWORK";
   severity: "CRITICAL" | "MAJOR" | "MINOR" | "WIN";
+  station:
+    | "CAMERA"
+    | "AUDIO"
+    | "MODERATOR"
+    | "LIGHTING"
+    | "NETWORK"
+    | "DIRECTOR";
+  platform: "INSTAGRAM" | "YOUTUBE" | "BOTH";
 }[] = [
-  { label: "📱 IG 9:16 Crop Cut Off", type: "ISSUE", station: "CAMERA", severity: "MAJOR" },
-  { label: "📷 Cam Framing / Headroom", type: "ISSUE", station: "CAMERA", severity: "MAJOR" },
-  { label: "🔍 Camera Soft / Out of Focus", type: "ISSUE", station: "CAMERA", severity: "CRITICAL" },
-  { label: "💡 Stage Lighting Too Dark", type: "IMPROVEMENT", station: "LIGHTING", severity: "MINOR" },
-  { label: "🔇 Pastor Mic Too Low", type: "ISSUE", station: "AUDIO", severity: "CRITICAL" },
-  { label: "🔊 Audio Clipping / Echo", type: "ISSUE", station: "AUDIO", severity: "CRITICAL" },
-  { label: "🎹 Boost Altar Pad +3dB", type: "IMPROVEMENT", station: "AUDIO", severity: "MINOR" },
-  { label: "⏱️ Audio-Video Sync Delay", type: "ISSUE", station: "AUDIO", severity: "MAJOR" },
-  { label: "📡 Stream Frame Drop / Lag", type: "ISSUE", station: "NETWORK", severity: "CRITICAL" },
-  { label: "💬 Late Chat Scripture Cue", type: "IMPROVEMENT", station: "MODERATOR", severity: "MINOR" },
-  { label: "🏆 Great Multi-Cam Switch!", type: "ACHIEVEMENT", station: "CAMERA", severity: "WIN" },
-  { label: "🏆 Fast Prophetic Chat Sync!", type: "ACHIEVEMENT", station: "MODERATOR", severity: "WIN" },
+  {
+    label: "IG 9:16 Safe-Zone Edge Clipped",
+    type: "ISSUE",
+    severity: "MAJOR",
+    station: "CAMERA",
+    platform: "INSTAGRAM",
+  },
+  {
+    label: "Camera White Balance / Exposure Drift",
+    type: "ISSUE",
+    severity: "MINOR",
+    station: "CAMERA",
+    platform: "BOTH",
+  },
+  {
+    label: "Broadcast Bus Audio Too Quiet on Mobile",
+    type: "ISSUE",
+    severity: "MAJOR",
+    station: "AUDIO",
+    platform: "BOTH",
+  },
+  {
+    label: "Audio-Video Lip-Sync Delay Detected",
+    type: "ISSUE",
+    severity: "CRITICAL",
+    station: "AUDIO",
+    platform: "YOUTUBE",
+  },
+  {
+    label: "Encoder Bitrate Drop / Frame Stutter",
+    type: "ISSUE",
+    severity: "CRITICAL",
+    station: "NETWORK",
+    platform: "BOTH",
+  },
+  {
+    label: "Lower-Third / Scripture Cue Delayed",
+    type: "IMPROVEMENT",
+    severity: "MINOR",
+    station: "MODERATOR",
+    platform: "YOUTUBE",
+  },
+  {
+    label: "Sub-2s Scripture & Prayer Queue Sync",
+    type: "ACHIEVEMENT",
+    severity: "WIN",
+    station: "MODERATOR",
+    platform: "BOTH",
+  },
+  {
+    label: "Crisp Camera Switching & Broadcast Mix",
+    type: "ACHIEVEMENT",
+    severity: "WIN",
+    station: "CAMERA",
+    platform: "BOTH",
+  },
 ];
 
-// 1-Tap Director Action Presets
-const DIRECTOR_QUICK_ACTIONS = [
-  "Fix Immediately on Live",
-  "Mark Stage Floor / 9:16 Grid",
-  "Adjust Soundboard Bus +3dB",
-  "Drill in Saturday Rehearsal",
-  "Check Cable / Encoder Setup",
+const DIRECTOR_ACTION_PRESETS = [
+  "Recalibrate 9:16 center guide on Cam 1",
+  "Lock 5600K Kelvin profile on all cameras",
+  "Boost broadcast bus +3 dB during spoken prayer",
+  "Adjust audio delay +40 ms on switcher input",
+  "Stage sermon cue deck by Saturday 6:00 PM",
 ];
 
-async function compressScreenshotFile(file: File | Blob): Promise<string> {
+function compressScreenshotDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const src = ev.target?.result as string;
-      const img = new Image();
+    reader.onload = (e) => {
+      const img = new window.Image();
       img.onload = () => {
-        const maxW = 850;
-        const maxH = 600;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxW || h > maxH) {
-          const ratio = Math.min(maxW / w, maxH / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
         const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
+        const maxW = 960;
+        const scale = img.width > maxW ? maxW / img.width : 1;
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
         const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(src);
-          return;
-        }
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
+        if (!ctx) return reject(new Error("Canvas context unavailable"));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
       };
-      img.onerror = () => resolve(src);
-      img.src = src;
+      img.onerror = reject;
+      img.src = e.target?.result as string;
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-export default function CrewCheckAndQcPage() {
-  const [myIdentity, setMyIdentity] = useState<{
-    name: string;
-    role: CrewRole;
-    device: string;
-  }>({
-    name: "Andrew",
-    role: "DIRECTOR",
-    device: "Director Console",
-  });
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginName, setLoginName] = useState("Andrew");
-  const [loginRole, setLoginRole] = useState<CrewRole>("DIRECTOR");
-
-  // 3 Fast Modes: PRE_LIVE | QC_PAD | MEETING_REPORT
-  const [activeTab, setActiveTab] = useState<
-    "PRE_LIVE" | "QC_PAD" | "MEETING_REPORT"
-  >("PRE_LIVE");
-  const [stationFilter, setStationFilter] = useState<CrewRole | "ALL">("ALL");
-
-  const [checklists, setChecklists] = useState<any[]>([]);
-  const [activeCrew, setActiveCrew] = useState<any[]>([]);
-  const [qcLogs, setQcLogs] = useState<any[]>([]);
-  const [directorSignOff, setDirectorSignOff] = useState<{
-    clearedToGoLive: boolean;
-    directorName: string;
-    clearedAt: string | null;
-  }>({
+export default function CrewAndQcPage() {
+  const [users, setUsers] = useState<CrewUserAccount[]>([]);
+  const [checklists, setChecklists] = useState<CrewChecklistItem[]>([]);
+  const [qcLogs, setQcLogs] = useState<QcLogItem[]>([]);
+  const [directorSignOff, setDirectorSignOff] = useState({
     clearedToGoLive: false,
     directorName: "Andrew",
-    clearedAt: null,
+    clearedAt: null as string | null,
+    flashNotice: "",
   });
 
-  // Fast QC Pad State (Minimal clicks for QC during live)
-  const [qcPlatform, setQcPlatform] = useState<"INSTAGRAM" | "YOUTUBE" | "BOTH">(
-    "INSTAGRAM"
-  );
+  // Active workspace tab
+  const [activeTab, setActiveTab] = useState<
+    "PRE_LIVE" | "QC_PAD" | "TEAM_ACCOUNTS" | "MEETING_REPORT"
+  >("PRE_LIVE");
+
+  // Active logged-in operator
+  const [myIdentity, setMyIdentity] = useState<{
+    id: string;
+    name: string;
+    role: CrewRole;
+  }>({
+    id: "usr-director-1",
+    name: "Andrew",
+    role: "DIRECTOR",
+  });
+
+  // Pre-Flight Filters
+  const [stationFilter, setStationFilter] = useState<"ALL" | CrewRole>("ALL");
+  const [phaseFilter, setPhaseFilter] = useState<"ALL" | PreFlightPhase>("ALL");
+  const [userFilter, setUserFilter] = useState<string>("ALL");
+
+  // Modals & notifications
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [showAddCheckModal, setShowAddCheckModal] = useState(false);
+  const [newCheckRole, setNewCheckRole] = useState<CrewRole>("CAMERA");
+  const [newCheckPhase, setNewCheckPhase] = useState<PreFlightPhase>("T-30M");
+  const [newCheckCategory, setNewCheckCategory] = useState("Verification");
+  const [newCheckTask, setNewCheckTask] = useState("");
+  const [newCheckDetail, setNewCheckDetail] = useState("");
+  const [newCheckUserId, setNewCheckUserId] = useState("usr-camera-1");
+
+  // New User Account Form state (in Team & Accounts tab)
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPhone, setNewUserPhone] = useState("");
+  const [newUserCallsign, setNewUserCallsign] = useState("");
+  const [newUserRole, setNewUserRole] = useState<CrewRole>("CAMERA");
+  const [newUserPermission, setNewUserPermission] =
+    useState<UserPermission>("OPERATOR");
+  const [newUserStation, setNewUserStation] = useState("");
+
+  // Inline quick-assign task per user card in Team & Accounts tab
+  const [userQuickTaskDrafts, setUserQuickTaskDrafts] = useState<
+    Record<string, { task: string; phase: PreFlightPhase }>
+  >({});
+
+  // QC Pad state
+  const [qcPlatform, setQcPlatform] = useState<
+    "INSTAGRAM" | "YOUTUBE" | "BOTH"
+  >("INSTAGRAM");
   const [qcType, setQcType] = useState<"ISSUE" | "IMPROVEMENT" | "ACHIEVEMENT">(
     "ISSUE"
   );
+  const [qcSeverity, setQcSeverity] = useState<
+    "CRITICAL" | "MAJOR" | "MINOR" | "WIN"
+  >("MAJOR");
   const [qcStation, setQcStation] = useState<
-    "CAMERA" | "AUDIO" | "MODERATOR" | "LIGHTING" | "NETWORK"
+    "CAMERA" | "AUDIO" | "MODERATOR" | "LIGHTING" | "NETWORK" | "DIRECTOR"
   >("CAMERA");
   const [qcTitle, setQcTitle] = useState("");
-  const [qcNote, setQcNote] = useState("");
+  const [qcDescription, setQcDescription] = useState("");
   const [qcScreenshot, setQcScreenshot] = useState<string | null>(null);
   const [qcMarker, setQcMarker] = useState<{ x: number; y: number } | null>(
     null
   );
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
 
-  // Director Decision Drafts per QC Log ID
+  // Director Decision Drafts
   const [directorDrafts, setDirectorDrafts] = useState<
     Record<
       string,
@@ -157,13 +391,10 @@ export default function CrewCheckAndQcPage() {
     >
   >({});
 
-  const [showAddCheckModal, setShowAddCheckModal] = useState(false);
-  const [newCheckTask, setNewCheckTask] = useState("");
-  const [newCheckRole, setNewCheckRole] = useState<CrewRole>("CAMERA");
-  const [previewImageLog, setPreviewImageLog] = useState<any | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  const screenshotInputRef = useRef<HTMLInputElement>(null);
+  // Lightbox preview
+  const [previewImageLog, setPreviewImageLog] = useState<QcLogItem | null>(
+    null
+  );
 
   const triggerToast = (msg: string) => {
     setToastMsg(msg);
@@ -173,69 +404,47 @@ export default function CrewCheckAndQcPage() {
   const fetchCrewQcData = async () => {
     try {
       const res = await fetch("/api/crew-qc", { cache: "no-store" });
+      if (!res.ok) return;
       const data = await res.json();
+      if (data.users) setUsers(data.users);
       if (data.checklists) setChecklists(data.checklists);
-      if (data.activeCrew) setActiveCrew(data.activeCrew);
-      if (data.qcLogs) {
-        setQcLogs(data.qcLogs);
-        setDirectorDrafts((prev) => {
-          const next = { ...prev };
-          for (const l of data.qcLogs) {
-            if (!next[l.id]) {
-              next[l.id] = {
-                actionToTake: l.actionToTake || "",
-                assignedTo:
-                  l.assignedTo && l.assignedTo !== "Pending Director"
-                    ? l.assignedTo
-                    : l.station === "CAMERA"
-                    ? "Kevin (Cam)"
-                    : l.station === "AUDIO"
-                    ? "Jason (Audio)"
-                    : l.station === "MODERATOR"
-                    ? "Hannah (Mod)"
-                    : "Tech Lead",
-                timelineToSolve:
-                  l.timelineToSolve && l.timelineToSolve !== "Wait for Director"
-                    ? l.timelineToSolve
-                    : "Before Saturday Rehearsal",
-              };
-            }
-          }
-          return next;
-        });
-      }
+      if (data.qcLogs) setQcLogs(data.qcLogs);
       if (data.directorSignOff) setDirectorSignOff(data.directorSignOff);
-    } catch {}
+    } catch (e) {
+      console.error("Failed to fetch crew-qc data:", e);
+    }
   };
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(LOCAL_CREW_USER_KEY);
+      const saved = localStorage.getItem("church_crew_identity_v3");
       if (saved) {
         const parsed = JSON.parse(saved);
-        setMyIdentity(parsed);
-        setLoginName(parsed.name);
-        setLoginRole(parsed.role);
+        if (parsed.name && parsed.role) {
+          setMyIdentity(parsed);
+        }
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     fetchCrewQcData();
-    const interval = setInterval(fetchCrewQcData, 4000);
+    const interval = setInterval(fetchCrewQcData, 6000);
     return () => clearInterval(interval);
   }, []);
 
-  // Clipboard Paste Screenshot Support on QC Pad
+  // Paste screenshot support on QC Pad
   useEffect(() => {
-    if (activeTab !== "QC_PAD") return;
     const handlePaste = async (e: ClipboardEvent) => {
+      if (activeTab !== "QC_PAD") return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
         if (items[i].type.startsWith("image/")) {
-          const blob = items[i].getAsFile();
-          if (blob) {
-            const dataUrl = await compressScreenshotFile(blob);
-            setQcScreenshot(dataUrl);
-            triggerToast("📋 Screenshot pasted!");
+          const file = items[i].getAsFile();
+          if (file) {
+            const compressed = await compressScreenshotDataUrl(file);
+            setQcScreenshot(compressed);
+            triggerToast("Screenshot attached from clipboard");
           }
         }
       }
@@ -244,323 +453,414 @@ export default function CrewCheckAndQcPage() {
     return () => window.removeEventListener("paste", handlePaste);
   }, [activeTab]);
 
-  // Switch Crew Role Login
-  const handleCrewLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginName.trim()) return;
-    const identity = {
-      name: loginName.trim(),
-      role: loginRole,
-      device: "Mobile",
-    };
-    setMyIdentity(identity);
+  const handleSwitchActiveUser = async (user: CrewUserAccount) => {
+    const nextIdentity = { id: user.id, name: user.name, role: user.role };
+    setMyIdentity(nextIdentity);
     try {
-      localStorage.setItem(LOCAL_CREW_USER_KEY, JSON.stringify(identity));
-    } catch {}
-
-    if (loginRole === "QC") {
-      setStationFilter("QC");
-    } else if (loginRole !== "DIRECTOR") {
-      setStationFilter(loginRole);
-    } else {
-      setStationFilter("ALL");
+      localStorage.setItem(
+        "church_crew_identity_v3",
+        JSON.stringify(nextIdentity)
+      );
+    } catch {
+      // ignore
     }
-    setShowLoginModal(false);
-    triggerToast(`Logged in: ${identity.name} (${identity.role})`);
-
-    try {
-      await fetch("/api/crew-qc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "CREW_LOGIN",
-          name: identity.name,
-          role: identity.role,
-          device: "Phone",
-        }),
-      });
-      fetchCrewQcData();
-    } catch {}
+    await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "CREW_LOGIN",
+        name: user.name,
+        role: user.role,
+        device: user.device || "Console",
+      }),
+    });
+    triggerToast(`Active operator switched to ${user.name} (${user.role})`);
+    fetchCrewQcData();
   };
 
-  // Toggle Single Check Item
   const handleToggleCheck = async (id: string) => {
-    const nowTime = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
     setChecklists((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const nextChecked = !item.checked;
-        return {
-          ...item,
-          checked: nextChecked,
-          checkedBy: nextChecked ? myIdentity.name : null,
-          checkedAt: nextChecked ? nowTime : null,
-        };
-      })
-    );
-
-    try {
-      const res = await fetch("/api/crew-qc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "TOGGLE_CHECK",
-          id,
-          memberName: myIdentity.name,
-        }),
-      });
-      const data = await res.json();
-      if (data.checklists) setChecklists(data.checklists);
-    } catch {}
-  };
-
-  // 1-Tap Check Entire Station
-  const handleCheckAllStation = async (role: CrewRole | "ALL") => {
-    const nowTime = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    setChecklists((prev) =>
-      prev.map((item) => {
-        if (role !== "ALL" && item.role !== role) return item;
-        return {
-          ...item,
-          checked: true,
-          checkedBy: item.checkedBy || myIdentity.name,
-          checkedAt: item.checkedAt || nowTime,
-        };
-      })
-    );
-    triggerToast(`✓ ${role} marked 100% Ready!`);
-
-    try {
-      const res = await fetch("/api/crew-qc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "CHECK_ALL_STATION",
-          role,
-          memberName: myIdentity.name,
-        }),
-      });
-      const data = await res.json();
-      if (data.checklists) setChecklists(data.checklists);
-    } catch {}
-  };
-
-  // Reset All Checklists
-  const handleResetChecklists = async () => {
-    try {
-      const res = await fetch("/api/crew-qc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "RESET_CHECKLISTS" }),
-      });
-      const data = await res.json();
-      if (data.checklists) setChecklists(data.checklists);
-      if (data.directorSignOff) setDirectorSignOff(data.directorSignOff);
-      triggerToast("Checklists reset for new service.");
-    } catch {}
-  };
-
-  // Director Greenlight Toggle
-  const handleToggleGoLive = async () => {
-    const nextState = !directorSignOff.clearedToGoLive;
-    const nowTime = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    setDirectorSignOff({
-      clearedToGoLive: nextState,
-      directorName: myIdentity.name,
-      clearedAt: nextState ? nowTime : null,
-    });
-    triggerToast(
-      nextState ? "🟢 LIVE ON AIR CONFIRMED!" : "Returned to Pre-Live Mode"
-    );
-
-    try {
-      await fetch("/api/crew-qc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "DIRECTOR_UPDATE",
-          clearedToGoLive: nextState,
-          directorName: myIdentity.name,
-        }),
-      });
-    } catch {}
-  };
-
-  // QC 1-Tap Chip Handler (Fills or Immediately Queues!)
-  const handleSelectQcChip = (chip: (typeof QUICK_QC_CHIPS)[0]) => {
-    setQcType(chip.type);
-    setQcStation(chip.station);
-    setQcTitle(chip.label);
-  };
-
-  // Submit QC Item to Director Queue (Fast — No Action/Owner required from QC!)
-  const handleQueueForDirector = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!qcTitle.trim()) {
-      triggerToast("Tap a quick tag or enter a short title first.");
-      return;
-    }
-
-    const nowStamp = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    try {
-      const res = await fetch("/api/crew-qc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "ADD_QC_LOG",
-          log: {
-            serviceDate: new Date().toISOString().slice(0, 10),
-            streamTimestamp: nowStamp,
-            type: qcType,
-            severity:
-              qcType === "ACHIEVEMENT"
-                ? "WIN"
-                : qcType === "IMPROVEMENT"
-                ? "MINOR"
-                : "MAJOR",
-            platform: qcPlatform,
-            station: qcStation,
-            title: qcTitle.trim(),
-            description: qcNote.trim(),
-            screenshotUrl: qcScreenshot,
-            markerPos: qcMarker,
-            loggedBy: myIdentity.name,
-          },
-        }),
-      });
-      const data = await res.json();
-      if (data.qcLogs) setQcLogs(data.qcLogs);
-
-      setQcTitle("");
-      setQcNote("");
-      setQcScreenshot(null);
-      setQcMarker(null);
-      triggerToast("⚡ Sent to Director Queue!");
-    } catch {}
-  };
-
-  // Director Saves Action Plan, Owner & Timeline on a Queued QC Item
-  const handleDirectorSaveDecision = async (
-    logId: string,
-    nextStatus: "IN_PROGRESS" | "RESOLVED" = "IN_PROGRESS"
-  ) => {
-    const draft = directorDrafts[logId] || {
-      actionToTake: "Review with crew",
-      assignedTo: "Tech Lead",
-      timelineToSolve: "Before Saturday Rehearsal",
-    };
-
-    setQcLogs((prev) =>
-      prev.map((l) =>
-        l.id === logId
+      prev.map((item) =>
+        item.id === id
           ? {
-              ...l,
-              actionToTake: draft.actionToTake,
-              assignedTo: draft.assignedTo,
-              timelineToSolve: draft.timelineToSolve,
-              status: nextStatus,
+              ...item,
+              checked: !item.checked,
+              checkedBy: !item.checked ? myIdentity.name : null,
+              checkedAt: !item.checked
+                ? new Date().toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : null,
             }
-          : l
+          : item
       )
     );
-    triggerToast(
-      nextStatus === "RESOLVED"
-        ? "✓ Marked Resolved!"
-        : "✓ Director Action Plan Assigned!"
-    );
 
-    try {
-      await fetch("/api/crew-qc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "DIRECTOR_DECIDE_QC",
-          id: logId,
-          actionToTake: draft.actionToTake,
-          assignedTo: draft.assignedTo,
-          timelineToSolve: draft.timelineToSolve,
-          status: nextStatus,
-        }),
-      });
-    } catch {}
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "TOGGLE_CHECK",
+        id,
+        memberName: myIdentity.name,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.checklists) setChecklists(updated.checklists);
+    }
   };
 
-  // Push to Roadmap
-  const handlePushToRoadmap = async (id: string) => {
-    setQcLogs((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, pushedToRoadmap: true } : l))
+  const handleReassignCheckItem = async (
+    checkId: string,
+    targetUserId: string
+  ) => {
+    const targetUser = users.find((u) => u.id === targetUserId);
+    if (!targetUser) return;
+
+    setChecklists((prev) =>
+      prev.map((c) =>
+        c.id === checkId
+          ? {
+              ...c,
+              assignedToUserId: targetUser.id,
+              assignedToName: targetUser.name,
+            }
+          : c
+      )
     );
-    triggerToast("🚀 Added to Timeline & Goals!");
-    try {
-      await fetch("/api/crew-qc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "PUSH_QC_TO_ROADMAP", id }),
-      });
-    } catch {}
+
+    await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "ASSIGN_CHECK_ITEM",
+        id: checkId,
+        assignedToUserId: targetUser.id,
+        assignedToName: targetUser.name,
+      }),
+    });
+    triggerToast(`Assigned to ${targetUser.name}`);
   };
 
-  // Screenshot Upload / Screen Capture
+  const handleCheckAllStation = async (role: CrewRole | "ALL") => {
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "CHECK_ALL_STATION",
+        role,
+        memberName: myIdentity.name,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.checklists) setChecklists(updated.checklists);
+      triggerToast(
+        role === "ALL"
+          ? "All pre-flight checks verified"
+          : `${role} station verified`
+      );
+    }
+  };
+
+  const handleResetChecklists = async () => {
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "RESET_CHECKLISTS" }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.checklists) setChecklists(updated.checklists);
+      if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
+      triggerToast("Pre-flight checklist reset for new service");
+    }
+  };
+
+  const handleToggleGoLive = async () => {
+    const nextState = !directorSignOff.clearedToGoLive;
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "DIRECTOR_UPDATE",
+        clearedToGoLive: nextState,
+        directorName: myIdentity.name,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
+      triggerToast(
+        nextState
+          ? "Master Control: Broadcast Confirmed On Air"
+          : "Broadcast returned to Standby"
+      );
+    }
+  };
+
+  // User Account Management Handlers
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName.trim()) return;
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "ADD_USER",
+        user: {
+          name: newUserName,
+          email: newUserEmail,
+          phone: newUserPhone,
+          callsign: newUserCallsign,
+          role: newUserRole,
+          permission: newUserPermission,
+          stationAssignment: newUserStation,
+          status: "ON_DUTY",
+        },
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.users) setUsers(updated.users);
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserPhone("");
+      setNewUserCallsign("");
+      setNewUserStation("");
+      setShowNewUserForm(false);
+      triggerToast(`Created account for ${newUserName}`);
+    }
+  };
+
+  const handleUpdateUser = async (
+    id: string,
+    patch: Partial<CrewUserAccount>
+  ) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ...patch } : u))
+    );
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "UPDATE_USER",
+        id,
+        ...patch,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.users) setUsers(updated.users);
+    }
+  };
+
+  const handleDeleteUser = async (id: string, name: string) => {
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+    await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "DELETE_USER", id }),
+    });
+    triggerToast(`Removed ${name}`);
+  };
+
+  const handleAssignQuickTaskToUser = async (user: CrewUserAccount) => {
+    const draft = userQuickTaskDrafts[user.id];
+    if (!draft || !draft.task.trim()) return;
+
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "ADD_CHECK_ITEM",
+        item: {
+          role: user.role,
+          phase: draft.phase || "T-30M",
+          category: "Assigned",
+          task: draft.task.trim(),
+          detail: `Assigned to ${user.name} (${user.callsign})`,
+          isCritical: true,
+          assignedToUserId: user.id,
+          assignedToName: user.name,
+        },
+      }),
+    });
+
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.checklists) setChecklists(updated.checklists);
+      setUserQuickTaskDrafts((prev) => ({
+        ...prev,
+        [user.id]: { task: "", phase: "T-30M" },
+      }));
+      triggerToast(`Task assigned to ${user.name}`);
+    }
+  };
+
+  // QC Pad Handlers
+  const handleSelectQcPreset = (preset: (typeof QUICK_QC_PRESETS)[number]) => {
+    setQcTitle(preset.label);
+    setQcType(preset.type);
+    setQcSeverity(preset.severity);
+    setQcStation(preset.station);
+    setQcPlatform(preset.platform);
+  };
+
   const handleScreenshotUpload = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const dataUrl = await compressScreenshotFile(file);
-    setQcScreenshot(dataUrl);
-    triggerToast("📸 Screenshot ready! Tap image to mark red spot.");
+    try {
+      const compressed = await compressScreenshotDataUrl(file);
+      setQcScreenshot(compressed);
+      setQcMarker({ x: 50, y: 50 });
+    } catch (err) {
+      console.error("Failed to process screenshot:", err);
+    }
   };
 
   const handleCaptureScreen = async () => {
     try {
-      if (!navigator.mediaDevices?.getDisplayMedia) {
+      const mediaDevices = navigator.mediaDevices as any;
+      if (!mediaDevices || !mediaDevices.getDisplayMedia) {
         screenshotInputRef.current?.click();
         return;
       }
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
+      const stream = await mediaDevices.getDisplayMedia({
+        video: { cursor: "always" },
+        audio: false,
       });
       const video = document.createElement("video");
       video.srcObject = stream;
       await video.play();
       const canvas = document.createElement("canvas");
-      const ratio = Math.min(1, 850 / (video.videoWidth || 850));
-      canvas.width = Math.round((video.videoWidth || 850) * ratio);
-      canvas.height = Math.round((video.videoHeight || 480) * ratio);
+      const maxW = 960;
+      const scale = video.videoWidth > maxW ? maxW / video.videoWidth : 1;
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        setQcScreenshot(canvas.toDataURL("image/jpeg", 0.82));
-        triggerToast("🖥️ Stream frame captured!");
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
+        setQcScreenshot(dataUrl);
+        setQcMarker({ x: 50, y: 50 });
       }
-      stream.getTracks().forEach((t) => t.stop());
-    } catch {}
+      stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+      triggerToast("Live frame captured");
+    } catch {
+      screenshotInputRef.current?.click();
+    }
   };
 
-  // Export End-of-Live Meeting Report as CSV
+  const handleQueueForDirector = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!qcTitle.trim()) {
+      triggerToast("Select a preset or enter a brief observation");
+      return;
+    }
+
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "ADD_QC_LOG",
+        log: {
+          type: qcType,
+          severity: qcType === "ACHIEVEMENT" ? "WIN" : qcSeverity,
+          platform: qcPlatform,
+          station: qcStation,
+          title: qcTitle,
+          description: qcDescription,
+          actionToTake: "",
+          assignedTo: "Pending Director",
+          timelineToSolve: "Wait for Director",
+          screenshotUrl: qcScreenshot,
+          markerPos: qcMarker,
+          loggedBy: myIdentity.name,
+        },
+      }),
+    });
+
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.qcLogs) setQcLogs(updated.qcLogs);
+      setQcTitle("");
+      setQcDescription("");
+      setQcScreenshot(null);
+      setQcMarker(null);
+      triggerToast("Added to Technical Director Queue");
+    }
+  };
+
+  const handleDirectorSaveDecision = async (
+    logId: string,
+    statusOverride?: "IN_PROGRESS" | "RESOLVED"
+  ) => {
+    const existing = qcLogs.find((l) => l.id === logId);
+    const defaultOwner =
+      users.find((u) => u.role === existing?.station)?.name ||
+      users[0]?.name ||
+      "Kevin Lim";
+    const draft = directorDrafts[logId] || {
+      actionToTake: existing?.actionToTake || "Adjust station parameter",
+      assignedTo:
+        existing?.assignedTo && existing.assignedTo !== "Pending Director"
+          ? existing.assignedTo
+          : defaultOwner,
+      timelineToSolve:
+        existing?.timelineToSolve &&
+        existing.timelineToSolve !== "Wait for Director"
+          ? existing.timelineToSolve
+          : "Before Saturday Rehearsal",
+    };
+
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "DIRECTOR_DECIDE_QC",
+        id: logId,
+        actionToTake: draft.actionToTake,
+        assignedTo: draft.assignedTo,
+        timelineToSolve: draft.timelineToSolve,
+        status: statusOverride || "IN_PROGRESS",
+      }),
+    });
+
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.qcLogs) setQcLogs(updated.qcLogs);
+      triggerToast("Director decision saved");
+    }
+  };
+
+  const handlePushToRoadmap = async (id: string) => {
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "PUSH_QC_TO_ROADMAP", id }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.qcLogs) setQcLogs(updated.qcLogs);
+      triggerToast("Added to Timeline & Goals");
+    }
+  };
+
   const handleExportMeetingCsv = () => {
     const headers = [
-      "Time",
-      "Type",
+      "Timecode",
+      "Category",
       "Platform",
-      "Station",
-      "QC Observation",
+      "Department",
+      "Observation",
       "Director Action Plan",
-      "Assigned Owner",
-      "Timeline",
+      "Assigned Operator",
+      "Target Timeline",
       "Status",
     ];
     const rows = qcLogs.map((l) => [
@@ -568,10 +868,10 @@ export default function CrewCheckAndQcPage() {
       l.type,
       l.platform,
       l.station,
-      `"${(l.title || "").replace(/"/g, '""')}"`,
+      `"${l.title.replace(/"/g, '""')}"`,
       `"${(l.actionToTake || "Pending Director").replace(/"/g, '""')}"`,
-      `"${l.assignedTo || ""}"`,
-      `"${l.timelineToSolve || ""}"`,
+      l.assignedTo,
+      l.timelineToSolve,
       l.status,
     ]);
     const csv =
@@ -581,17 +881,18 @@ export default function CrewCheckAndQcPage() {
     link.setAttribute("href", encodeURI(csv));
     link.setAttribute(
       "download",
-      `director-qc-meeting-report-${new Date().toISOString().slice(0, 10)}.csv`
+      `post-show-technical-log-${new Date().toISOString().slice(0, 10)}.csv`
     );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    triggerToast("📥 Meeting CSV downloaded!");
+    triggerToast("Technical log CSV exported");
   };
 
-  // Readiness Math
+  // Computed Readiness Metrics
   const totalChecks = checklists.length;
   const completedChecks = checklists.filter((c) => c.checked).length;
+  const pendingCount = totalChecks - completedChecks;
   const overallPct =
     totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
   const is100PercentReady = totalChecks > 0 && completedChecks === totalChecks;
@@ -600,299 +901,262 @@ export default function CrewCheckAndQcPage() {
     (l) => l.status === "WAITING_DIRECTOR"
   ).length;
 
-  const DEPT_THEME: Record<
-    string,
-    {
-      label: string;
-      icon: any;
-      text: string;
-      bar: string;
-      pill: string;
-      filterActive: string;
-      cardUnchecked: string;
-      cardChecked: string;
-      cardSelected: string;
-      checkboxChecked: string;
-    }
-  > = {
-    CAMERA: {
-      label: "Camera",
-      icon: Camera,
-      text: "text-amber-400",
-      bar: "bg-amber-500",
-      pill: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
-      filterActive: "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20",
-      cardUnchecked:
-        "bg-slate-900/95 border-slate-800 border-l-4 border-l-amber-500 hover:border-amber-500/50",
-      cardChecked:
-        "bg-amber-950/35 border-amber-500/60 border-l-4 border-l-amber-400 shadow-sm shadow-amber-500/10",
-      cardSelected: "bg-amber-950/50 border-amber-400 ring-1 ring-amber-400/50",
-      checkboxChecked: "bg-amber-500 text-slate-950",
-    },
-    AUDIO: {
-      label: "Audio",
-      icon: Mic,
-      text: "text-cyan-400",
-      bar: "bg-cyan-400",
-      pill: "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40",
-      filterActive: "bg-cyan-400 text-slate-950 shadow-md shadow-cyan-400/20",
-      cardUnchecked:
-        "bg-slate-900/95 border-slate-800 border-l-4 border-l-cyan-400 hover:border-cyan-400/50",
-      cardChecked:
-        "bg-cyan-950/35 border-cyan-400/60 border-l-4 border-l-cyan-300 shadow-sm shadow-cyan-400/10",
-      cardSelected: "bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50",
-      checkboxChecked: "bg-cyan-400 text-slate-950",
-    },
-    MODERATOR: {
-      label: "Moderator",
-      icon: MessageSquare,
-      text: "text-violet-400",
-      bar: "bg-violet-500",
-      pill: "bg-violet-500/20 text-violet-300 border border-violet-500/40",
-      filterActive: "bg-violet-600 text-white shadow-md shadow-violet-600/20",
-      cardUnchecked:
-        "bg-slate-900/95 border-slate-800 border-l-4 border-l-violet-500 hover:border-violet-500/50",
-      cardChecked:
-        "bg-violet-950/35 border-violet-500/60 border-l-4 border-l-violet-400 shadow-sm shadow-violet-500/10",
-      cardSelected:
-        "bg-violet-950/50 border-violet-400 ring-1 ring-violet-400/50",
-      checkboxChecked: "bg-violet-500 text-white",
-    },
-    QC: {
-      label: "QC",
-      icon: Eye,
-      text: "text-emerald-400",
-      bar: "bg-emerald-500",
-      pill: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
-      filterActive:
-        "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20",
-      cardUnchecked:
-        "bg-slate-900/95 border-slate-800 border-l-4 border-l-emerald-500 hover:border-emerald-500/50",
-      cardChecked:
-        "bg-emerald-950/35 border-emerald-500/60 border-l-4 border-l-emerald-400 shadow-sm shadow-emerald-500/10",
-      cardSelected:
-        "bg-emerald-950/50 border-emerald-400 ring-1 ring-emerald-400/50",
-      checkboxChecked: "bg-emerald-500 text-slate-950",
-    },
-    DIRECTOR: {
-      label: "Director",
-      icon: Clapperboard,
-      text: "text-rose-400",
-      bar: "bg-rose-500",
-      pill: "bg-rose-500/20 text-rose-300 border border-rose-500/40",
-      filterActive: "bg-rose-600 text-white shadow-md shadow-rose-600/20",
-      cardUnchecked:
-        "bg-slate-900/95 border-slate-800 border-l-4 border-l-rose-500 hover:border-rose-500/50",
-      cardChecked:
-        "bg-rose-950/35 border-rose-500/60 border-l-4 border-l-rose-400 shadow-sm shadow-rose-500/10",
-      cardSelected: "bg-rose-950/50 border-rose-400 ring-1 ring-rose-400/50",
-      checkboxChecked: "bg-rose-500 text-white",
-    },
-  };
-
-  const stationsMeta: {
-    role: CrewRole;
-    label: string;
-    icon: any;
-    color: string;
-  }[] = [
-    { role: "CAMERA", label: "Camera", icon: Camera, color: "text-amber-400" },
-    { role: "AUDIO", label: "Audio", icon: Mic, color: "text-cyan-400" },
-    {
-      role: "MODERATOR",
-      label: "Moderator",
-      icon: MessageSquare,
-      color: "text-violet-400",
-    },
-    { role: "QC", label: "QC", icon: Eye, color: "text-emerald-400" },
-    {
-      role: "DIRECTOR",
-      label: "Director",
-      icon: Clapperboard,
-      color: "text-rose-400",
-    },
-  ];
-
   const visibleChecklists = useMemo(() => {
-    if (stationFilter === "ALL") return checklists;
-    return checklists.filter((c) => c.role === stationFilter);
-  }, [checklists, stationFilter]);
+    return checklists.filter((c) => {
+      if (stationFilter !== "ALL" && c.role !== stationFilter) return false;
+      if (phaseFilter !== "ALL" && c.phase !== phaseFilter) return false;
+      if (userFilter !== "ALL" && c.assignedToUserId !== userFilter)
+        return false;
+      return true;
+    });
+  }, [checklists, stationFilter, phaseFilter, userFilter]);
 
   const uncheckedVisible = useMemo(
     () => visibleChecklists.filter((c) => !c.checked),
     [visibleChecklists]
   );
+
   const checkedVisible = useMemo(
     () => visibleChecklists.filter((c) => c.checked),
     [visibleChecklists]
   );
 
-  // Stations that still have pending items (for Director fast reaction)
+  // Stations that still have unverified items
   const pendingStations = useMemo(() => {
-    return stationsMeta
-      .map((st) => {
-        const items = checklists.filter((c) => c.role === st.role);
-        const remaining = items.filter((c) => !c.checked).length;
-        const crew = activeCrew.find((c) => c.role === st.role);
-        return {
-          ...st,
-          remaining,
-          crewName: crew ? crew.name : st.label,
-        };
-      })
-      .filter((s) => s.remaining > 0);
-  }, [checklists, activeCrew]);
+    return ROLES_LIST.map((role) => {
+      const items = checklists.filter((c) => c.role === role);
+      const remaining = items.filter((c) => !c.checked).length;
+      const leadUser = users.find((u) => u.role === role);
+      return {
+        role,
+        label: DEPT_STYLES[role].label,
+        remaining,
+        operatorName: leadUser ? leadUser.name : DEPT_STYLES[role].label,
+        callsign: leadUser ? leadUser.callsign : DEPT_STYLES[role].code,
+      };
+    }).filter((s) => s.remaining > 0);
+  }, [checklists, users]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col w-full">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col w-full antialiased selection:bg-white selection:text-black">
       <Navbar />
 
+      {/* Minimalist Apple-Style Floating Notification Pill */}
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-emerald-400/40 text-xs font-bold">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-white text-black px-4 py-2.5 rounded-full shadow-2xl text-xs font-semibold tracking-tight">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-4 space-y-5">
-        {/* COMPACT TOP BAR: Role Badge + 3 Fast Mode Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                DEPT_THEME[myIdentity.role]?.pill ||
-                "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40"
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>
-                {myIdentity.name} ({myIdentity.role})
+      <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-6">
+        {/* ===================================================================
+            APPLE PRO HEADER BAR & SEGMENTED WORKSPACE SWITCHER
+           =================================================================== */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-white/[0.08]">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                Broadcast Operations
               </span>
-              <span className="text-[10px] underline ml-1 opacity-80">
-                Switch Role
-              </span>
-            </button>
-
-            <span className="text-sm font-extrabold text-white tracking-tight">
-              Crew Check, Fast QC & Director Meeting Hub
-            </span>
+              <span className="text-zinc-700">/</span>
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-zinc-300">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    DEPT_STYLES[myIdentity.role]?.dot || "bg-white"
+                  }`}
+                />
+                <span className="font-medium">{myIdentity.name}</span>
+                <span className="text-zinc-500">·</span>
+                <span className="text-zinc-400">{myIdentity.role}</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("TEAM_ACCOUNTS")}
+                  className="text-zinc-400 hover:text-white underline underline-offset-2 ml-1"
+                >
+                  Switch
+                </button>
+              </div>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-white">
+              Pre-Flight Verification, Stream QC & Team Management
+            </h1>
           </div>
 
-          {/* 3 Primary Fast Tabs */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 overflow-x-auto">
+          {/* Apple Segmented Control (4 Core Views) */}
+          <div className="inline-flex items-center gap-1 bg-[#131316] p-1 rounded-full border border-white/[0.08] overflow-x-auto">
             <button
+              type="button"
               onClick={() => setActiveTab("PRE_LIVE")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                 activeTab === "PRE_LIVE"
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
               }`}
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>1. Pre-Live Check ({overallPct}%)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("QC_PAD")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                activeTab === "QC_PAD"
-                  ? "bg-emerald-600 text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>
-                2. Fast QC & Director Queue
-                {waitingDirectorCount > 0
-                  ? ` (${waitingDirectorCount} Waiting)`
-                  : ""}
+              <span>Pre-Flight Check</span>
+              <span
+                className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                  activeTab === "PRE_LIVE"
+                    ? "bg-black/10 text-black font-bold"
+                    : is100PercentReady
+                    ? "bg-emerald-500/20 text-emerald-300"
+                    : "bg-amber-500/20 text-amber-300"
+                }`}
+              >
+                {overallPct}%
               </span>
             </button>
 
             <button
-              onClick={() => setActiveTab("MEETING_REPORT")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                activeTab === "MEETING_REPORT"
-                  ? "bg-amber-500 text-slate-950"
-                  : "text-slate-400 hover:text-white"
+              type="button"
+              onClick={() => setActiveTab("QC_PAD")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "QC_PAD"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
               }`}
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>3. End-of-Live Meeting Report</span>
+              <span>Live QC & Director Queue</span>
+              {waitingDirectorCount > 0 && (
+                <span
+                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                    activeTab === "QC_PAD"
+                      ? "bg-rose-500 text-white font-bold"
+                      : "bg-rose-500/20 text-rose-300"
+                  }`}
+                >
+                  {waitingDirectorCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("TEAM_ACCOUNTS")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "TEAM_ACCOUNTS"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <span>Team & Accounts</span>
+              <span
+                className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                  activeTab === "TEAM_ACCOUNTS"
+                    ? "bg-black/10 text-black font-bold"
+                    : "bg-white/[0.06] text-zinc-400"
+                }`}
+              >
+                {users.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("MEETING_REPORT")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap ${
+                activeTab === "MEETING_REPORT"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              Post-Show Log
             </button>
           </div>
         </div>
 
         {/* ===================================================================
-            TAB 1: FAST PRE-LIVE CHECK & 100% READY ALERT
+            VIEW 1: PRE-FLIGHT VERIFICATION & GO / NO-GO POLL
            =================================================================== */}
         {activeTab === "PRE_LIVE" && (
-          <div className="space-y-6">
-            {/* AUTOMATIC 100% READY ALERT BANNER */}
+          <div className="space-y-8">
+            {/* MASTER READINESS & GO/NO-GO COMMAND BAR */}
             {is100PercentReady ? (
-              <div className="rounded-2xl p-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-slate-950 shadow-xl shadow-emerald-500/20 border-2 border-emerald-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-950/20 flex items-center justify-center shrink-0">
-                    <BellRing className="w-6 h-6 text-slate-950" />
+              <div className="rounded-2xl p-5 bg-[#0e1914] border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-semibold text-xl tabular-nums">
+                    100%
                   </div>
                   <div>
-                    <div className="text-[11px] font-black uppercase tracking-wider">
-                      100% ALL STATIONS VERIFIED ({completedChecks}/{totalChecks})
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                        All Stations Verified ({completedChecks}/{totalChecks})
+                      </span>
                     </div>
-                    <div className="text-lg sm:text-xl font-black tracking-tight">
-                      🟢 WE ARE READY TO GO LIVE!
+                    <div className="text-lg font-semibold text-white tracking-tight mt-0.5">
+                      System Cleared for Live Broadcast
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <button
+                    type="button"
                     onClick={handleResetChecklists}
-                    className="px-3 py-2 rounded-xl bg-slate-950/20 hover:bg-slate-950/30 text-slate-950 text-xs font-extrabold transition"
+                    className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 text-xs font-medium border border-white/[0.08] transition"
                   >
-                    Reset All
+                    Reset Session
                   </button>
                   <button
+                    type="button"
                     onClick={handleToggleGoLive}
-                    className="px-5 py-2.5 rounded-xl bg-slate-950 text-emerald-400 hover:bg-slate-900 text-xs font-black shadow-lg transition"
+                    className={`px-5 py-2 rounded-full text-xs font-semibold transition ${
+                      directorSignOff.clearedToGoLive
+                        ? "bg-emerald-400 text-black"
+                        : "bg-white text-black hover:bg-zinc-200"
+                    }`}
                   >
                     {directorSignOff.clearedToGoLive
-                      ? `✓ LIVE ON AIR (${directorSignOff.clearedAt})`
-                      : "DIRECTOR: CONFIRM ON AIR"}
+                      ? `On Air Confirmed (${directorSignOff.clearedAt})`
+                      : "Director: Confirm On Air"}
                   </button>
                 </div>
               </div>
             ) : (
-              /* IN-PROGRESS BANNER (< 100%) WITH INSTANT DIRECTOR CALLOUTS */
-              <div className="rounded-2xl p-4 bg-slate-900/95 border-2 border-amber-500/60 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-lg">
-                <div className="flex flex-wrap items-center gap-3.5">
-                  <div className="px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-2xl font-black text-amber-400">
+              <div className="rounded-2xl p-5 bg-[#121215] border border-white/[0.1] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-2xl tabular-nums">
                     {overallPct}%
                   </div>
-                  <div>
-                    <div className="text-sm font-extrabold text-white flex flex-wrap items-center gap-2">
-                      <span>
-                        🚨 {totalChecks - completedChecks} NOT COMPLETED
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      <span className="text-sm font-semibold text-white tracking-tight">
+                        {pendingCount}{" "}
+                        {pendingCount === 1
+                          ? "Check Pending Verification"
+                          : "Checks Pending Verification"}
                       </span>
-                      <span className="text-xs font-semibold text-slate-400">
-                        ({completedChecks}/{totalChecks} Verified)
+                      <span className="text-xs text-zinc-500 tabular-nums">
+                        ({completedChecks} of {totalChecks} verified)
                       </span>
                     </div>
-                    {/* Instant Callout of Which Dept / Crew Member is Holding Up Go-Live */}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                      <span className="text-[11px] font-bold text-rose-300">
-                        Waiting on:
+
+                    {/* Direct Operator Callouts for Technical Director */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] font-medium text-zinc-400">
+                        Holding Go-Live:
                       </span>
                       {pendingStations.map((ps) => {
-                        const theme = DEPT_THEME[ps.role];
+                        const st = DEPT_STYLES[ps.role];
                         return (
                           <button
                             key={ps.role}
+                            type="button"
                             onClick={() => setStationFilter(ps.role)}
-                            className={`px-2 py-0.5 rounded-md text-[11px] font-extrabold transition ${theme.pill}`}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition ${st.pill}`}
                           >
-                            ⚠️ {ps.label}: {ps.crewName} ({ps.remaining} left)
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${st.dot}`}
+                            />
+                            <span>
+                              {ps.label} · {ps.operatorName}
+                            </span>
+                            <span className="font-semibold tabular-nums">
+                              ({ps.remaining} left)
+                            </span>
                           </button>
                         );
                       })}
@@ -900,16 +1164,18 @@ export default function CrewCheckAndQcPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <button
+                    type="button"
                     onClick={() => handleCheckAllStation("ALL")}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-md transition"
+                    className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                   >
-                    ✓ Complete All Remaining ({totalChecks - completedChecks})
+                    Verify All Remaining ({pendingCount})
                   </button>
                   <button
+                    type="button"
                     onClick={handleResetChecklists}
-                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+                    className="px-4 py-2 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/[0.08] text-xs font-medium transition"
                   >
                     Reset
                   </button>
@@ -917,68 +1183,82 @@ export default function CrewCheckAndQcPage() {
               </div>
             )}
 
-            {/* 5 Color-Coded Department Station Cards (Highlights Incomplete Stations) */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {stationsMeta.map((st) => {
-                const theme = DEPT_THEME[st.role];
-                const Icon = st.icon;
-                const items = checklists.filter((c) => c.role === st.role);
+            {/* 5 DEPARTMENT GO / NO-GO STATION CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+              {ROLES_LIST.map((role) => {
+                const style = DEPT_STYLES[role];
+                const items = checklists.filter((c) => c.role === role);
                 const done = items.filter((c) => c.checked).length;
                 const remaining = items.length - done;
                 const pct =
                   items.length > 0
                     ? Math.round((done / items.length) * 100)
                     : 0;
-                const crew = activeCrew.find((c) => c.role === st.role);
-                const isSelected = stationFilter === st.role;
+                const leadUser = users.find((u) => u.role === role);
+                const isSelected = stationFilter === role;
 
                 return (
                   <div
-                    key={st.role}
+                    key={role}
                     onClick={() =>
-                      setStationFilter(
-                        stationFilter === st.role ? "ALL" : st.role
-                      )
+                      setStationFilter(stationFilter === role ? "ALL" : role)
                     }
-                    className={`cursor-pointer rounded-xl p-3.5 border transition ${
+                    className={`cursor-pointer rounded-2xl p-4 transition flex flex-col justify-between ${
+                      style.topBorder
+                    } ${
                       isSelected
-                        ? theme.cardSelected
+                        ? style.selectedCard
                         : remaining > 0
-                        ? "bg-rose-950/25 border-2 border-amber-500/80 shadow-md shadow-amber-500/10"
-                        : theme.cardChecked
+                        ? "bg-[#151113] border border-rose-500/40 hover:border-rose-400/60"
+                        : "bg-[#121215] border border-white/[0.08] hover:border-white/[0.18]"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                        <Icon className={`w-4 h-4 ${theme.text}`} />
-                        {st.label}
-                      </span>
-                      {remaining > 0 ? (
-                        <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-black animate-pulse">
-                          ⚠️ {remaining} LEFT
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full ${style.dot}`}
+                          />
+                          <span className="text-xs font-semibold text-white tracking-tight">
+                            {style.label}
+                          </span>
+                        </div>
+                        {remaining > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-semibold tabular-nums">
+                            {remaining} Pending
+                          </span>
+                        ) : (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${style.pill}`}
+                          >
+                            GO
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex items-baseline justify-between">
+                        <span className="text-2xl font-semibold text-white tabular-nums tracking-tight">
+                          {pct}%
                         </span>
-                      ) : (
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-black ${theme.pill}`}
-                        >
-                          ✓ DONE
+                        <span className="text-[11px] text-zinc-400 tabular-nums">
+                          {done} of {items.length}
                         </span>
-                      )}
+                      </div>
+
+                      <div className="w-full h-1 bg-white/[0.07] rounded-full my-2.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${style.bar}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
                     </div>
 
-                    <div className="w-full h-2 bg-slate-800 rounded-full my-2.5 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${theme.bar}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-slate-300">
-                      <span className="truncate font-semibold">
-                        {crew ? `● ${crew.name}` : "No login"}
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/[0.05] text-zinc-400">
+                      <span className="truncate font-medium text-zinc-300">
+                        {leadUser ? leadUser.name : "Unassigned"}
                       </span>
-                      <span className={`font-extrabold ${theme.text}`}>
-                        {done}/{items.length} ({pct}%)
+                      <span className="text-[10px] font-mono text-zinc-500">
+                        {leadUser ? leadUser.callsign : style.code}
                       </span>
                     </div>
                   </div>
@@ -986,37 +1266,39 @@ export default function CrewCheckAndQcPage() {
               })}
             </div>
 
-            {/* Department Color Filter & Quick Actions Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            {/* FILTER BAR: DEPARTMENT, T-MINUS PHASE, AND OPERATOR */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[#121215] border border-white/[0.08] rounded-2xl p-3">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
+                  type="button"
                   onClick={() => setStationFilter("ALL")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
                     stationFilter === "ALL"
-                      ? "bg-white text-slate-950 shadow-sm"
-                      : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-white"
+                      ? "bg-white text-black font-semibold"
+                      : "text-zinc-400 hover:text-white bg-white/[0.03]"
                   }`}
                 >
-                  All ({totalChecks})
+                  All Stations ({totalChecks})
                 </button>
-                {stationsMeta.map((st) => {
-                  const theme = DEPT_THEME[st.role];
-                  const isSelected = stationFilter === st.role;
-                  const stRemaining = checklists.filter(
-                    (c) => c.role === st.role && !c.checked
+                {ROLES_LIST.map((role) => {
+                  const style = DEPT_STYLES[role];
+                  const isSelected = stationFilter === role;
+                  const roleRemaining = checklists.filter(
+                    (c) => c.role === role && !c.checked
                   ).length;
                   return (
                     <button
-                      key={st.role}
-                      onClick={() => setStationFilter(st.role)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 ${
-                        isSelected ? theme.filterActive : theme.pill
+                      key={role}
+                      type="button"
+                      onClick={() => setStationFilter(role)}
+                      className={`px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1.5 ${
+                        isSelected ? style.filterActive : style.pill
                       }`}
                     >
-                      <span>{st.label}</span>
-                      {stRemaining > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black">
-                          {stRemaining}
+                      <span>{style.label}</span>
+                      {roleRemaining > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-semibold tabular-nums">
+                          {roleRemaining}
                         </span>
                       )}
                     </button>
@@ -1024,736 +1306,1283 @@ export default function CrewCheckAndQcPage() {
                 })}
               </div>
 
-              <div className="flex items-center gap-2">
-                {stationFilter !== "ALL" && (
-                  <button
-                    onClick={() => handleCheckAllStation(stationFilter)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition ${
-                      DEPT_THEME[stationFilter]?.filterActive ||
-                      "bg-emerald-600 text-white"
-                    }`}
-                  >
-                    ✓ Check All {stationFilter}
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowAddCheckModal(true)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+              <div className="flex flex-wrap items-center gap-2">
+                {/* T-Minus Phase Filter */}
+                <select
+                  value={phaseFilter}
+                  onChange={(e) => setPhaseFilter(e.target.value as any)}
+                  aria-label="Filter by T-Minus Phase"
+                  className="bg-[#18181c] border border-white/[0.1] rounded-full px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/30"
                 >
-                  + Add Check
+                  <option value="ALL">All Phases (T-60m to T-5m)</option>
+                  <option value="T-60M">T-60M · Rig & Signal</option>
+                  <option value="T-30M">T-30M · Optics & Audio</option>
+                  <option value="T-15M">T-15M · Stream & Cues</option>
+                  <option value="T-5M">T-5M · Final Go Poll</option>
+                </select>
+
+                {/* Operator Filter */}
+                <select
+                  value={userFilter}
+                  onChange={(e) => setUserFilter(e.target.value)}
+                  aria-label="Filter by Assigned Operator"
+                  className="bg-[#18181c] border border-white/[0.1] rounded-full px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/30"
+                >
+                  <option value="ALL">All Operators</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      Assigned: {u.name} ({u.role})
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddCheckModal(true)}
+                  className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                >
+                  + Assign Check
                 </button>
               </div>
             </div>
 
             {/* ===============================================================
-                ZONE 1 (TOP PRIORITY): 🚨 NOT COMPLETED — NEEDS ACTION
+                SECTION 1 (TOP PRIORITY): PENDING VERIFICATION — NEEDS ACTION
                =============================================================== */}
             {uncheckedVisible.length > 0 && (
-              <div className="rounded-2xl p-5 bg-rose-950/20 border-2 border-rose-500/60 shadow-xl shadow-rose-950/30 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-500/30 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="px-2.5 py-1 rounded-lg bg-rose-500 text-white text-xs font-black uppercase tracking-wide animate-pulse">
-                      🚨 NOT COMPLETED ({uncheckedVisible.length})
-                    </span>
-                    <span className="text-xs sm:text-sm font-bold text-rose-200">
-                      Action Required Before Go-Live — Tap any item to mark done
-                    </span>
+              <section className="rounded-3xl p-6 bg-[#151113] border border-rose-500/35 space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-500/20 pb-4">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-400">
+                        Pending Verification · {uncheckedVisible.length}{" "}
+                        Remaining
+                      </span>
+                    </div>
+                    <h2 className="text-base font-semibold text-white tracking-tight">
+                      Incomplete Pre-Flight Checks Blocking Go-Live
+                    </h2>
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => handleCheckAllStation(stationFilter)}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition shadow"
+                    className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                   >
-                    ✓ Mark All {uncheckedVisible.length} Done Now
+                    Verify All {uncheckedVisible.length} Now
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {uncheckedVisible.map((item) => {
-                    const theme = DEPT_THEME[item.role] || DEPT_THEME.CAMERA;
-                    const crew = activeCrew.find((c) => c.role === item.role);
-
+                    const style =
+                      DEPT_STYLES[item.role] || DEPT_STYLES.CAMERA;
                     return (
                       <div
                         key={item.id}
-                        onClick={() => handleToggleCheck(item.id)}
-                        className="cursor-pointer rounded-xl p-4 bg-slate-950/95 border-2 border-rose-500/80 hover:border-amber-400 shadow-lg flex items-center justify-between gap-3 select-none transition"
+                        className={`rounded-2xl p-4 bg-[#0c0c0e] border border-rose-500/40 ${style.leftBorder} flex flex-col justify-between gap-4 transition hover:border-rose-400`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-rose-500/20 border-2 border-rose-400 flex items-center justify-center shrink-0 text-rose-300 font-black text-xs">
-                            !
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs sm:text-sm font-extrabold text-white truncate">
-                              {item.task}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
                               <span
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${theme.pill}`}
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${style.pill}`}
                               >
                                 {item.role}
                               </span>
-                              <span className="text-[10px] font-bold text-amber-300">
-                                👤 {crew ? crew.name : item.role}
+                              <span className="text-[10px] font-mono text-zinc-400 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
+                                {item.phase || "T-30M"}
                               </span>
-                              <span className="text-[10px] text-slate-400 truncate">
-                                • {item.detail}
-                              </span>
+                            </div>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-400">
+                              Pending
+                            </span>
+                          </div>
+
+                          <div
+                            onClick={() => handleToggleCheck(item.id)}
+                            className="cursor-pointer group"
+                          >
+                            <div className="text-sm font-semibold text-white group-hover:text-zinc-200 tracking-tight">
+                              {item.task}
+                            </div>
+                            <div className="text-xs text-zinc-400 mt-0.5">
+                              {item.detail}
                             </div>
                           </div>
                         </div>
 
-                        <span className="px-2.5 py-1.5 rounded-lg bg-rose-500 hover:bg-emerald-500 text-white hover:text-slate-950 text-[10px] font-black uppercase shrink-0 transition shadow">
-                          Tap Done
-                        </span>
+                        {/* Bottom Action Row: Reassign Operator + 1-Tap Verify */}
+                        <div className="flex items-center justify-between gap-2 pt-3 border-t border-white/[0.06]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[11px] text-zinc-500 shrink-0">
+                              Owner:
+                            </span>
+                            <select
+                              value={item.assignedToUserId || ""}
+                              onChange={(e) =>
+                                handleReassignCheckItem(
+                                  item.id,
+                                  e.target.value
+                                )
+                              }
+                              aria-label="Assign operator"
+                              className="bg-white/[0.04] border border-white/[0.1] rounded-lg px-2 py-1 text-[11px] font-medium text-zinc-200 focus:outline-none focus:border-white/30 truncate"
+                            >
+                              {users.map((u) => (
+                                <option
+                                  key={u.id}
+                                  value={u.id}
+                                  className="bg-[#121215] text-white"
+                                >
+                                  {u.name} ({u.callsign})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCheck(item.id)}
+                            className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0 transition"
+                          >
+                            Verify
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
+              </section>
             )}
 
             {/* ===============================================================
-                ZONE 2 (SEPARATED BELOW): ✅ COMPLETED & VERIFIED BY DEPT
+                SECTION 2 (SEPARATED BELOW): VERIFIED & LOCKED BY DEPARTMENT
                =============================================================== */}
             {checkedVisible.length > 0 && (
-              <div className="rounded-2xl p-5 bg-slate-900/50 border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-black uppercase">
-                      ✅ COMPLETED & VERIFIED ({checkedVisible.length})
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      Color-coded by department • Tap any item to uncheck
-                    </span>
+              <section className="rounded-3xl p-6 bg-[#111114] border border-white/[0.08] space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-4">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                        Verified & Locked · {checkedVisible.length} Completed
+                      </span>
+                    </div>
+                    <h2 className="text-base font-semibold text-white tracking-tight">
+                      Completed Subsystem Checks by Department
+                    </h2>
                   </div>
+                  <span className="text-xs text-zinc-500">
+                    Click any card to revert to pending
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                   {checkedVisible.map((item) => {
-                    const theme = DEPT_THEME[item.role] || DEPT_THEME.CAMERA;
+                    const style =
+                      DEPT_STYLES[item.role] || DEPT_STYLES.CAMERA;
                     return (
                       <div
                         key={item.id}
                         onClick={() => handleToggleCheck(item.id)}
-                        className={`cursor-pointer rounded-xl p-3.5 border transition flex items-center justify-between gap-3 select-none ${theme.cardChecked}`}
+                        className={`cursor-pointer rounded-2xl p-4 transition flex items-center justify-between gap-3 select-none ${style.verifiedCard}`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-3.5 min-w-0">
                           <div
-                            className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition ${theme.checkboxChecked}`}
+                            className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold ${style.checkSquare}`}
                           >
-                            <Check className="w-4 h-4 stroke-[3]" />
+                            ✓
                           </div>
                           <div className="min-w-0">
-                            <div className="text-xs font-bold text-white truncate">
+                            <div className="text-[13px] font-semibold text-white truncate tracking-[-0.01em]">
                               {item.task}
                             </div>
-                            <div className="flex items-center gap-1.5 mt-1">
+                            <div className="flex items-center gap-2 mt-1">
                               <span
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${theme.pill}`}
+                                className={`px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0 ${style.pill}`}
                               >
                                 {item.role}
                               </span>
-                              <span className="text-[10px] text-slate-300 truncate">
+                              <span className="text-[11px] text-zinc-400 truncate">
                                 {item.detail}
                               </span>
                             </div>
                           </div>
                         </div>
 
-                        {item.checkedBy && (
-                          <span
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 ${theme.pill}`}
+                        <div className="text-right shrink-0">
+                          <div
+                            className={`text-[11px] font-semibold ${style.text}`}
                           >
-                            ✓ {item.checkedBy}
+                            {item.checkedBy || item.assignedToName}
+                          </div>
+                          {item.checkedAt && (
+                            <div className="text-[10px] text-zinc-500 tabular-nums">
+                              {item.checkedAt}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+
+        {/* ===================================================================
+            VIEW 2: LIVE STREAM TELEMETRY, FAST QC PAD & DIRECTOR QUEUE
+           =================================================================== */}
+        {activeTab === "QC_PAD" && (
+          <div className="space-y-6">
+            {/* Broadcast Stream Telemetry Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span>YouTube CDN Ingest</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                </div>
+                <div className="text-lg font-semibold text-white tabular-nums mt-1">
+                  1080p60 · 6.8 Mbps
+                </div>
+                <div className="text-[11px] text-emerald-400 mt-0.5 tabular-nums">
+                  0.0% Dropped Frames
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span>Instagram Vertical RTMP</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                </div>
+                <div className="text-lg font-semibold text-white tabular-nums mt-1">
+                  9:16 Crop · 4.2 Mbps
+                </div>
+                <div className="text-[11px] text-zinc-400 mt-0.5">
+                  Center Grid Active
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span>Program Loudness</span>
+                  <span className="w-2 h-2 rounded-full bg-sky-400" />
+                </div>
+                <div className="text-lg font-semibold text-white tabular-nums mt-1">
+                  -14.2 LUFS
+                </div>
+                <div className="text-[11px] text-sky-400 mt-0.5 tabular-nums">
+                  True Peak -1.8 dBTP
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span>Director Queue</span>
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      waitingDirectorCount > 0
+                        ? "bg-amber-400"
+                        : "bg-emerald-400"
+                    }`}
+                  />
+                </div>
+                <div className="text-lg font-semibold text-white tabular-nums mt-1">
+                  {waitingDirectorCount} Pending
+                </div>
+                <div className="text-[11px] text-zinc-400 mt-0.5 tabular-nums">
+                  {qcLogs.length} Total Logged Today
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* LEFT (5 Cols): FAST 1-TAP QC INCIDENT LOGGER */}
+              <div className="lg:col-span-5 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                      Quality Control Station
+                    </span>
+                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                      Rapid Incident & Frame Capture
+                    </h2>
+                  </div>
+                  <span className="text-[11px] text-zinc-400 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08]">
+                    Routes to Director
+                  </span>
+                </div>
+
+                {/* 1. Platform Segmented Bar */}
+                <div className="grid grid-cols-3 gap-1.5 bg-[#09090b] p-1 rounded-full border border-white/[0.08]">
+                  {(["INSTAGRAM", "YOUTUBE", "BOTH"] as const).map((plat) => (
+                    <button
+                      key={plat}
+                      type="button"
+                      onClick={() => setQcPlatform(plat)}
+                      className={`py-1.5 rounded-full text-xs font-medium transition ${
+                        qcPlatform === plat
+                          ? "bg-white text-black font-semibold"
+                          : "text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      {plat === "INSTAGRAM"
+                        ? "Instagram 9:16"
+                        : plat === "YOUTUBE"
+                        ? "YouTube 16:9"
+                        : "Both Streams"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 2. 1-Tap Broadcast Presets */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-medium text-zinc-400 block">
+                    One-Tap Observation Presets
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {QUICK_QC_PRESETS.map((preset) => {
+                      const active = qcTitle === preset.label;
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => handleSelectQcPreset(preset)}
+                          className={`text-left px-3 py-2.5 rounded-xl text-xs font-medium border transition ${
+                            active
+                              ? "bg-white text-black border-white font-semibold"
+                              : "bg-[#18181c] hover:bg-white/[0.06] text-zinc-200 border-white/[0.08]"
+                          }`}
+                        >
+                          <div className="truncate">{preset.label}</div>
+                          <div
+                            className={`text-[10px] mt-0.5 ${
+                              active ? "text-zinc-700" : "text-zinc-500"
+                            }`}
+                          >
+                            {preset.station} · {preset.type}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Custom Observation & Department */}
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={qcType}
+                      onChange={(e) => setQcType(e.target.value as any)}
+                      aria-label="Log Type"
+                      className="bg-[#18181c] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-white focus:outline-none"
+                    >
+                      <option value="ISSUE">Issue / Fault</option>
+                      <option value="IMPROVEMENT">Refinement</option>
+                      <option value="ACHIEVEMENT">Broadcast Win</option>
+                    </select>
+                    <select
+                      value={qcStation}
+                      onChange={(e) => setQcStation(e.target.value as any)}
+                      aria-label="Station"
+                      className="bg-[#18181c] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-white focus:outline-none"
+                    >
+                      <option value="CAMERA">Camera</option>
+                      <option value="AUDIO">Audio</option>
+                      <option value="MODERATOR">Moderator</option>
+                      <option value="LIGHTING">Lighting</option>
+                      <option value="NETWORK">Network</option>
+                    </select>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Observation headline..."
+                    value={qcTitle}
+                    onChange={(e) => setQcTitle(e.target.value)}
+                    className="w-full bg-[#18181c] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
+                  />
+                </div>
+
+                {/* 4. Frame Capture / Screenshot */}
+                <div className="bg-[#09090b] border border-white/[0.08] rounded-2xl p-3.5 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-zinc-300">
+                      Reference Frame (Upload, Grab or Paste)
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={screenshotInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleScreenshotUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => screenshotInputRef.current?.click()}
+                        className="px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-[11px] font-medium border border-white/[0.08] transition"
+                      >
+                        Upload File
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCaptureScreen}
+                        className="px-3 py-1 rounded-full bg-white text-black hover:bg-zinc-200 text-[11px] font-semibold transition"
+                      >
+                        Capture Stream
+                      </button>
+                    </div>
+                  </div>
+
+                  {qcScreenshot && (
+                    <div
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setQcMarker({
+                          x: Math.round(
+                            ((e.clientX - rect.left) / rect.width) * 100
+                          ),
+                          y: Math.round(
+                            ((e.clientY - rect.top) / rect.height) * 100
+                          ),
+                        });
+                      }}
+                      className="relative cursor-crosshair rounded-xl overflow-hidden border border-white/[0.1] bg-black max-h-44 flex items-center justify-center"
+                    >
+                      <img
+                        src={qcScreenshot}
+                        alt="Captured stream frame"
+                        className="max-h-44 w-auto object-contain"
+                      />
+                      {qcMarker && (
+                        <div
+                          style={{
+                            left: `${qcMarker.x}%`,
+                            top: `${qcMarker.y}%`,
+                          }}
+                          className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 border-rose-500 bg-rose-500/25"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleQueueForDirector()}
+                  className="w-full py-3 rounded-full bg-white text-black hover:bg-zinc-200 font-semibold text-xs tracking-tight transition"
+                >
+                  Send to Technical Director Queue
+                </button>
+              </div>
+
+              {/* RIGHT (7 Cols): TECHNICAL DIRECTOR DECISION QUEUE */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#121215] border border-white/[0.08] rounded-3xl p-5">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
+                      Technical Director Review
+                    </span>
+                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                      Incident & Action Assignment Queue ({waitingDirectorCount}{" "}
+                      Awaiting Decision)
+                    </h2>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("MEETING_REPORT")}
+                    className="px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.08] text-xs font-medium transition"
+                  >
+                    Open Post-Show Log
+                  </button>
+                </div>
+
+                <div className="space-y-3.5 max-h-[680px] overflow-y-auto pr-1">
+                  {qcLogs.map((log) => {
+                    const isWaiting = log.status === "WAITING_DIRECTOR";
+                    const stStyle =
+                      DEPT_STYLES[log.station] || DEPT_STYLES.CAMERA;
+                    const defaultOwner =
+                      users.find((u) => u.role === log.station)?.name ||
+                      users[0]?.name ||
+                      "Kevin Lim";
+                    const draft = directorDrafts[log.id] || {
+                      actionToTake: log.actionToTake || "",
+                      assignedTo:
+                        log.assignedTo && log.assignedTo !== "Pending Director"
+                          ? log.assignedTo
+                          : defaultOwner,
+                      timelineToSolve:
+                        log.timelineToSolve &&
+                        log.timelineToSolve !== "Wait for Director"
+                          ? log.timelineToSolve
+                          : "Before Saturday Rehearsal",
+                    };
+
+                    return (
+                      <div
+                        key={log.id}
+                        className={`rounded-2xl p-5 border transition space-y-4 ${
+                          stStyle.leftBorder
+                        } ${
+                          isWaiting
+                            ? "bg-[#151210] border-amber-500/40"
+                            : "bg-[#121215] border-white/[0.08]"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+                                log.type === "ISSUE"
+                                  ? "bg-rose-500/15 text-rose-300 border border-rose-500/25"
+                                  : log.type === "ACHIEVEMENT"
+                                  ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                                  : "bg-amber-500/15 text-amber-300 border border-amber-500/25"
+                              }`}
+                            >
+                              {log.type}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${stStyle.pill}`}
+                            >
+                              {log.station} · {log.platform}
+                            </span>
+                            <span className="text-[11px] text-zinc-500 tabular-nums">
+                              {log.streamTimestamp}
+                            </span>
+                          </div>
+
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                              isWaiting
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                : log.status === "RESOLVED"
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : "bg-white/[0.06] text-zinc-300"
+                            }`}
+                          >
+                            {isWaiting
+                              ? "Awaiting Director"
+                              : log.status === "RESOLVED"
+                              ? "Resolved"
+                              : "Assigned"}
                           </span>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-white tracking-tight">
+                              {log.title}
+                            </div>
+                            {log.description && (
+                              <div className="text-xs text-zinc-400 mt-1">
+                                {log.description}
+                              </div>
+                            )}
+                          </div>
+
+                          {log.screenshotUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewImageLog(log)}
+                              className="w-28 h-16 rounded-xl overflow-hidden border border-white/[0.12] shrink-0 relative bg-black"
+                            >
+                              <img
+                                src={log.screenshotUrl}
+                                alt="QC Frame"
+                                className="w-full h-full object-cover"
+                              />
+                              <span className="absolute bottom-0 inset-x-0 bg-black/80 text-[9px] text-center text-zinc-200 py-0.5 font-medium">
+                                Inspect Frame
+                              </span>
+                            </button>
+                          )}
+                        </div>
+
+                        {log.type !== "ACHIEVEMENT" && (
+                          <div className="bg-[#09090b] border border-white/[0.07] rounded-xl p-3.5 space-y-3">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mr-1">
+                                Presets:
+                              </span>
+                              {DIRECTOR_ACTION_PRESETS.map((act) => (
+                                <button
+                                  key={act}
+                                  type="button"
+                                  onClick={() =>
+                                    setDirectorDrafts((prev) => ({
+                                      ...prev,
+                                      [log.id]: {
+                                        ...draft,
+                                        actionToTake: act,
+                                      },
+                                    }))
+                                  }
+                                  className="px-2.5 py-1 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[10px] text-zinc-300 hover:text-white transition"
+                                >
+                                  {act}
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                              <input
+                                type="text"
+                                placeholder="Director directive..."
+                                value={draft.actionToTake}
+                                onChange={(e) =>
+                                  setDirectorDrafts((prev) => ({
+                                    ...prev,
+                                    [log.id]: {
+                                      ...draft,
+                                      actionToTake: e.target.value,
+                                    },
+                                  }))
+                                }
+                                className="sm:col-span-5 bg-[#141418] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none"
+                              />
+
+                              <select
+                                value={draft.assignedTo}
+                                onChange={(e) =>
+                                  setDirectorDrafts((prev) => ({
+                                    ...prev,
+                                    [log.id]: {
+                                      ...draft,
+                                      assignedTo: e.target.value,
+                                    },
+                                  }))
+                                }
+                                aria-label="Assign to operator"
+                                className="sm:col-span-3 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                              >
+                                {users.map((u) => (
+                                  <option key={u.id} value={u.name}>
+                                    {u.name} ({u.role})
+                                  </option>
+                                ))}
+                              </select>
+
+                              <select
+                                value={draft.timelineToSolve}
+                                onChange={(e) =>
+                                  setDirectorDrafts((prev) => ({
+                                    ...prev,
+                                    [log.id]: {
+                                      ...draft,
+                                      timelineToSolve: e.target.value,
+                                    },
+                                  }))
+                                }
+                                aria-label="Target timeline"
+                                className="sm:col-span-2 bg-[#141418] border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs text-amber-300 focus:outline-none"
+                              >
+                                <option value="Immediate">Immediate</option>
+                                <option value="Before Saturday Rehearsal">
+                                  Saturday
+                                </option>
+                                <option value="By Next Sunday">Next Sun</option>
+                              </select>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDirectorSaveDecision(
+                                    log.id,
+                                    log.status === "IN_PROGRESS"
+                                      ? "RESOLVED"
+                                      : "IN_PROGRESS"
+                                  )
+                                }
+                                className="sm:col-span-2 py-1.5 px-3 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                              >
+                                {isWaiting
+                                  ? "Assign"
+                                  : log.status === "IN_PROGRESS"
+                                  ? "Resolve"
+                                  : "Update"}
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
                   })}
                 </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 
         {/* ===================================================================
-            TAB 2: FAST 1-TAP QC PAD & DIRECTOR DECISION QUEUE
+            VIEW 3: USER ACCOUNT MANAGEMENT, ROLES & TASK ASSIGNMENT
            =================================================================== */}
-        {activeTab === "QC_PAD" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* LEFT (5 Cols): QC 1-TAP RAPID LOGGER (No Action/Owner typing needed!) */}
-            <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3.5">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase text-emerald-400">
-                    STEP 1 • FOR QUALITY CHECKER (QC)
-                  </span>
-                  <h2 className="text-sm font-bold text-white">
-                    Fast 1-Tap Live Issue & Screenshot Pad
-                  </h2>
-                </div>
-                <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-semibold">
-                  Queues for Director
-                </span>
-              </div>
-
-              {/* 1. Platform Toggle */}
-              <div className="grid grid-cols-3 gap-2">
-                {(["INSTAGRAM", "YOUTUBE", "BOTH"] as const).map((plat) => (
-                  <button
-                    key={plat}
-                    type="button"
-                    onClick={() => setQcPlatform(plat)}
-                    className={`py-2 rounded-xl text-xs font-bold border transition ${
-                      qcPlatform === plat
-                        ? plat === "INSTAGRAM"
-                          ? "bg-pink-600 text-white border-pink-400"
-                          : plat === "YOUTUBE"
-                          ? "bg-red-600 text-white border-red-400"
-                          : "bg-indigo-600 text-white border-indigo-400"
-                        : "bg-slate-950 text-slate-400 border-slate-800"
-                    }`}
-                  >
-                    {plat === "INSTAGRAM"
-                      ? "📸 IG Live"
-                      : plat === "YOUTUBE"
-                      ? "▶️ YT Live"
-                      : "🌐 Both"}
-                  </button>
-                ))}
-              </div>
-
-              {/* 2. Instant 1-Tap Issue / Win Chips */}
+        {activeTab === "TEAM_ACCOUNTS" && (
+          <div className="space-y-6">
+            {/* Top Roster Header & Add Account Trigger */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#121215] border border-white/[0.08] rounded-3xl p-6">
               <div>
-                <div className="text-[11px] font-bold text-slate-400 mb-1.5">
-                  Tap Issue or Achievement (Auto-Fills):
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {QUICK_QC_CHIPS.map((chip) => (
-                    <button
-                      key={chip.label}
-                      type="button"
-                      onClick={() => handleSelectQcChip(chip)}
-                      className={`text-left px-2.5 py-2 rounded-xl text-[11px] font-bold border transition truncate ${
-                        qcTitle === chip.label
-                          ? "bg-indigo-600 text-white border-indigo-400"
-                          : "bg-slate-950 hover:bg-slate-800 text-slate-200 border-slate-800"
-                      }`}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  Identity, Access & Task Routing
+                </span>
+                <h2 className="text-lg font-semibold text-white tracking-tight mt-0.5">
+                  Production Team Accounts & Role Assignments ({users.length}{" "}
+                  Operators)
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Manage operator roles, permissions, hardware stations, and
+                  assign pre-flight or live tasks directly to each user.
+                </p>
               </div>
 
-              {/* 3. Short Title & Optional Note */}
-              <div className="space-y-2">
-                <div className="flex gap-2">
+              <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCheckModal(true)}
+                  className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/[0.1] text-xs font-medium transition"
+                >
+                  + Assign Checklist Task
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewUserForm(!showNewUserForm)}
+                  className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                >
+                  {showNewUserForm ? "Cancel" : "+ New User Account"}
+                </button>
+              </div>
+            </div>
+
+            {/* Collapsible Create User Account Drawer */}
+            {showNewUserForm && (
+              <form
+                onSubmit={handleCreateUser}
+                className="rounded-3xl p-6 bg-[#141418] border border-white/[0.12] space-y-4"
+              >
+                <div className="text-sm font-semibold text-white">
+                  Create Operator Account
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Full Name (e.g. Marcus Tan)"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Callsign (e.g. CAM-02)"
+                    value={newUserCallsign}
+                    onChange={(e) => setNewUserCallsign(e.target.value)}
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+                  />
                   <select
-                    value={qcType}
-                    onChange={(e) => setQcType(e.target.value as any)}
-                    className="bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-white"
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value as CrewRole)}
+                    aria-label="Department Role"
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
                   >
-                    <option value="ISSUE">🚨 Issue</option>
-                    <option value="IMPROVEMENT">💡 Improve</option>
-                    <option value="ACHIEVEMENT">🏆 Win</option>
+                    <option value="CAMERA">Department: Camera</option>
+                    <option value="AUDIO">Department: Audio</option>
+                    <option value="MODERATOR">Department: Moderator</option>
+                    <option value="QC">Department: Quality Control</option>
+                    <option value="DIRECTOR">Department: Director</option>
                   </select>
                   <select
-                    value={qcStation}
-                    onChange={(e) => setQcStation(e.target.value as any)}
-                    className="bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-white"
+                    value={newUserPermission}
+                    onChange={(e) =>
+                      setNewUserPermission(e.target.value as UserPermission)
+                    }
+                    aria-label="Access Permission"
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
                   >
-                    <option value="CAMERA">Camera</option>
-                    <option value="AUDIO">Audio</option>
-                    <option value="MODERATOR">Moderator</option>
-                    <option value="LIGHTING">Lighting</option>
-                    <option value="NETWORK">Network</option>
+                    <option value="OPERATOR">Permission: Operator</option>
+                    <option value="LEAD">Permission: Department Lead</option>
+                    <option value="ADMIN">Permission: Admin / Director</option>
                   </select>
                   <input
                     type="text"
-                    placeholder="Or type short observation..."
-                    value={qcTitle}
-                    onChange={(e) => setQcTitle(e.target.value)}
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                    placeholder="Station / Hardware (e.g. Cam 2 PTZ)"
+                    value={newUserStation}
+                    onChange={(e) => setNewUserStation(e.target.value)}
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
                   />
-                </div>
-              </div>
-
-              {/* 4. Fast Screenshot Attach / Capture */}
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold text-slate-300">
-                    📸 Screenshot (Upload, Capture or Ctrl+V)
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      ref={screenshotInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleScreenshotUpload}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => screenshotInputRef.current?.click()}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-bold flex items-center gap-1"
-                    >
-                      <Upload className="w-3 h-3" /> Upload
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCaptureScreen}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 text-[11px] font-bold flex items-center gap-1"
-                    >
-                      <Monitor className="w-3 h-3" /> Grab Screen
-                    </button>
-                  </div>
-                </div>
-
-                {qcScreenshot && (
-                  <div
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setQcMarker({
-                        x: Math.round(
-                          ((e.clientX - rect.left) / rect.width) * 100
-                        ),
-                        y: Math.round(
-                          ((e.clientY - rect.top) / rect.height) * 100
-                        ),
-                      });
-                    }}
-                    className="relative cursor-crosshair rounded-lg overflow-hidden border border-slate-700 bg-black max-h-40 flex items-center justify-center"
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold py-2 px-4 transition"
                   >
-                    <img
-                      src={qcScreenshot}
-                      alt="Preview"
-                      className="max-h-40 w-auto object-contain"
-                    />
-                    {qcMarker && (
-                      <div
-                        style={{
-                          left: `${qcMarker.x}%`,
-                          top: `${qcMarker.y}%`,
-                        }}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 border-red-500 bg-red-500/30 animate-pulse"
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* 5. 1-Click Send to Director Queue */}
-              <button
-                type="button"
-                onClick={() => handleQueueForDirector()}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition"
-              >
-                <Zap className="w-4 h-4" />
-                <span>+ SEND TO DIRECTOR QUEUE</span>
-              </button>
-            </div>
-
-            {/* RIGHT (7 Cols): DIRECTOR DECISION QUEUE */}
-            <div className="lg:col-span-7 space-y-3">
-              <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase text-amber-400">
-                    STEP 2 • FOR BROADCAST DIRECTOR
-                  </span>
-                  <h2 className="text-sm font-bold text-white">
-                    Director Decision Queue ({waitingDirectorCount} Waiting
-                    for Director Update)
-                  </h2>
+                    Create Account
+                  </button>
                 </div>
+              </form>
+            )}
 
-                <button
-                  onClick={() => setActiveTab("MEETING_REPORT")}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold"
-                >
-                  Open Full Meeting Report →
-                </button>
-              </div>
+            {/* User Account Cards Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {users.map((user) => {
+                const style = DEPT_STYLES[user.role] || DEPT_STYLES.CAMERA;
+                const userChecks = checklists.filter(
+                  (c) => c.assignedToUserId === user.id
+                );
+                const userDone = userChecks.filter((c) => c.checked).length;
+                const userPending = userChecks.length - userDone;
+                const userQcItems = qcLogs.filter(
+                  (l) =>
+                    l.assignedTo
+                      .toLowerCase()
+                      .includes(user.name.toLowerCase()) &&
+                    l.status !== "RESOLVED"
+                );
+                const isCurrentOperator = myIdentity.id === user.id;
+                const quickDraft = userQuickTaskDrafts[user.id] || {
+                  task: "",
+                  phase: "T-30M" as PreFlightPhase,
+                };
 
-              <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
-                {qcLogs.map((log) => {
-                  const isWaiting = log.status === "WAITING_DIRECTOR";
-                  const draft = directorDrafts[log.id] || {
-                    actionToTake: log.actionToTake || "",
-                    assignedTo: log.assignedTo || "Kevin (Cam)",
-                    timelineToSolve:
-                      log.timelineToSolve || "Before Saturday Rehearsal",
-                  };
-
-                  return (
-                    <div
-                      key={log.id}
-                      className={`rounded-2xl p-4 border transition space-y-3 ${
-                        isWaiting
-                          ? "bg-slate-900 border-amber-500/50 shadow-lg"
-                          : log.status === "RESOLVED"
-                          ? "bg-slate-900/60 border-emerald-500/30"
-                          : "bg-slate-900/80 border-indigo-500/40"
-                      }`}
-                    >
-                      {/* Top Header */}
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                              log.type === "ISSUE"
-                                ? "bg-rose-500/20 text-rose-300"
-                                : log.type === "ACHIEVEMENT"
-                                ? "bg-emerald-500/20 text-emerald-300"
-                                : "bg-amber-500/20 text-amber-300"
-                            }`}
-                          >
-                            {log.type}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              DEPT_THEME[log.station as CrewRole]?.pill ||
-                              "bg-slate-800 text-slate-200 border border-slate-700"
-                            }`}
-                          >
-                            {log.platform} • {log.station}
-                          </span>
-                          <span className="text-[11px] text-slate-400">
-                            {log.streamTimestamp}
-                          </span>
-                        </div>
-
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                            isWaiting
-                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse"
-                              : log.status === "RESOLVED"
-                              ? "bg-emerald-500/20 text-emerald-300"
-                              : "bg-indigo-500/20 text-indigo-300"
-                          }`}
-                        >
-                          {isWaiting
-                            ? "⏳ WAITING FOR DIRECTOR"
-                            : log.status === "RESOLVED"
-                            ? "✓ RESOLVED"
-                            : "● ACTION ASSIGNED"}
-                        </span>
-                      </div>
-
-                      {/* QC Observation & Screenshot Row */}
-                      <div className="flex flex-col sm:flex-row gap-3 justify-between">
-                        <div>
-                          <div className="text-sm font-bold text-white">
-                            {log.title}
-                          </div>
-                          {log.description && (
-                            <div className="text-xs text-slate-400 mt-0.5">
-                              {log.description}
-                            </div>
-                          )}
-                        </div>
-
-                        {log.screenshotUrl && (
+                return (
+                  <div
+                    key={user.id}
+                    className={`rounded-3xl p-6 bg-[#121215] border border-white/[0.08] ${style.topBorder} flex flex-col justify-between gap-5`}
+                  >
+                    <div className="space-y-4">
+                      {/* Top User Identity & Active Session Row */}
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex items-center gap-3.5">
                           <div
-                            onClick={() => setPreviewImageLog(log)}
-                            className="w-28 h-16 rounded-lg overflow-hidden border border-slate-700 shrink-0 cursor-pointer relative bg-black"
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center font-semibold text-sm ${style.pill}`}
                           >
-                            <img
-                              src={log.screenshotUrl}
-                              alt="QC"
-                              className="w-full h-full object-cover"
-                            />
-                            <span className="absolute bottom-0 inset-x-0 bg-black/75 text-[9px] text-center text-indigo-300 font-bold">
-                              View Screenshot
-                            </span>
+                            {user.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()}
                           </div>
-                        )}
-                      </div>
-
-                      {/* DIRECTOR DECISION CONTROLS (Fast 1-Tap Chips + Assign) */}
-                      {log.type !== "ACHIEVEMENT" && (
-                        <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 space-y-2">
-                          <div className="flex flex-wrap items-center gap-1">
-                            <span className="text-[10px] font-bold text-amber-400 mr-1">
-                              Director Quick Action:
-                            </span>
-                            {DIRECTOR_QUICK_ACTIONS.map((act) => (
-                              <button
-                                key={act}
-                                type="button"
-                                onClick={() =>
-                                  setDirectorDrafts((prev) => ({
-                                    ...prev,
-                                    [log.id]: {
-                                      ...draft,
-                                      actionToTake: act,
-                                    },
-                                  }))
-                                }
-                                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-indigo-600 text-[10px] text-slate-300 hover:text-white transition"
-                              >
-                                {act}
-                              </button>
-                            ))}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-base font-semibold text-white tracking-tight">
+                                {user.name}
+                              </h3>
+                              <span className="text-[11px] font-mono text-zinc-400 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.07]">
+                                {user.callsign}
+                              </span>
+                              {isCurrentOperator && (
+                                <span className="px-2 py-0.5 rounded-full bg-white text-black text-[10px] font-semibold">
+                                  Active Session
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-zinc-400 mt-0.5">
+                              {user.stationAssignment} · {user.device}
+                            </div>
                           </div>
+                        </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                            <input
-                              type="text"
-                              placeholder="Director: Action to take..."
-                              value={draft.actionToTake}
-                              onChange={(e) =>
-                                setDirectorDrafts((prev) => ({
-                                  ...prev,
-                                  [log.id]: {
-                                    ...draft,
-                                    actionToTake: e.target.value,
-                                  },
-                                }))
-                              }
-                              className="sm:col-span-5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
-                            />
-
-                            <select
-                              value={draft.assignedTo}
-                              onChange={(e) =>
-                                setDirectorDrafts((prev) => ({
-                                  ...prev,
-                                  [log.id]: {
-                                    ...draft,
-                                    assignedTo: e.target.value,
-                                  },
-                                }))
-                              }
-                              className="sm:col-span-3 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white"
+                        <div className="flex items-center gap-2">
+                          {!isCurrentOperator && (
+                            <button
+                              type="button"
+                              onClick={() => handleSwitchActiveUser(user)}
+                              className="px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white text-zinc-200 hover:text-black text-[11px] font-medium border border-white/[0.08] transition"
                             >
-                              <option value="Kevin (Cam)">Kevin (Cam)</option>
-                              <option value="Jason (Audio)">Jason (Audio)</option>
-                              <option value="Hannah (Mod)">Hannah (Mod)</option>
-                              <option value="Daniel (QC)">Daniel (QC)</option>
-                              <option value="Andrew (Director)">
-                                Andrew (Director)
-                              </option>
-                            </select>
-
-                            <select
-                              value={draft.timelineToSolve}
-                              onChange={(e) =>
-                                setDirectorDrafts((prev) => ({
-                                  ...prev,
-                                  [log.id]: {
-                                    ...draft,
-                                    timelineToSolve: e.target.value,
-                                  },
-                                }))
-                              }
-                              className="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-amber-300"
-                            >
-                              <option value="Immediate">Immediate</option>
-                              <option value="Before Saturday Rehearsal">
-                                Saturday
-                              </option>
-                              <option value="By Next Sunday">Next Sun</option>
-                            </select>
-
+                              Operate as {user.name.split(" ")[0]}
+                            </button>
+                          )}
+                          {users.length > 1 && (
                             <button
                               type="button"
                               onClick={() =>
-                                handleDirectorSaveDecision(
-                                  log.id,
-                                  log.status === "IN_PROGRESS"
-                                    ? "RESOLVED"
-                                    : "IN_PROGRESS"
-                                )
+                                handleDeleteUser(user.id, user.name)
                               }
-                              className="sm:col-span-2 py-1.5 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition"
+                              className="px-2.5 py-1 rounded-full text-[11px] text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
                             >
-                              {isWaiting
-                                ? "Assign"
-                                : log.status === "IN_PROGRESS"
-                                ? "✓ Resolve"
-                                : "Update"}
+                              Remove
                             </button>
-                          </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+
+                      {/* Role, Permission & Duty Controls */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-2xl bg-[#09090b] border border-white/[0.06]">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">
+                            Department Role
+                          </label>
+                          <select
+                            value={user.role}
+                            onChange={(e) =>
+                              handleUpdateUser(user.id, {
+                                role: e.target.value as CrewRole,
+                              })
+                            }
+                            aria-label="Department Role"
+                            className="w-full bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs font-medium text-white focus:outline-none"
+                          >
+                            {ROLES_LIST.map((r) => (
+                              <option key={r} value={r}>
+                                {DEPT_STYLES[r].label} ({r})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">
+                            Access Level
+                          </label>
+                          <select
+                            value={user.permission}
+                            onChange={(e) =>
+                              handleUpdateUser(user.id, {
+                                permission: e.target.value as UserPermission,
+                              })
+                            }
+                            aria-label="Permission Level"
+                            className="w-full bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs font-medium text-white focus:outline-none"
+                          >
+                            <option value="ADMIN">Admin / Director</option>
+                            <option value="LEAD">Department Lead</option>
+                            <option value="OPERATOR">Crew Operator</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">
+                            Duty Status
+                          </label>
+                          <select
+                            value={user.status}
+                            onChange={(e) =>
+                              handleUpdateUser(user.id, {
+                                status: e.target.value as DutyStatus,
+                              })
+                            }
+                            aria-label="Duty Status"
+                            className="w-full bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs font-medium text-white focus:outline-none"
+                          >
+                            <option value="ON_DUTY">On Duty</option>
+                            <option value="STANDBY">Standby</option>
+                            <option value="OFF_DUTY">Off Duty</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Assigned Pre-Flight Tasks List for This User */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-zinc-300">
+                            Assigned Pre-Flight Tasks ({userDone}/
+                            {userChecks.length} Verified)
+                          </span>
+                          {userPending > 0 ? (
+                            <span className="text-[11px] font-semibold text-rose-400">
+                              {userPending} Pending
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-emerald-400">
+                              All Complete
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                          {userChecks.map((chk) => (
+                            <div
+                              key={chk.id}
+                              onClick={() => handleToggleCheck(chk.id)}
+                              className={`cursor-pointer rounded-xl px-3 py-2 border flex items-center justify-between gap-2 text-xs transition ${
+                                chk.checked
+                                  ? "bg-white/[0.02] border-white/[0.06] text-zinc-300"
+                                  : "bg-rose-950/20 border-rose-500/35 text-white"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span
+                                  className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                                    chk.checked
+                                      ? style.checkSquare
+                                      : "border border-rose-400 text-transparent"
+                                  }`}
+                                >
+                                  ✓
+                                </span>
+                                <span className="truncate font-medium">
+                                  {chk.task}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-mono text-zinc-500 shrink-0">
+                                {chk.phase}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {userQcItems.length > 0 && (
+                          <div className="pt-2 space-y-1">
+                            <span className="text-[11px] font-medium text-amber-300 block">
+                              Assigned Live QC Actions ({userQcItems.length})
+                            </span>
+                            {userQcItems.map((q) => (
+                              <div
+                                key={q.id}
+                                className="rounded-xl px-3 py-2 bg-amber-500/10 border border-amber-500/25 text-xs flex items-center justify-between gap-2"
+                              >
+                                <span className="text-amber-100 truncate">
+                                  {q.actionToTake || q.title}
+                                </span>
+                                <span className="text-[10px] text-amber-300 shrink-0">
+                                  {q.timelineToSolve}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Inline Quick-Assign New Task Directly to This User */}
+                    <div className="pt-3 border-t border-white/[0.06] flex items-center gap-2">
+                      <select
+                        value={quickDraft.phase}
+                        onChange={(e) =>
+                          setUserQuickTaskDrafts((prev) => ({
+                            ...prev,
+                            [user.id]: {
+                              ...quickDraft,
+                              phase: e.target.value as PreFlightPhase,
+                            },
+                          }))
+                        }
+                        aria-label="Task Phase"
+                        className="bg-[#09090b] border border-white/[0.1] rounded-xl px-2.5 py-2 text-xs text-zinc-300 focus:outline-none"
+                      >
+                        <option value="T-60M">T-60M</option>
+                        <option value="T-30M">T-30M</option>
+                        <option value="T-15M">T-15M</option>
+                        <option value="T-5M">T-5M</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder={`Assign new task to ${user.name}...`}
+                        value={quickDraft.task}
+                        onChange={(e) =>
+                          setUserQuickTaskDrafts((prev) => ({
+                            ...prev,
+                            [user.id]: {
+                              ...quickDraft,
+                              task: e.target.value,
+                            },
+                          }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAssignQuickTaskToUser(user);
+                          }
+                        }}
+                        className="flex-1 bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAssignQuickTaskToUser(user)}
+                        className="px-3.5 py-2 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0 transition"
+                      >
+                        Assign
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* ===================================================================
-            TAB 3: END-OF-LIVE QC & DIRECTOR MEETING REPORT
+            VIEW 4: POST-SHOW TECHNICAL LOG & MEETING REPORT
            =================================================================== */}
         {activeTab === "MEETING_REPORT" && (
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
               <div>
-                <div className="text-xs font-extrabold uppercase text-amber-400">
-                  POST-SERVICE DEBRIEF & ACTION SHEET
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  Post-Show Engineering & Production Log
                 </div>
-                <h2 className="text-xl font-bold text-white mt-0.5">
-                  Director & Quality Checker (QC) Meeting Report —{" "}
+                <h2 className="text-xl font-semibold text-white tracking-tight mt-0.5">
+                  Technical Director & QC Review —{" "}
                   {new Date().toLocaleDateString()}
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-zinc-400 mt-1 tabular-nums">
                   Pre-Flight Readiness: {overallPct}% ({completedChecks}/
-                  {totalChecks} Checked) • Total QC Items: {qcLogs.length} (
-                  {qcLogs.filter((l) => l.type === "ISSUE").length} Issues,{" "}
+                  {totalChecks} Verified) · Logged Events: {qcLogs.length} (
+                  {qcLogs.filter((l) => l.type === "ISSUE").length} Faults,{" "}
                   {qcLogs.filter((l) => l.type === "IMPROVEMENT").length}{" "}
-                  Improvements,{" "}
+                  Refinements,{" "}
                   {qcLogs.filter((l) => l.type === "ACHIEVEMENT").length} Wins)
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2.5 shrink-0">
                 <button
+                  type="button"
                   onClick={handleExportMeetingCsv}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition"
+                  className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.08] transition"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV</span>
+                  Export CSV
                 </button>
                 <button
+                  type="button"
                   onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow-lg transition"
+                  className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                 >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Meeting Report</span>
+                  Print Report
                 </button>
               </div>
             </div>
 
-            {/* Station Sign-Off Summary Strip */}
+            {/* Department Sign-Off Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {stationsMeta.map((st) => {
-                const theme = DEPT_THEME[st.role];
-                const items = checklists.filter((c) => c.role === st.role);
+              {ROLES_LIST.map((role) => {
+                const style = DEPT_STYLES[role];
+                const items = checklists.filter((c) => c.role === role);
                 const done = items.filter((c) => c.checked).length;
-                const crew = activeCrew.find((c) => c.role === st.role);
+                const leadUser = users.find((u) => u.role === role);
                 return (
                   <div
-                    key={st.role}
-                    className={`rounded-xl p-3 text-xs border ${theme.cardChecked}`}
+                    key={role}
+                    className={`rounded-2xl p-4 text-xs border ${style.verifiedCard}`}
                   >
-                    <div className="font-extrabold text-white">{st.label}</div>
-                    <div className={`${theme.text} font-bold mt-0.5`}>
-                      {done}/{items.length} Checked
+                    <div className="font-semibold text-white">
+                      {style.label}
                     </div>
-                    <div className="text-[11px] text-slate-300">
-                      Signed: {crew ? crew.name : "Team"}
+                    <div
+                      className={`${style.text} font-semibold mt-1 tabular-nums`}
+                    >
+                      {done} of {items.length} Verified
+                    </div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">
+                      Lead: {leadUser ? leadUser.name : "Team"}
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Clean Meeting Action Table */}
+            {/* Clean Tabular Technical Log */}
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 text-[11px] text-slate-400 uppercase">
-                    <th className="py-2.5 px-3">Time</th>
-                    <th className="py-2.5 px-3">Type</th>
-                    <th className="py-2.5 px-3">Station</th>
-                    <th className="py-2.5 px-3">QC Observation</th>
-                    <th className="py-2.5 px-3">Screenshot</th>
-                    <th className="py-2.5 px-3">Director Action Plan</th>
-                    <th className="py-2.5 px-3">Owner & Timeline</th>
-                    <th className="py-2.5 px-3 text-right">Status / Roadmap</th>
+                  <tr className="border-b border-white/[0.08] text-[10px] text-zinc-500 uppercase tracking-wider">
+                    <th className="py-3 px-3">Timecode</th>
+                    <th className="py-3 px-3">Category</th>
+                    <th className="py-3 px-3">Department</th>
+                    <th className="py-3 px-3">Observation</th>
+                    <th className="py-3 px-3">Frame</th>
+                    <th className="py-3 px-3">Director Directive</th>
+                    <th className="py-3 px-3">Assigned Operator</th>
+                    <th className="py-3 px-3 text-right">Status / Roadmap</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/70">
-                  {qcLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-800/30">
-                      <td className="py-3 px-3 text-slate-400 whitespace-nowrap">
-                        {log.streamTimestamp}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            log.type === "ISSUE"
-                              ? "bg-rose-500/20 text-rose-300"
-                              : log.type === "ACHIEVEMENT"
-                              ? "bg-emerald-500/20 text-emerald-300"
-                              : "bg-amber-500/20 text-amber-300"
-                          }`}
-                        >
-                          {log.type}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            DEPT_THEME[log.station as CrewRole]?.pill ||
-                            "bg-slate-800 text-slate-200 border border-slate-700"
-                          }`}
-                        >
-                          {log.station} ({log.platform})
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="font-bold text-white">{log.title}</div>
-                        {log.description && (
-                          <div className="text-[11px] text-slate-400">
-                            {log.description}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        {log.screenshotUrl ? (
-                          <button
-                            onClick={() => setPreviewImageLog(log)}
-                            className="px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300 text-[11px] font-bold"
+                <tbody className="divide-y divide-white/[0.06]">
+                  {qcLogs.map((log) => {
+                    const stStyle =
+                      DEPT_STYLES[log.station] || DEPT_STYLES.CAMERA;
+                    return (
+                      <tr key={log.id} className="hover:bg-white/[0.02]">
+                        <td className="py-3.5 px-3 text-zinc-400 whitespace-nowrap tabular-nums">
+                          {log.streamTimestamp}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                              log.type === "ISSUE"
+                                ? "bg-rose-500/15 text-rose-300"
+                                : log.type === "ACHIEVEMENT"
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : "bg-amber-500/15 text-amber-300"
+                            }`}
                           >
-                            📸 View Image
-                          </button>
-                        ) : (
-                          <span className="text-slate-600">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 font-semibold text-emerald-300">
-                        {log.actionToTake || (
-                          <span className="text-amber-400">
-                            ⏳ Waiting for Director
+                            {log.type}
                           </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="text-white font-semibold">
-                          {log.assignedTo}
-                        </div>
-                        <div className="text-[11px] text-amber-300">
-                          {log.timelineToSolve}
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-right space-x-1.5 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            log.status === "RESOLVED"
-                              ? "bg-emerald-500/20 text-emerald-300"
-                              : log.status === "WAITING_DIRECTOR"
-                              ? "bg-amber-500/20 text-amber-300"
-                              : "bg-indigo-500/20 text-indigo-300"
-                          }`}
-                        >
-                          {log.status.replace("_", " ")}
-                        </span>
-                        {!log.pushedToRoadmap && log.type !== "ACHIEVEMENT" && (
-                          <button
-                            onClick={() => handlePushToRoadmap(log.id)}
-                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-indigo-600 text-[10px] text-slate-300 hover:text-white font-bold"
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold ${stStyle.pill}`}
                           >
-                            + Timeline
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            {log.station} · {log.platform}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <div className="font-semibold text-white">
+                            {log.title}
+                          </div>
+                          {log.description && (
+                            <div className="text-[11px] text-zinc-400">
+                              {log.description}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          {log.screenshotUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewImageLog(log)}
+                              className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-[11px] font-medium"
+                            >
+                              View Frame
+                            </button>
+                          ) : (
+                            <span className="text-zinc-600">—</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3 font-medium text-zinc-200">
+                          {log.actionToTake || (
+                            <span className="text-amber-400">
+                              Awaiting Director
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <div className="text-white font-medium">
+                            {log.assignedTo}
+                          </div>
+                          <div className="text-[11px] text-zinc-400">
+                            {log.timelineToSolve}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-3 text-right space-x-2 whitespace-nowrap">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
+                              log.status === "RESOLVED"
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : log.status === "WAITING_DIRECTOR"
+                                ? "bg-amber-500/15 text-amber-300"
+                                : "bg-white/[0.08] text-zinc-300"
+                            }`}
+                          >
+                            {log.status.replace("_", " ")}
+                          </span>
+                          {!log.pushedToRoadmap &&
+                            log.type !== "ACHIEVEMENT" && (
+                              <button
+                                type="button"
+                                onClick={() => handlePushToRoadmap(log.id)}
+                                className="px-2.5 py-0.5 rounded-full bg-white text-black hover:bg-zinc-200 text-[10px] font-semibold transition"
+                              >
+                                + Timeline
+                              </button>
+                            )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1761,139 +2590,173 @@ export default function CrewCheckAndQcPage() {
         )}
       </main>
 
-      {/* Switch Role Modal */}
-      {showLoginModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white">
-                Crew Mobile Sign-In
-              </h3>
-              <button
-                onClick={() => setShowLoginModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleCrewLogin} className="space-y-3 text-xs">
-              <input
-                type="text"
-                required
-                placeholder="Your Name (e.g. Kevin)"
-                value={loginName}
-                onChange={(e) => setLoginName(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
-              />
-              <select
-                value={loginRole}
-                onChange={(e) => setLoginRole(e.target.value as CrewRole)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold"
-              >
-                <option value="DIRECTOR">🎬 Director</option>
-                <option value="CAMERA">📹 Camera Crew</option>
-                <option value="AUDIO">🎚️ Audio Crew</option>
-                <option value="MODERATOR">💬 Chat Moderator</option>
-                <option value="QC">🔍 Quality Checker (QC)</option>
-              </select>
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold"
-              >
-                Sign In
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Add Check Item Modal */}
+      {/* Assign New Check Item Modal */}
       {showAddCheckModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white">
-                Add Quick Check Item
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-white/[0.1] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <h3 className="text-sm font-semibold text-white tracking-tight">
+                Assign Pre-Flight Check Task
               </h3>
               <button
+                type="button"
                 onClick={() => setShowAddCheckModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-xs text-zinc-400 hover:text-white"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
-            <select
-              value={newCheckRole}
-              onChange={(e) => setNewCheckRole(e.target.value as CrewRole)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-            >
-              <option value="CAMERA">Camera</option>
-              <option value="AUDIO">Audio</option>
-              <option value="MODERATOR">Moderator</option>
-              <option value="QC">QC</option>
-              <option value="DIRECTOR">Director</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Short check name (e.g. Cam 2 Battery)"
-              value={newCheckTask}
-              onChange={(e) => setNewCheckTask(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-            />
-            <button
-              onClick={async () => {
-                if (!newCheckTask.trim()) return;
-                await fetch("/api/crew-qc", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    action: "ADD_CHECK_ITEM",
-                    item: {
-                      role: newCheckRole,
-                      category: "Check",
-                      task: newCheckTask,
-                      detail: "Station check",
-                      isCritical: true,
-                    },
-                  }),
-                });
-                setNewCheckTask("");
-                setShowAddCheckModal(false);
-                fetchCrewQcData();
-              }}
-              className="w-full py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold"
-            >
-              Save Check
-            </button>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">
+                    Department
+                  </label>
+                  <select
+                    value={newCheckRole}
+                    onChange={(e) => {
+                      const role = e.target.value as CrewRole;
+                      setNewCheckRole(role);
+                      const matchingUser = users.find((u) => u.role === role);
+                      if (matchingUser) setNewCheckUserId(matchingUser.id);
+                    }}
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
+                  >
+                    {ROLES_LIST.map((r) => (
+                      <option key={r} value={r}>
+                        {DEPT_STYLES[r].label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">
+                    T-Minus Phase
+                  </label>
+                  <select
+                    value={newCheckPhase}
+                    onChange={(e) =>
+                      setNewCheckPhase(e.target.value as PreFlightPhase)
+                    }
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
+                  >
+                    <option value="T-60M">T-60M · Rig & Signal</option>
+                    <option value="T-30M">T-30M · Optics & Audio</option>
+                    <option value="T-15M">T-15M · Stream & Cues</option>
+                    <option value="T-5M">T-5M · Final Go Poll</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] text-zinc-400 block mb-1">
+                  Assign to User Account
+                </label>
+                <select
+                  value={newCheckUserId}
+                  onChange={(e) => setNewCheckUserId(e.target.value)}
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
+                >
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.callsign} · {u.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] text-zinc-400 block mb-1">
+                  Check Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Wireless Handheld 3 RF Scan"
+                  value={newCheckTask}
+                  onChange={(e) => setNewCheckTask(e.target.value)}
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-zinc-400 block mb-1">
+                  Technical Specification / Target
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Battery > 85% and gain staged at -12dB"
+                  value={newCheckDetail}
+                  onChange={(e) => setNewCheckDetail(e.target.value)}
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!newCheckTask.trim()) return;
+                  const targetUser = users.find((u) => u.id === newCheckUserId);
+                  await fetch("/api/crew-qc", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      action: "ADD_CHECK_ITEM",
+                      item: {
+                        role: newCheckRole,
+                        phase: newCheckPhase,
+                        category: newCheckCategory || "Check",
+                        task: newCheckTask,
+                        detail:
+                          newCheckDetail || "Standard pre-flight verification",
+                        isCritical: true,
+                        assignedToUserId: newCheckUserId,
+                        assignedToName: targetUser?.name || "Operator",
+                      },
+                    }),
+                  });
+                  setNewCheckTask("");
+                  setNewCheckDetail("");
+                  setShowAddCheckModal(false);
+                  triggerToast("Assigned pre-flight check");
+                  fetchCrewQcData();
+                }}
+                className="w-full py-2.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition mt-2"
+              >
+                Assign Check Task
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Screenshot Lightbox */}
+      {/* Frame Inspection Lightbox */}
       {previewImageLog && (
         <div
           onClick={() => setPreviewImageLog(null)}
-          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-4 space-y-3"
+            className="bg-[#121215] border border-white/[0.1] rounded-3xl max-w-2xl w-full p-5 space-y-4"
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-white">
+              <span className="text-sm font-semibold text-white">
                 {previewImageLog.title} ({previewImageLog.platform})
               </span>
               <button
+                type="button"
                 onClick={() => setPreviewImageLog(null)}
-                className="text-slate-400 hover:text-white"
+                className="text-xs text-zinc-400 hover:text-white"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
-            <div className="relative rounded-xl overflow-hidden bg-black flex items-center justify-center">
+            <div className="relative rounded-2xl overflow-hidden bg-black flex items-center justify-center">
               <img
-                src={previewImageLog.screenshotUrl}
-                alt="QC"
+                src={previewImageLog.screenshotUrl || ""}
+                alt="QC Frame"
                 className="max-h-[65vh] w-auto object-contain"
               />
               {previewImageLog.markerPos && (
@@ -1902,7 +2765,7 @@ export default function CrewCheckAndQcPage() {
                     left: `${previewImageLog.markerPos.x}%`,
                     top: `${previewImageLog.markerPos.y}%`,
                   }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-red-500 bg-red-500/30 animate-pulse"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-rose-500 bg-rose-500/25"
                 />
               )}
             </div>

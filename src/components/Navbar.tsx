@@ -4,20 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Radio,
-  BarChart3,
-  Settings,
-  Flame,
-  Edit3,
-  Upload,
-  Check,
-  Database,
-  X,
-  Trash2,
-  Target,
-  ShieldCheck,
-} from "lucide-react";
-import {
   fetchChurchConfig,
   saveChurchConfig,
   processLogoImageFile,
@@ -52,7 +38,6 @@ export default function Navbar({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadConfig = async () => {
-    // Instant load from local cache if available
     const cached = getLocalChurchConfig();
     if (cached) {
       setChurchName(cached.churchName || "Grace Online Church");
@@ -60,7 +45,6 @@ export default function Navbar({
       setLogoUrl(cached.logoUrl || null);
     }
 
-    // Sync with database
     const { config, dbConnected: isOnline } = await fetchChurchConfig();
     setChurchName(config.churchName || "Grace Online Church");
     setSubtitle(config.subtitle || "Live Stream Broadcast & Ministry Hub");
@@ -103,7 +87,6 @@ export default function Navbar({
       editSubtitle.trim() || "Live Stream Broadcast & Ministry Hub";
 
     setSaving(true);
-    // Apply immediately to UI
     setChurchName(trimmedName);
     setSubtitle(trimmedSubtitle);
     setLogoUrl(editLogo);
@@ -124,17 +107,25 @@ export default function Navbar({
     }
   };
 
+  const navItems = [
+    { href: "/", label: "Broadcast" },
+    { href: "/crew", label: "Pre-Flight & QC" },
+    { href: "/roadmap", label: "Timeline & Goals" },
+    { href: "/reports", label: "Analytics" },
+    { href: "/settings", label: "Settings" },
+  ];
+
   return (
     <>
-      <header className="border-b border-slate-800 bg-slate-900/95 backdrop-blur sticky top-0 z-40 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-3">
-        <div className="w-full flex flex-wrap items-center justify-between gap-3">
+      <header className="sticky top-0 z-40 w-full bg-[#09090b]/85 backdrop-blur-2xl border-b border-white/[0.08] px-4 sm:px-6 lg:px-10 py-3">
+        <div className="w-full flex flex-wrap items-center justify-between gap-4">
           {/* Brand, Logo & Quick Edit */}
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3.5 min-w-0">
             <button
               type="button"
               onClick={openQuickEdit}
-              title="Click to upload church logo or change church name"
-              className="relative group w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold text-lg overflow-hidden shrink-0 border border-indigo-400/30 hover:border-indigo-400 transition"
+              title="Edit church name and logo"
+              className="relative group w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.12] hover:border-white/30 flex items-center justify-center text-white font-semibold text-sm overflow-hidden shrink-0 transition"
             >
               {logoUrl ? (
                 <img
@@ -143,18 +134,20 @@ export default function Navbar({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span>✝</span>
+                <span className="tracking-tight font-bold text-xs">
+                  {churchName.slice(0, 2).toUpperCase()}
+                </span>
               )}
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                <Upload className="w-4 h-4 text-white" />
+              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-medium text-white transition">
+                Edit
               </div>
             </button>
 
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <h1
                   onClick={openQuickEdit}
-                  className="font-bold text-base sm:text-lg text-white tracking-tight truncate cursor-pointer hover:text-indigo-300 transition"
+                  className="font-semibold text-[15px] sm:text-base text-white tracking-[-0.02em] truncate cursor-pointer hover:text-zinc-300 transition"
                   title="Click to edit church name"
                 >
                   {churchName}
@@ -162,142 +155,93 @@ export default function Navbar({
                 <button
                   type="button"
                   onClick={openQuickEdit}
-                  className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
-                  title="Edit Church Name & Logo"
+                  className="text-[11px] font-medium text-zinc-500 hover:text-zinc-300 transition"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
+                  Edit
                 </button>
                 {isLive ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    LIVE
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase bg-rose-500/15 text-rose-400 border border-rose-500/25">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    On Air
                   </span>
                 ) : (
-                  <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.05] text-zinc-400">
                     Standby
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400 truncate">{subtitle}</p>
+              <p className="text-[11px] text-zinc-500 truncate tracking-[-0.01em]">
+                {subtitle}
+              </p>
             </div>
           </div>
 
-          {/* Platform & Database Status Badges */}
-          <div className="hidden lg:flex items-center gap-2 text-xs">
-            <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${
-                dbConnected
-                  ? "bg-emerald-950/50 border-emerald-800/60 text-emerald-300"
-                  : "bg-amber-950/50 border-amber-800/60 text-amber-300"
-              }`}
-              title="Database & Storage Active"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span className="font-medium">
-                {dbConnected ? "DB Connected" : "Local Sync Active"}
-              </span>
+          {/* Minimalist Apple-Style System Telemetry Pills */}
+          <div className="hidden xl:flex items-center gap-2 text-[11px] font-medium">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.07] text-zinc-300">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  dbConnected ? "bg-emerald-400" : "bg-amber-400"
+                }`}
+              />
+              <span>{dbConnected ? "Cloud Synced" : "Local Sync"}</span>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="font-medium">YouTube Live</span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.07] text-zinc-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              <span>YouTube 1080p60</span>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-pink-500" />
-              <span className="font-medium">Instagram Live</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-800/50 text-indigo-300">
-              <Flame className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Gemini 3.8 AI</span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.07] text-zinc-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-pink-400" />
+              <span>Instagram 9:16</span>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex items-center gap-1 bg-slate-800/60 p-1 rounded-xl border border-slate-700/60 w-full sm:w-auto justify-center overflow-x-auto">
-            <Link
-              href="/"
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
-                pathname === "/"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-              }`}
-            >
-              <Radio className="w-4 h-4" />
-              <span>Broadcast</span>
-            </Link>
-            <Link
-              href="/crew"
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
-                pathname === "/crew"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Crew Check & QC</span>
-            </Link>
-            <Link
-              href="/roadmap"
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
-                pathname === "/roadmap"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-              }`}
-            >
-              <Target className="w-4 h-4" />
-              <span>Timeline & Goals</span>
-            </Link>
-            <Link
-              href="/reports"
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
-                pathname === "/reports"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Reports & Graphs</span>
-            </Link>
-            <Link
-              href="/settings"
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
-                pathname === "/settings"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Settings</span>
-            </Link>
+          {/* Apple-Style Pill Segmented Navigation */}
+          <nav className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/[0.08] w-full sm:w-auto justify-center overflow-x-auto">
+            {navItems.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex-1 sm:flex-initial text-center px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap ${
+                    active
+                      ? "bg-white text-black font-semibold shadow-sm"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
       </header>
 
       {/* Quick Edit Church Branding & Logo Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-indigo-400" />
-                <span>Church Branding & Logo</span>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-white/[0.1] rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+              <h3 className="text-sm font-semibold text-white tracking-tight">
+                Organization Identity
               </h3>
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                className="text-xs font-medium text-zinc-400 hover:text-white px-2 py-1 rounded-lg"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
 
             <form onSubmit={handleSaveBranding} className="space-y-4">
-              {/* Logo Upload Section */}
               <div>
-                <label className="text-xs text-slate-300 font-medium block mb-2">
-                  Church Logo
+                <label className="text-xs text-zinc-400 font-medium block mb-2">
+                  Logo Mark
                 </label>
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.1] flex items-center justify-center overflow-hidden shrink-0">
                     {editLogo ? (
                       <img
                         src={editLogo}
@@ -305,7 +249,9 @@ export default function Navbar({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-2xl text-indigo-400">✝</span>
+                      <span className="text-sm font-semibold text-zinc-300">
+                        {editName.slice(0, 2).toUpperCase()}
+                      </span>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -320,55 +266,51 @@ export default function Navbar({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
+                        className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                       >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Upload Logo</span>
+                        Upload Image
                       </button>
                       {editLogo && (
                         <button
                           type="button"
                           onClick={() => setEditLogo(null)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-red-950/60 text-slate-300 hover:text-red-300 border border-slate-700 text-xs transition"
+                          className="px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-rose-500/20 text-zinc-300 hover:text-rose-300 border border-white/[0.08] text-xs font-medium transition"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Remove</span>
+                          Remove
                         </button>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400">
-                      PNG, JPG, SVG, or WebP (Auto-optimized & saved)
+                    <span className="text-[11px] text-zinc-500">
+                      PNG, JPG, SVG, or WebP
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Church Name Input */}
               <div>
-                <label className="text-xs text-slate-300 font-medium block mb-1">
-                  Church / Ministry Name
+                <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                  Organization Name
                 </label>
                 <input
                   type="text"
                   required
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  placeholder="e.g. Kingdom Life Church"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  placeholder="e.g. Grace Online Church"
+                  className="w-full bg-white/[0.04] border border-white/[0.1] rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white/30"
                 />
               </div>
 
-              {/* Subtitle Input */}
               <div>
-                <label className="text-xs text-slate-300 font-medium block mb-1">
-                  Header Subtitle
+                <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                  Console Subtitle
                 </label>
                 <input
                   type="text"
                   value={editSubtitle}
                   onChange={(e) => setEditSubtitle(e.target.value)}
                   placeholder="e.g. Live Stream Broadcast & Ministry Hub"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white/[0.04] border border-white/[0.1] rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white/30"
                 />
               </div>
 
@@ -376,17 +318,16 @@ export default function Navbar({
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-slate-800"
+                  className="px-4 py-2 rounded-full text-xs font-medium text-zinc-400 hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition"
+                  className="px-5 py-2 rounded-full text-xs font-semibold bg-white text-black hover:bg-zinc-200 transition"
                 >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>{saving ? "Saving..." : "Save to Database"}</span>
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
