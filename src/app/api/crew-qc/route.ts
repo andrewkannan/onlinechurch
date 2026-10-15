@@ -9,6 +9,8 @@ export type PreFlightPhase = "T-60M" | "T-30M" | "T-15M" | "T-5M";
 
 export interface CrewUserAccount {
   id: string;
+  username: string;
+  password?: string;
   name: string;
   email: string;
   phone: string;
@@ -73,6 +75,8 @@ export interface QcLogItem {
 const DEFAULT_USERS: CrewUserAccount[] = [
   {
     id: "usr-director-1",
+    username: "andrew",
+    password: "director123",
     name: "Andrew",
     email: "andrew@onlinechurch.org",
     phone: "+65 9100 1100",
@@ -97,6 +101,8 @@ const DEFAULT_USERS: CrewUserAccount[] = [
   },
   {
     id: "usr-camera-1",
+    username: "kevin",
+    password: "camera123",
     name: "Kevin Lim",
     email: "kevin@onlinechurch.org",
     phone: "+65 9200 2200",
@@ -113,6 +119,8 @@ const DEFAULT_USERS: CrewUserAccount[] = [
   },
   {
     id: "usr-audio-1",
+    username: "jason",
+    password: "audio123",
     name: "Jason Tan",
     email: "jason@onlinechurch.org",
     phone: "+65 9300 3300",
@@ -129,6 +137,8 @@ const DEFAULT_USERS: CrewUserAccount[] = [
   },
   {
     id: "usr-mod-1",
+    username: "hannah",
+    password: "mod123",
     name: "Hannah Lee",
     email: "hannah@onlinechurch.org",
     phone: "+65 9400 4400",
@@ -145,6 +155,8 @@ const DEFAULT_USERS: CrewUserAccount[] = [
   },
   {
     id: "usr-qc-1",
+    username: "daniel",
+    password: "qc123",
     name: "Daniel Wong",
     email: "daniel@onlinechurch.org",
     phone: "+65 9500 5500",
@@ -545,7 +557,7 @@ const DEFAULT_QC_LOGS: QcLogItem[] = [
   },
 ];
 
-function getCrewQcState() {
+export function getCrewQcState() {
   const store = readFallbackStore();
   if (!store.crewQc || !store.crewQc.v3ApplePro) {
     store.crewQc = {
@@ -567,6 +579,38 @@ function getCrewQcState() {
   if (!Array.isArray(store.crewQc.users) || store.crewQc.users.length === 0) {
     store.crewQc.users = DEFAULT_USERS;
   }
+
+  // Migrate any existing user accounts lacking username or password
+  let migrated = false;
+  store.crewQc.users = store.crewQc.users.map((u: CrewUserAccount) => {
+    const seedMatch = DEFAULT_USERS.find(
+      (d) => d.id === u.id || d.name.toLowerCase() === u.name.toLowerCase()
+    );
+    const fallbackUsername =
+      seedMatch?.username ||
+      u.name
+        .trim()
+        .split(/\s+/)[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9_.-]/g, "") ||
+      `user${u.id.slice(-4)}`;
+    const fallbackPassword = seedMatch?.password || "church123";
+
+    if (!u.username || !u.password) {
+      migrated = true;
+      return {
+        ...u,
+        username: u.username || fallbackUsername,
+        password: u.password || fallbackPassword,
+      };
+    }
+    return u;
+  });
+
+  if (migrated) {
+    writeFallbackStore("crewQc", store.crewQc);
+  }
+
   return store.crewQc as {
     v3ApplePro: boolean;
     users: CrewUserAccount[];
@@ -627,14 +671,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. User Account Management: Add User
+    // 2. User Account Management: Add User (with Username & Password)
     if (body.action === "ADD_USER" && body.user) {
       const u = body.user;
       const role = (u.role as CrewRole) || "CAMERA";
+      const cleanName = String(u.name || "New Operator").trim();
+      const baseUsername =
+        String(u.username || "")
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "") ||
+        cleanName
+          .split(/\s+/)[0]
+          .toLowerCase()
+          .replace(/[^a-z0-9_.-]/g, "") ||
+        `operator${state.users.length + 1}`;
+
+      const usernameExists = state.users.some(
+        (existing) => existing.username.toLowerCase() === baseUsername
+      );
+      const finalUsername = usernameExists
+        ? `${baseUsername}${state.users.length + 1}`
+        : baseUsername;
+
       const newUser: CrewUserAccount = {
         id: `usr-${Date.now()}`,
-        name: String(u.name || "New Operator").trim(),
-        email: String(u.email || "").trim(),
+        username: finalUsername,
+        password: String(u.password || "").trim() || "church123",
+        name: cleanName,
+        email: String(u.email || `${finalUsername}@onlinechurch.org`).trim(),
         phone: String(u.phone || "").trim(),
         callsign:
           String(u.callsign || "").trim() ||
@@ -647,16 +712,29 @@ export async function POST(req: NextRequest) {
         goStatus: "STANDBY",
         device: String(u.device || "Mobile / Console").trim(),
         lastActiveAt: "Just added",
+        completedLessons: [],
+        certifiedRoles: [],
       };
       state.users = [...state.users, newUser];
     }
 
-    // 3. User Account Management: Update User Role, Permission, Station, Duty, or Go Status
+    // 3. User Account Management: Update User Role, Permission, Station, Duty, Go Status, or Credentials
     if (body.action === "UPDATE_USER" && body.id) {
       state.users = state.users.map((u) => {
         if (u.id !== body.id) return u;
-        const updated = {
+        const updated: CrewUserAccount = {
           ...u,
+          ...(body.username !== undefined && String(body.username).trim()
+            ? {
+                username: String(body.username)
+                  .trim()
+                  .toLowerCase()
+                  .replace(/\s+/g, ""),
+              }
+            : {}),
+          ...(body.password !== undefined && String(body.password).trim()
+            ? { password: String(body.password).trim() }
+            : {}),
           ...(body.name !== undefined ? { name: String(body.name).trim() } : {}),
           ...(body.email !== undefined ? { email: String(body.email).trim() } : {}),
           ...(body.phone !== undefined ? { phone: String(body.phone).trim() } : {}),

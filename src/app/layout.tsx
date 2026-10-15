@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthProvider from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
   title: "Church Live Hub | Broadcast Control, Pre-Flight QC & Ministry Intelligence",
@@ -15,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-[#09090b] text-zinc-100 antialiased selection:bg-white selection:text-black">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

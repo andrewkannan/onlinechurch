@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import CrewTrainingAcademy from "@/components/CrewTrainingAcademy";
+import { useAuth } from "@/components/AuthProvider";
 
 type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
@@ -12,6 +13,8 @@ type PreFlightPhase = "T-60M" | "T-30M" | "T-15M" | "T-5M";
 
 interface CrewUserAccount {
   id: string;
+  username: string;
+  password?: string;
   name: string;
   email: string;
   phone: string;
@@ -308,6 +311,7 @@ function compressScreenshotDataUrl(file: File): Promise<string> {
 }
 
 export default function CrewAndQcPage() {
+  const { user: authUser, openSwitchModal } = useAuth();
   const [users, setUsers] = useState<CrewUserAccount[]>([]);
   const [checklists, setChecklists] = useState<CrewChecklistItem[]>([]);
   const [qcLogs, setQcLogs] = useState<QcLogItem[]>([]);
@@ -323,16 +327,26 @@ export default function CrewAndQcPage() {
     "PRE_LIVE" | "QC_PAD" | "TEAM_ACCOUNTS" | "TRAINING" | "MEETING_REPORT"
   >("PRE_LIVE");
 
-  // Active logged-in operator
+  // Active logged-in operator (synced with AuthProvider)
   const [myIdentity, setMyIdentity] = useState<{
     id: string;
     name: string;
     role: CrewRole;
   }>({
-    id: "usr-director-1",
-    name: "Andrew",
-    role: "DIRECTOR",
+    id: authUser?.id || "usr-director-1",
+    name: authUser?.name || "Andrew",
+    role: authUser?.role || "DIRECTOR",
   });
+
+  useEffect(() => {
+    if (authUser) {
+      setMyIdentity({
+        id: authUser.id,
+        name: authUser.name,
+        role: authUser.role,
+      });
+    }
+  }, [authUser]);
 
   // Pre-Flight Filters
   const [stationFilter, setStationFilter] = useState<"ALL" | CrewRole>("ALL");
@@ -352,6 +366,8 @@ export default function CrewAndQcPage() {
   // New User Account Form state (in Team & Accounts tab)
   const [showNewUserForm, setShowNewUserForm] = useState(false);
   const [newUserName, setNewUserName] = useState("");
+  const [newUserUsername, setNewUserUsername] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPhone, setNewUserPhone] = useState("");
   const [newUserCallsign, setNewUserCallsign] = useState("");
@@ -359,6 +375,11 @@ export default function CrewAndQcPage() {
   const [newUserPermission, setNewUserPermission] =
     useState<UserPermission>("OPERATOR");
   const [newUserStation, setNewUserStation] = useState("");
+
+  // Inline credential edit drafts per user card in Team & Accounts tab
+  const [userCredDrafts, setUserCredDrafts] = useState<
+    Record<string, { username: string; password: string }>
+  >({});
 
   // Inline quick-assign task per user card in Team & Accounts tab
   const [userQuickTaskDrafts, setUserQuickTaskDrafts] = useState<
@@ -419,20 +440,14 @@ export default function CrewAndQcPage() {
   };
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("church_crew_identity_v3");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.name && parsed.role) {
-          setMyIdentity(parsed);
-        }
-      }
-    } catch {
-      // ignore
-    }
     fetchCrewQcData();
     const interval = setInterval(fetchCrewQcData, 6000);
-    return () => clearInterval(interval);
+    const handleAuthChange = () => fetchCrewQcData();
+    window.addEventListener("church-auth-changed", handleAuthChange);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("church-auth-changed", handleAuthChange);
+    };
   }, []);
 
   // Paste screenshot support on QC Pad
@@ -456,29 +471,8 @@ export default function CrewAndQcPage() {
     return () => window.removeEventListener("paste", handlePaste);
   }, [activeTab]);
 
-  const handleSwitchActiveUser = async (user: CrewUserAccount) => {
-    const nextIdentity = { id: user.id, name: user.name, role: user.role };
-    setMyIdentity(nextIdentity);
-    try {
-      localStorage.setItem(
-        "church_crew_identity_v3",
-        JSON.stringify(nextIdentity)
-      );
-    } catch {
-      // ignore
-    }
-    await fetch("/api/crew-qc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "CREW_LOGIN",
-        name: user.name,
-        role: user.role,
-        device: user.device || "Console",
-      }),
-    });
-    triggerToast(`Active operator switched to ${user.name} (${user.role})`);
-    fetchCrewQcData();
+  const handleSwitchActiveUser = (user: CrewUserAccount) => {
+    openSwitchModal(user.username);
   };
 
   const handleToggleCheck = async (id: string) => {
@@ -615,6 +609,10 @@ export default function CrewAndQcPage() {
         action: "ADD_USER",
         user: {
           name: newUserName,
+          username:
+            newUserUsername.trim().toLowerCase() ||
+            newUserName.trim().split(/\s+/)[0].toLowerCase(),
+          password: newUserPassword.trim() || "church123",
           email: newUserEmail,
           phone: newUserPhone,
           callsign: newUserCallsign,
@@ -629,6 +627,8 @@ export default function CrewAndQcPage() {
       const updated = await res.json();
       if (updated.users) setUsers(updated.users);
       setNewUserName("");
+      setNewUserUsername("");
+      setNewUserPassword("");
       setNewUserEmail("");
       setNewUserPhone("");
       setNewUserCallsign("");
@@ -636,6 +636,35 @@ export default function CrewAndQcPage() {
       setShowNewUserForm(false);
       triggerToast(`Created account for ${newUserName}`);
     }
+  };
+
+  const handleSaveUserCredentials = async (user: CrewUserAccount) => {
+    const draft = userCredDrafts[user.id];
+    const nextUsername = draft?.username?.trim().toLowerCase() || user.username;
+    const nextPassword = draft?.password?.trim();
+
+    const res = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "UPDATE_CREDENTIALS",
+        userId: user.id,
+        adminOverride: true,
+        newUsername: nextUsername,
+        newPassword: nextPassword || undefined,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      triggerToast(data.error || "Failed to update credentials");
+      return;
+    }
+    setUserCredDrafts((prev) => ({
+      ...prev,
+      [user.id]: { username: nextUsername, password: "" },
+    }));
+    fetchCrewQcData();
+    triggerToast(`Updated login credentials for ${user.name}`);
   };
 
   const handleUpdateUser = async (
@@ -1036,10 +1065,10 @@ export default function CrewAndQcPage() {
                 <span className="text-zinc-400">{myIdentity.role}</span>
                 <button
                   type="button"
-                  onClick={() => setActiveTab("TEAM_ACCOUNTS")}
+                  onClick={() => openSwitchModal()}
                   className="text-zinc-400 hover:text-white underline underline-offset-2 ml-1"
                 >
-                  Switch
+                  Switch Account
                 </button>
               </div>
             </div>
@@ -2151,30 +2180,55 @@ export default function CrewAndQcPage() {
                 onSubmit={handleCreateUser}
                 className="rounded-3xl p-6 bg-[#141418] border border-white/[0.12] space-y-4"
               >
-                <div className="text-sm font-semibold text-white">
-                  Create Operator Account
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-white">
+                    Create Operator Account &amp; Login Credentials
+                  </div>
+                  <span className="text-[11px] text-zinc-400">
+                    Operators sign in with their assigned username and password
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <input
                     type="text"
                     required
                     placeholder="Full Name (e.g. Marcus Tan)"
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
+                  />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Login Username (e.g. marcus)"
+                    value={newUserUsername}
+                    onChange={(e) =>
+                      setNewUserUsername(
+                        e.target.value.toLowerCase().replace(/\s+/g, "")
+                      )
+                    }
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-white/30"
+                  />
+                  <input
+                    type="password"
+                    required
+                    placeholder="Login Password (e.g. cam2pass)"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
                   />
                   <input
                     type="text"
                     placeholder="Callsign (e.g. CAM-02)"
                     value={newUserCallsign}
                     onChange={(e) => setNewUserCallsign(e.target.value)}
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
                   />
                   <select
                     value={newUserRole}
                     onChange={(e) => setNewUserRole(e.target.value as CrewRole)}
                     aria-label="Department Role"
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
                   >
                     <option value="CAMERA">Department: Camera</option>
                     <option value="AUDIO">Department: Audio</option>
@@ -2188,7 +2242,7 @@ export default function CrewAndQcPage() {
                       setNewUserPermission(e.target.value as UserPermission)
                     }
                     aria-label="Access Permission"
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
                   >
                     <option value="OPERATOR">Permission: Operator</option>
                     <option value="LEAD">Permission: Department Lead</option>
@@ -2199,11 +2253,11 @@ export default function CrewAndQcPage() {
                     placeholder="Station / Hardware (e.g. Cam 2 PTZ)"
                     value={newUserStation}
                     onChange={(e) => setNewUserStation(e.target.value)}
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
                   />
                   <button
                     type="submit"
-                    className="rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold py-2 px-4 transition"
+                    className="rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold py-2.5 px-4 transition"
                   >
                     Create Account
                   </button>
@@ -2232,6 +2286,10 @@ export default function CrewAndQcPage() {
                   task: "",
                   phase: "T-30M" as PreFlightPhase,
                 };
+                const credDraft = userCredDrafts[user.id] || {
+                  username: user.username || "",
+                  password: "",
+                };
 
                 return (
                   <div
@@ -2253,16 +2311,19 @@ export default function CrewAndQcPage() {
                               .toUpperCase()}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="text-base font-semibold text-white tracking-tight">
                                 {user.name}
                               </h3>
+                              <span className="text-[11px] font-mono text-zinc-300 px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08]">
+                                @{user.username}
+                              </span>
                               <span className="text-[11px] font-mono text-zinc-400 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.07]">
                                 {user.callsign}
                               </span>
                               {isCurrentOperator && (
                                 <span className="px-2 py-0.5 rounded-full bg-white text-black text-[10px] font-semibold">
-                                  Active Session
+                                  Signed In
                                 </span>
                               )}
                             </div>
@@ -2279,7 +2340,7 @@ export default function CrewAndQcPage() {
                               onClick={() => handleSwitchActiveUser(user)}
                               className="px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white text-zinc-200 hover:text-black text-[11px] font-medium border border-white/[0.08] transition"
                             >
-                              Operate as {user.name.split(" ")[0]}
+                              Sign In as {user.name.split(" ")[0]}
                             </button>
                           )}
                           {users.length > 1 && (
@@ -2293,6 +2354,61 @@ export default function CrewAndQcPage() {
                               Remove
                             </button>
                           )}
+                        </div>
+                      </div>
+
+                      {/* Login Credentials (Username & Password) Management */}
+                      <div className="p-3 rounded-2xl bg-[#09090b] border border-white/[0.06] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                            Account Login Credentials
+                          </span>
+                          <span className="text-[10px] font-mono text-zinc-500">
+                            Username: @{user.username}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                          <input
+                            type="text"
+                            value={credDraft.username}
+                            onChange={(e) =>
+                              setUserCredDrafts((prev) => ({
+                                ...prev,
+                                [user.id]: {
+                                  ...credDraft,
+                                  username: e.target.value
+                                    .toLowerCase()
+                                    .replace(/\s+/g, ""),
+                                },
+                              }))
+                            }
+                            placeholder="Username"
+                            aria-label="Username"
+                            className="sm:col-span-4 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                          />
+                          <input
+                            type="password"
+                            value={credDraft.password}
+                            onChange={(e) =>
+                              setUserCredDrafts((prev) => ({
+                                ...prev,
+                                [user.id]: {
+                                  ...credDraft,
+                                  password: e.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="Set new password..."
+                            aria-label="New Password"
+                            className="sm:col-span-5 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-white/30"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveUserCredentials(user)}
+                            className="sm:col-span-3 py-1.5 px-3 rounded-lg bg-white/[0.08] hover:bg-white hover:text-black text-zinc-200 text-xs font-semibold transition"
+                          >
+                            Save Login
+                          </button>
                         </div>
                       </div>
 

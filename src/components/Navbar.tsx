@@ -9,17 +9,27 @@ import {
   processLogoImageFile,
   getLocalChurchConfig,
 } from "@/lib/clientConfig";
+import { useAuth } from "@/components/AuthProvider";
 
 interface NavbarProps {
   churchName?: string;
   isLive?: boolean;
 }
 
+const ROLE_DOT_MAP: Record<string, string> = {
+  DIRECTOR: "bg-rose-400",
+  CAMERA: "bg-amber-400",
+  AUDIO: "bg-sky-400",
+  MODERATOR: "bg-violet-400",
+  QC: "bg-emerald-400",
+};
+
 export default function Navbar({
   churchName: propChurchName,
   isLive = true,
 }: NavbarProps) {
   const pathname = usePathname();
+  const { user, logout, openSwitchModal, openCredentialsModal } = useAuth();
   const [churchName, setChurchName] = useState(
     propChurchName || "Grace Online Church"
   );
@@ -176,45 +186,64 @@ export default function Navbar({
             </div>
           </div>
 
-          {/* Minimalist Apple-Style System Telemetry Pills */}
-          <div className="hidden xl:flex items-center gap-2 text-[11px] font-medium">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.07] text-zinc-300">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  dbConnected ? "bg-emerald-400" : "bg-amber-400"
-                }`}
-              />
-              <span>{dbConnected ? "Cloud Synced" : "Local Sync"}</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.07] text-zinc-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-              <span>YouTube 1080p60</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.07] text-zinc-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-pink-400" />
-              <span>Instagram 9:16</span>
-            </div>
-          </div>
+          {/* Apple-Style Pill Segmented Navigation & Authenticated Account Controls */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+            <nav className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/[0.08] overflow-x-auto">
+              {navItems.map((item) => {
+                const active = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`text-center px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap ${
+                      active
+                        ? "bg-white text-black font-semibold shadow-sm"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
 
-          {/* Apple-Style Pill Segmented Navigation */}
-          <nav className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/[0.08] w-full sm:w-auto justify-center overflow-x-auto">
-            {navItems.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex-1 sm:flex-initial text-center px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap ${
-                    active
-                      ? "bg-white text-black font-semibold shadow-sm"
-                      : "text-zinc-400 hover:text-white"
+            {user && (
+              <div className="flex items-center gap-1.5 bg-[#121215] border border-white/[0.08] rounded-full px-3 py-1 text-[11px]">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    ROLE_DOT_MAP[user.role] || "bg-emerald-400"
                   }`}
+                />
+                <button
+                  type="button"
+                  onClick={openCredentialsModal}
+                  title="Update account username or password"
+                  className="font-semibold text-white hover:text-zinc-300 transition"
                 >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+                  {user.name}
+                </button>
+                <span className="text-zinc-500 font-mono text-[10px]">
+                  {user.callsign}
+                </span>
+                <span className="text-zinc-700">·</span>
+                <button
+                  type="button"
+                  onClick={() => openSwitchModal()}
+                  className="text-zinc-400 hover:text-white font-medium transition"
+                >
+                  Switch
+                </button>
+                <span className="text-zinc-700">·</span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="text-rose-400 hover:text-rose-300 font-medium transition"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
