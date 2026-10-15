@@ -216,14 +216,11 @@ export default function Navbar({
                 )}
                 {mytClock && (
                   <span
-                    title="Malaysia Time (Asia/Kuala_Lumpur · UTC+8) — Sunday Check 6:00 AM · Early Go-Live 8:25 AM · Service 8:30 AM"
+                    title="Malaysia Time (Asia/Kuala_Lumpur · UTC+8)"
                     className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-white/[0.04] text-zinc-300 border border-white/[0.08] tabular-nums"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     <span>{mytClock}</span>
-                    <span className="text-zinc-500 hidden md:inline">
-                      · Sun 06:00 Check / 08:25 Go-Live / 08:30 Service
-                    </span>
                   </span>
                 )}
               </div>

@@ -1367,190 +1367,66 @@ export default function CrewAndQcPage() {
             VIEW 1: PRE-FLIGHT VERIFICATION & GO / NO-GO POLL
            =================================================================== */}
         {activeTab === "PRE_LIVE" && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* ===============================================================
-                MALAYSIA TIME (MYT · UTC+8) SUNDAY BROADCAST SCHEDULE & COUNTDOWN
-                06:00 AM Check Start -> 08:25 AM Early Go-Live (-5m) -> 08:30 AM Service
+                1. SUNDAY BROADCAST TIMELINE & LIVE MALAYSIA CLOCK (NO DUPLICATION)
                =============================================================== */}
-            <div className="rounded-2xl p-4 sm:p-5 bg-[#111114] border border-white/[0.09] space-y-4">
-              <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                {/* Left: Live Malaysia System Clock & Active Broadcast Window */}
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="px-4 py-2.5 rounded-xl bg-[#18181d] border border-white/[0.1] flex flex-col">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                        Malaysia System Time (UTC+8)
-                      </span>
-                    </div>
-                    <div className="text-lg sm:text-xl font-mono font-bold text-white tabular-nums tracking-tight mt-0.5">
+            <div className="rounded-2xl p-4 sm:p-5 bg-[#111114] border border-white/[0.08] space-y-4">
+              {/* Top Bar: Malaysia Clock (Left) + Rehearsal Clock Mode Switcher (Right) */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-white/[0.06]">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-[#18181c] border border-white/[0.1]">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-sm sm:text-base font-mono font-bold text-white tabular-nums tracking-tight">
                       {mytCountdown.mytClock}
-                    </div>
-                    <div className="text-[11px] text-zinc-400">
+                    </span>
+                    <span className="text-zinc-600">·</span>
+                    <span className="text-xs text-zinc-400">
                       {mytCountdown.mytDateLabel}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
-                          mytCountdown.windowState === "EARLY_GO_LIVE_825AM" ||
-                          mytCountdown.windowState === "SERVICE_LIVE_830AM"
-                            ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/35 animate-pulse"
-                            : mytCountdown.windowState === "CHECKING_WINDOW_6AM" ||
-                              mytCountdown.windowState === "FINAL_10M_ALERT"
-                            ? "bg-amber-500/15 text-amber-300 border-amber-500/35"
-                            : "bg-white/[0.05] text-zinc-300 border-white/[0.1]"
-                        }`}
-                      >
-                        {mytCountdown.windowHeadline}
-                      </span>
-                      <span className="text-xs font-medium text-zinc-400">
-                        Sunday Schedule: <strong className="text-white">6:00 AM MYT</strong> Check Start ·{" "}
-                        <strong className="text-emerald-300">8:25 AM MYT</strong> Early Go-Live (5m Early) ·{" "}
-                        <strong className="text-white">8:30 AM MYT</strong> Service Start
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      {mytCountdown.windowSubtext}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right: Live Countdowns to 8:25 AM Early Go-Live & 8:30 AM Service */}
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-right">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                      6:00 AM Check Start
-                    </div>
-                    <div className="text-sm font-mono font-bold text-zinc-200 tabular-nums mt-0.5">
-                      {mytCountdown.toCheckStart600.isReached
-                        ? "CHECK ACTIVE"
-                        : mytCountdown.toCheckStart600.formatted}
-                    </div>
-                  </div>
-
-                  <div
-                    className={`px-4 py-2 rounded-xl border text-right transition ${
-                      !is100PercentReady
-                        ? "bg-rose-500/12 border-rose-500/40"
-                        : !directorSignOff.clearedToGoLive
-                        ? "bg-emerald-500/15 border-emerald-400/50 animate-pulse"
-                        : "bg-emerald-500/10 border-emerald-500/30"
-                    }`}
-                  >
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                      8:25 AM Early Go-Live (-5m)
-                    </div>
-                    <div className="text-base sm:text-lg font-mono font-bold text-white tabular-nums mt-0.5">
-                      {mytCountdown.toGoLive825.totalSeconds === 0
-                        ? "GO LIVE NOW"
-                        : mytCountdown.toGoLive825.formatted}
-                    </div>
-                  </div>
-
-                  <div className="px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-right">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                      8:30 AM Sunday Service
-                    </div>
-                    <div className="text-sm font-mono font-bold text-zinc-200 tabular-nums mt-0.5">
-                      {mytCountdown.toService830.isReached
-                        ? "SERVICE LIVE"
-                        : mytCountdown.toService830.formatted}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3-Step Sunday Timeline Bar + Simulation Controls */}
-              <div className="pt-3 border-t border-white/[0.06] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
-                  <div
-                    className={`px-3 py-2 rounded-xl border text-xs flex items-center justify-between ${
-                      mytCountdown.windowState === "CHECKING_WINDOW_6AM" ||
-                      mytCountdown.windowState === "FINAL_10M_ALERT"
-                        ? "bg-amber-500/12 border-amber-500/35 text-amber-200"
-                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400"
-                    }`}
-                  >
-                    <div>
-                      <span className="font-mono font-bold text-white">
-                        06:00 AM MYT
-                      </span>
-                      <span className="ml-2">Pre-Flight Check Opens</span>
-                    </div>
-                    <span className="text-[10px] font-mono uppercase">
-                      T-2h 25m
                     </span>
                   </div>
 
-                  <div
-                    className={`px-3 py-2 rounded-xl border text-xs flex items-center justify-between ${
-                      mytCountdown.windowState === "EARLY_GO_LIVE_825AM"
-                        ? "bg-emerald-500/15 border-emerald-400 text-emerald-200 animate-pulse"
-                        : "bg-emerald-500/[0.06] border-emerald-500/25 text-emerald-200"
-                    }`}
-                  >
-                    <div>
-                      <span className="font-mono font-bold text-emerald-300">
-                        08:25 AM MYT
-                      </span>
-                      <span className="ml-2 font-semibold">
-                        Target Go-Live (5m Early)
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-mono uppercase text-emerald-300">
-                      All Okay Gate
-                    </span>
-                  </div>
-
-                  <div
-                    className={`px-3 py-2 rounded-xl border text-xs flex items-center justify-between ${
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
+                      mytCountdown.windowState === "EARLY_GO_LIVE_825AM" ||
                       mytCountdown.windowState === "SERVICE_LIVE_830AM"
-                        ? "bg-rose-500/15 border-rose-500/40 text-rose-200"
-                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400"
+                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/35"
+                        : mytCountdown.windowState === "CHECKING_WINDOW_6AM" ||
+                          mytCountdown.windowState === "FINAL_10M_ALERT"
+                        ? "bg-amber-500/15 text-amber-300 border-amber-500/35"
+                        : "bg-white/[0.04] text-zinc-400 border-white/[0.08]"
                     }`}
                   >
-                    <div>
-                      <span className="font-mono font-bold text-white">
-                        08:30 AM MYT
-                      </span>
-                      <span className="ml-2">Sunday Service Starts</span>
-                    </div>
-                    <span className="text-[10px] font-mono uppercase">
-                      00:00:00
-                    </span>
-                  </div>
+                    {mytCountdown.windowState === "EARLY_GO_LIVE_825AM"
+                      ? "8:25 AM Early Go-Live Window Active"
+                      : mytCountdown.windowState === "SERVICE_LIVE_830AM"
+                      ? "8:30 AM Sunday Service Live"
+                      : mytCountdown.windowState === "FINAL_10M_ALERT"
+                      ? "Final 10m to 8:25 AM Go-Live"
+                      : mytCountdown.windowState === "CHECKING_WINDOW_6AM"
+                      ? "6:00 AM Crew Check Window Open"
+                      : "Next Sunday Broadcast Schedule"}
+                  </span>
                 </div>
 
-                {/* Test / Rehearsal Clock Mode Selector */}
-                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mr-1">
-                    Clock Mode:
-                  </span>
+                {/* Compact Clock Simulation Segmented Control */}
+                <div className="inline-flex items-center gap-1 bg-[#17171b] p-1 rounded-full border border-white/[0.07]">
                   {(
                     [
                       { id: "REAL", label: "Live MYT" },
-                      { id: "SIM_615AM_CHECK", label: "Sun 6:15 AM Check" },
-                      {
-                        id: "SIM_820AM_FINAL5M",
-                        label: "Sun 8:20 AM (-5m to Go-Live)",
-                      },
-                      {
-                        id: "SIM_825AM_GOLIVE",
-                        label: "Sun 8:25 AM Go-Live",
-                      },
+                      { id: "SIM_615AM_CHECK", label: "6:15 AM Check" },
+                      { id: "SIM_820AM_FINAL5M", label: "8:20 AM (-5m)" },
+                      { id: "SIM_825AM_GOLIVE", label: "8:25 AM Go-Live" },
                     ] as const
                   ).map((mode) => (
                     <button
                       key={mode.id}
                       type="button"
                       onClick={() => setSimScheduleMode(mode.id)}
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition ${
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition ${
                         simScheduleMode === mode.id
-                          ? "bg-white text-black"
-                          : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.08]"
+                          ? "bg-white text-black font-semibold"
+                          : "text-zinc-400 hover:text-white"
                       }`}
                     >
                       {mode.label}
@@ -1558,41 +1434,158 @@ export default function CrewAndQcPage() {
                   ))}
                 </div>
               </div>
+
+              {/* 3 Structured Sunday Milestones (Each shown once with its live countdown) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Milestone 1: 6:00 AM Check Start */}
+                <div
+                  className={`rounded-xl px-4 py-3 border flex items-center justify-between gap-3 ${
+                    mytCountdown.windowState === "CHECKING_WINDOW_6AM"
+                      ? "bg-amber-500/[0.08] border-amber-500/35"
+                      : "bg-white/[0.02] border-white/[0.07]"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                        01 · Check Start
+                      </span>
+                      <span className="text-xs font-mono font-bold text-white">
+                        06:00 AM MYT
+                      </span>
+                    </div>
+                    <div className="text-xs text-zinc-400 truncate mt-0.5">
+                      Rig power, optics, mix & encoder check
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {mytCountdown.toCheckStart600.isReached ? (
+                      <span className="px-2.5 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono font-bold">
+                        OPEN
+                      </span>
+                    ) : (
+                      <div className="text-sm font-mono font-bold text-zinc-200 tabular-nums">
+                        {mytCountdown.toCheckStart600.formatted}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Milestone 2: 8:25 AM Early Go-Live (-5 Mins) */}
+                <div
+                  className={`rounded-xl px-4 py-3 border flex items-center justify-between gap-3 ${
+                    mytCountdown.windowState === "EARLY_GO_LIVE_825AM" ||
+                    mytCountdown.windowState === "FINAL_10M_ALERT"
+                      ? "bg-emerald-500/[0.12] border-emerald-400/50"
+                      : "bg-emerald-500/[0.05] border-emerald-500/25"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+                        02 · Early Go-Live (-5m)
+                      </span>
+                      <span className="text-xs font-mono font-bold text-emerald-300">
+                        08:25 AM MYT
+                      </span>
+                    </div>
+                    <div className="text-xs text-zinc-300 truncate mt-0.5">
+                      Streams live 5 mins before service
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {mytCountdown.toGoLive825.totalSeconds === 0 ? (
+                      <span className="px-2.5 py-1 rounded-md bg-emerald-400 text-black text-[11px] font-mono font-extrabold">
+                        GO LIVE
+                      </span>
+                    ) : (
+                      <div className="text-base font-mono font-bold text-white tabular-nums">
+                        {mytCountdown.toGoLive825.formatted}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Milestone 3: 8:30 AM Sunday Service */}
+                <div
+                  className={`rounded-xl px-4 py-3 border flex items-center justify-between gap-3 ${
+                    mytCountdown.windowState === "SERVICE_LIVE_830AM"
+                      ? "bg-rose-500/[0.12] border-rose-500/40"
+                      : "bg-white/[0.02] border-white/[0.07]"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                        03 · Service Start
+                      </span>
+                      <span className="text-xs font-mono font-bold text-white">
+                        08:30 AM MYT
+                      </span>
+                    </div>
+                    <div className="text-xs text-zinc-400 truncate mt-0.5">
+                      Official Sunday service broadcast
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {mytCountdown.toService830.isReached ? (
+                      <span className="px-2.5 py-1 rounded-md bg-rose-500 text-white text-[11px] font-mono font-bold">
+                        LIVE
+                      </span>
+                    ) : (
+                      <div className="text-sm font-mono font-bold text-zinc-200 tabular-nums">
+                        {mytCountdown.toService830.formatted}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* ===============================================================
-                MASTER READINESS & DIRECTOR-ONLY GO/NO-GO COMMAND BAR
-                - BLINKING RED if any check is missing (!is100PercentReady)
-                - BLINKING GREEN once 100% all okay, awaiting Director Go-Live
-                - SOLID EMERALD once Director confirms On Air
+                2. BLINKING READINESS & DIRECTOR GO-LIVE PANEL (CLEAN & STRUCTURED)
+                - Blinking Red when checks are missing (!is100PercentReady)
+                - Blinking Green when 100% ready, awaiting Director confirmation
+                - Solid Emerald once Director confirms On Air
                =============================================================== */}
             {is100PercentReady ? (
               directorSignOff.clearedToGoLive ? (
-                /* STATE 3: DIRECTOR HAS CONFIRMED GO LIVE (ON AIR) */
-                <div className="rounded-2xl p-5 bg-[#0b1f16] border-2 border-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.2)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                /* STATE C: CONFIRMED ON AIR */
+                <div className="rounded-2xl p-5 bg-[#0b1f16] border-2 border-emerald-400 shadow-[0_0_28px_rgba(16,185,129,0.2)] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-4">
-                    <div className="px-4 py-2.5 rounded-xl bg-emerald-400 text-black font-bold text-xl tabular-nums">
+                    <div className="px-4 py-2.5 rounded-xl bg-emerald-400 text-black font-extrabold text-xl tabular-nums">
                       ON AIR
                     </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2.5">
                         <span className="relative flex h-2.5 w-2.5">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
                         </span>
-                        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">
-                          Director Confirmed Go-Live · {completedChecks}/{totalChecks} Checks Verified
+                        <span className="text-base font-bold text-white tracking-tight">
+                          Broadcast Confirmed On Air
                         </span>
-                      </div>
-                      <div className="text-lg font-semibold text-white tracking-tight mt-0.5">
-                        Broadcast Live Confirmed by Director ({directorSignOff.directorName}) at{" "}
-                        <span className="text-emerald-300 font-mono">
+                        <span className="text-xs font-mono text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                          Signed off by {directorSignOff.directorName} ·{" "}
                           {directorSignOff.clearedAt}
                         </span>
                       </div>
-                      <p className="text-xs text-zinc-300 mt-0.5">
-                        5-Minute Early Go-Live Buffer Active (8:25 AM MYT) — YouTube & Instagram MAINSTREAM (Top/Bottom Blur + 16:9 Landscape) On Air for 8:30 AM MYT Sunday Service.
-                      </p>
+
+                      {/* Clean Structured Telemetry Pills */}
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-200 font-medium">
+                          {completedChecks}/{totalChecks} Checks Verified
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-200 font-medium">
+                          YouTube 16:9 · 1080p60
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-200 font-medium">
+                          IG MAINSTREAM · Blur + 16:9 Center
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-200 font-medium">
+                          Audio Bus · -14 LUFS
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -1602,58 +1595,68 @@ export default function CrewAndQcPage() {
                         <button
                           type="button"
                           onClick={handleResetChecklists}
-                          className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.1] transition"
+                          className="px-3.5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 text-xs font-medium border border-white/[0.1] transition"
                         >
-                          Reset Session
+                          Reset
                         </button>
                         <button
                           type="button"
                           onClick={handleToggleGoLive}
-                          className="px-5 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-bold transition shadow-lg"
+                          className="px-4 py-2 rounded-full bg-white/[0.1] hover:bg-white/[0.16] text-emerald-300 border border-emerald-400/40 text-xs font-semibold transition"
                         >
-                          On Air Confirmed ({directorSignOff.clearedAt}) · Return to Standby
+                          Return to Standby
                         </button>
                       </>
                     ) : (
-                      <span className="px-4 py-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-semibold">
-                        Director Confirmed On Air ({directorSignOff.clearedAt})
+                      <span className="px-3.5 py-2 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-200 text-xs font-semibold">
+                        Director Confirmed ({directorSignOff.clearedAt})
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
-                      className="px-4 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-white text-xs font-semibold border border-white/[0.14] transition"
+                      className="px-4 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-bold transition"
                     >
-                      End Live & Start Shutdown →
+                      Post-Live Shutdown →
                     </button>
                   </div>
                 </div>
               ) : (
-                /* STATE 2: 100% ALL OKAY — BLINKING GREEN FOR DIRECTOR TO CONFIRM GO LIVE */
-                <div className="rounded-2xl p-5 bg-[#0a2217] border-2 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.35)] animate-pulse flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                /* STATE B: 100% READY — BLINKING GREEN PANEL FOR DIRECTOR CONFIRMATION */
+                <div className="rounded-2xl p-5 bg-[#0a2217] border-2 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.35)] animate-pulse flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-4">
-                    <div className="relative px-4 py-2.5 rounded-xl bg-emerald-400 text-black font-extrabold text-2xl tabular-nums shadow-[0_0_25px_rgba(52,211,153,0.6)]">
+                    <div className="px-4 py-2.5 rounded-xl bg-emerald-400 text-black font-extrabold text-2xl tabular-nums shadow-[0_0_20px_rgba(52,211,153,0.5)]">
                       100%
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2.5">
                         <span className="relative flex h-3 w-3">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-90" />
                           <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
                         </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-black text-[10px] font-extrabold uppercase tracking-[0.14em]">
-                          BLINKING GREEN · ALL OKAY TO GO LIVE
+                        <span className="text-base sm:text-lg font-bold text-white tracking-tight">
+                          All Stations Verified — Ready for 8:25 AM MYT Go-Live
                         </span>
-                        <span className="text-xs font-semibold text-emerald-300">
-                          All {completedChecks}/{totalChecks} Station Checks Verified
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-400/40 text-emerald-200 text-[11px] font-mono font-semibold">
+                          {completedChecks}/{totalChecks} Complete
                         </span>
                       </div>
-                      <div className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                        All Stations 100% Ready — Go Live at 8:25 AM MYT (5 Mins Before 8:30 AM Service)
+
+                      {/* Clean Structured Technical Readiness Summary */}
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-200 font-medium">
+                          CAM · 5600K & Framing Locked
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-200 font-medium">
+                          AUD · -14 LUFS & Aux Clean
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-200 font-medium">
+                          IG · Top/Bottom Blur + 16:9 Center
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-200 font-medium">
+                          YT · 1080p60 Stream Ready
+                        </span>
                       </div>
-                      <p className="text-xs text-emerald-200/90">
-                        Only the Technical Director can confirm final Go-Live. Click the blinking green button to confirm broadcast On Air.
-                      </p>
                     </div>
                   </div>
 
@@ -1663,40 +1666,36 @@ export default function CrewAndQcPage() {
                         <button
                           type="button"
                           onClick={handleResetChecklists}
-                          className="px-4 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-zinc-200 text-xs font-medium border border-white/[0.12] transition"
+                          className="px-3.5 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-zinc-200 text-xs font-medium border border-white/[0.12] transition"
                         >
-                          Reset Session
+                          Reset
                         </button>
                         <button
                           type="button"
                           onClick={handleToggleGoLive}
-                          className="relative inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs sm:text-sm font-extrabold tracking-tight transition shadow-[0_0_30px_rgba(52,211,153,0.8)] ring-2 ring-white"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs sm:text-sm font-extrabold tracking-tight transition shadow-[0_0_25px_rgba(52,211,153,0.75)] ring-2 ring-white"
                         >
-                          <span className="relative flex h-2.5 w-2.5">
+                          <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-black" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-black" />
                           </span>
-                          <span>DIRECTOR ONLY: CONFIRM TO GO LIVE (8:25 AM MYT)</span>
+                          <span>Director: Confirm Go Live</span>
                         </button>
                       </>
                     ) : (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                        <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-400/20 border-2 border-emerald-400 text-emerald-200 text-xs font-bold">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                          <span>
-                            100% ALL OKAY — WAITING FOR DIRECTOR TO CONFIRM GO LIVE (DIRECTOR ONLY)
-                          </span>
-                        </span>
-                      </div>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-400/20 border border-emerald-400 text-emerald-200 text-xs font-bold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        <span>Awaiting Director Go-Live Confirmation</span>
+                      </span>
                     )}
                   </div>
                 </div>
               )
             ) : (
-              /* STATE 1: MISSING CHECKS — BLINKING RED ALERT (GO-LIVE LOCKED) */
-              <div className="rounded-2xl p-5 bg-[#1c0d11] border-2 border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.28)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              /* STATE A: MISSING CHECKS — BLINKING RED PANEL */
+              <div className="rounded-2xl p-5 bg-[#1c0d11] border-2 border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.28)] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-4">
-                  <div className="px-4 py-2.5 rounded-xl bg-rose-500 text-white font-extrabold text-2xl tabular-nums animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.6)]">
+                  <div className="px-4 py-2.5 rounded-xl bg-rose-500 text-white font-extrabold text-2xl tabular-nums animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.55)]">
                     {overallPct}%
                   </div>
                   <div className="space-y-1.5">
@@ -1705,25 +1704,19 @@ export default function CrewAndQcPage() {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-90" />
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold uppercase tracking-[0.14em] animate-pulse">
-                        BLINKING RED · MISSING CHECKS ({pendingCount} PENDING)
-                      </span>
-                      <span className="text-sm font-bold text-white tracking-tight">
+                      <span className="text-base sm:text-lg font-bold text-white tracking-tight">
                         {pendingCount}{" "}
                         {pendingCount === 1
-                          ? "Check Still Missing Before 8:25 AM MYT Early Go-Live"
-                          : "Checks Still Missing Before 8:25 AM MYT Early Go-Live"}
+                          ? "Pre-Flight Check Missing"
+                          : "Pre-Flight Checks Missing"}
                       </span>
-                      <span className="text-xs text-rose-200/80 tabular-nums">
-                        ({completedChecks} of {totalChecks} verified)
+                      <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-200 text-[11px] font-mono font-semibold tabular-nums">
+                        {completedChecks}/{totalChecks} Verified
                       </span>
                     </div>
 
-                    {/* Direct Operator Callouts for Technical Director */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] font-semibold text-rose-300">
-                        Stations Holding Go-Live:
-                      </span>
+                    {/* Clean Station Callouts (Click to filter) */}
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {pendingStations.map((ps) => {
                         const st = DEPT_STYLES[ps.role];
                         return (
@@ -1731,7 +1724,7 @@ export default function CrewAndQcPage() {
                             key={ps.role}
                             type="button"
                             onClick={() => setStationFilter(ps.role)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition ${st.pill}`}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium transition ${st.pill}`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${st.dot}`}
@@ -1739,8 +1732,8 @@ export default function CrewAndQcPage() {
                             <span>
                               {ps.label} · {ps.operatorName}
                             </span>
-                            <span className="font-semibold tabular-nums">
-                              ({ps.remaining} left)
+                            <span className="font-mono font-bold tabular-nums">
+                              ({ps.remaining})
                             </span>
                           </button>
                         );
@@ -1750,15 +1743,12 @@ export default function CrewAndQcPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                  {/* Locked Director Go-Live Pill */}
                   <span
                     title="Only the Director can confirm Go-Live once 100% of checks are completed"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-200 text-xs font-bold animate-pulse"
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-rose-500/20 border border-rose-500/45 text-rose-200 text-xs font-semibold animate-pulse"
                   >
                     <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                    <span>
-                      GO-LIVE LOCKED ({pendingCount} MISSING) · DIRECTOR ONLY
-                    </span>
+                    <span>Go-Live Locked · Director Only</span>
                   </span>
 
                   {isDirector ? (
@@ -1768,12 +1758,12 @@ export default function CrewAndQcPage() {
                         onClick={() => handleCheckAllStation("ALL")}
                         className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                       >
-                        Verify All Remaining ({pendingCount})
+                        Verify Remaining ({pendingCount})
                       </button>
                       <button
                         type="button"
                         onClick={handleResetChecklists}
-                        className="px-4 py-2 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/[0.08] text-xs font-medium transition"
+                        className="px-3.5 py-2 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/[0.08] text-xs font-medium transition"
                       >
                         Reset
                       </button>
@@ -1784,7 +1774,7 @@ export default function CrewAndQcPage() {
                       onClick={() => handleCheckAllStation(myIdentity.role)}
                       className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                     >
-                      Verify My {DEPT_STYLES[myIdentity.role].label} Station
+                      Verify {DEPT_STYLES[myIdentity.role].label} Station
                     </button>
                   )}
                 </div>
