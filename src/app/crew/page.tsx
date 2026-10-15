@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Navbar from "@/components/Navbar";
+import CrewTrainingAcademy from "@/components/CrewTrainingAcademy";
 
 type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
@@ -22,6 +23,8 @@ interface CrewUserAccount {
   goStatus: GoNoGoStatus;
   device: string;
   lastActiveAt: string;
+  completedLessons?: string[];
+  certifiedRoles?: CrewRole[];
 }
 
 interface CrewChecklistItem {
@@ -317,7 +320,7 @@ export default function CrewAndQcPage() {
 
   // Active workspace tab
   const [activeTab, setActiveTab] = useState<
-    "PRE_LIVE" | "QC_PAD" | "TEAM_ACCOUNTS" | "MEETING_REPORT"
+    "PRE_LIVE" | "QC_PAD" | "TEAM_ACCOUNTS" | "TRAINING" | "MEETING_REPORT"
   >("PRE_LIVE");
 
   // Active logged-in operator
@@ -700,6 +703,68 @@ export default function CrewAndQcPage() {
     }
   };
 
+  // Training Academy Handlers
+  const handleToggleTrainingLesson = async (
+    userId: string,
+    lessonId: string
+  ) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        const curr = u.completedLessons || [];
+        const exists = curr.includes(lessonId);
+        return {
+          ...u,
+          completedLessons: exists
+            ? curr.filter((x) => x !== lessonId)
+            : [...curr, lessonId],
+        };
+      })
+    );
+
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "TOGGLE_TRAINING_LESSON",
+        userId,
+        lessonId,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.users) setUsers(updated.users);
+      triggerToast(`Training module progress updated`);
+    }
+  };
+
+  const handleCertifyUserRole = async (userId: string, role: CrewRole) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        const curr = u.certifiedRoles || [];
+        return curr.includes(role)
+          ? u
+          : { ...u, certifiedRoles: [...curr, role] };
+      })
+    );
+
+    const res = await fetch("/api/crew-qc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "CERTIFY_USER_ROLE",
+        userId,
+        role,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      if (updated.users) setUsers(updated.users);
+      triggerToast(`Role Certification awarded for ${role}`);
+    }
+  };
+
   // QC Pad Handlers
   const handleSelectQcPreset = (preset: (typeof QUICK_QC_PRESETS)[number]) => {
     setQcTitle(preset.label);
@@ -1049,6 +1114,27 @@ export default function CrewAndQcPage() {
                 }`}
               >
                 {users.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("TRAINING")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "TRAINING"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <span>Training Academy</span>
+              <span
+                className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                  activeTab === "TRAINING"
+                    ? "bg-black/10 text-black font-bold"
+                    : "bg-white/[0.06] text-zinc-400"
+                }`}
+              >
+                5 Roles
               </span>
             </button>
 
@@ -2275,6 +2361,40 @@ export default function CrewAndQcPage() {
                         </div>
                       </div>
 
+                      {/* Operator Training & Role Certification Status */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-[#09090b] border border-white/[0.06]">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] font-medium text-zinc-400 mr-1">
+                            Certifications:
+                          </span>
+                          {(user.certifiedRoles || []).length > 0 ? (
+                            (user.certifiedRoles || []).map((certRole) => (
+                              <span
+                                key={certRole}
+                                className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold"
+                              >
+                                {certRole} Certified
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[11px] text-zinc-500">
+                              In Training ({(user.completedLessons || []).length}
+                              /20 SOPs)
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSwitchActiveUser(user);
+                            setActiveTab("TRAINING");
+                          }}
+                          className="text-[11px] font-medium text-zinc-300 hover:text-white underline underline-offset-4 transition"
+                        >
+                          Open Training →
+                        </button>
+                      </div>
+
                       {/* Assigned Pre-Flight Tasks List for This User */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
@@ -2406,7 +2526,19 @@ export default function CrewAndQcPage() {
         )}
 
         {/* ===================================================================
-            VIEW 4: POST-SHOW TECHNICAL LOG & MEETING REPORT
+            VIEW 4: PRODUCTION FLOW, CALLSIGN PROTOCOL & ROLE TRAINING ACADEMY
+           =================================================================== */}
+        {activeTab === "TRAINING" && (
+          <CrewTrainingAcademy
+            users={users}
+            activeUserId={myIdentity.id}
+            onToggleLesson={handleToggleTrainingLesson}
+            onCertifyRole={handleCertifyUserRole}
+          />
+        )}
+
+        {/* ===================================================================
+            VIEW 5: POST-SHOW TECHNICAL LOG & MEETING REPORT
            =================================================================== */}
         {activeTab === "MEETING_REPORT" && (
           <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 sm:p-8 space-y-6">

@@ -20,6 +20,8 @@ export interface CrewUserAccount {
   goStatus: GoNoGoStatus;
   device: string;
   lastActiveAt: string;
+  completedLessons?: string[];
+  certifiedRoles?: CrewRole[];
 }
 
 export interface CrewChecklistItem {
@@ -82,6 +84,16 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "GO",
     device: "Mac Studio Console",
     lastActiveAt: "Active now",
+    completedLessons: [
+      "flow-1",
+      "flow-2",
+      "flow-3",
+      "dir-1",
+      "dir-2",
+      "dir-3",
+      "dir-4",
+    ],
+    certifiedRoles: ["DIRECTOR", "QC"],
   },
   {
     id: "usr-camera-1",
@@ -96,6 +108,8 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "STANDBY",
     device: "iPhone 16 Pro",
     lastActiveAt: "1m ago",
+    completedLessons: ["flow-1", "flow-2", "cam-1", "cam-2", "cam-3"],
+    certifiedRoles: ["CAMERA"],
   },
   {
     id: "usr-audio-1",
@@ -110,6 +124,8 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "GO",
     device: "iPad Pro",
     lastActiveAt: "2m ago",
+    completedLessons: ["flow-1", "flow-2", "aud-1", "aud-2", "aud-3", "aud-4"],
+    certifiedRoles: ["AUDIO"],
   },
   {
     id: "usr-mod-1",
@@ -124,6 +140,8 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "GO",
     device: "MacBook Air",
     lastActiveAt: "Active now",
+    completedLessons: ["flow-1", "mod-1", "mod-2"],
+    certifiedRoles: [],
   },
   {
     id: "usr-qc-1",
@@ -138,6 +156,8 @@ const DEFAULT_USERS: CrewUserAccount[] = [
     goStatus: "GO",
     device: "iPhone 16",
     lastActiveAt: "Active now",
+    completedLessons: ["flow-1", "flow-2", "qc-1", "qc-2", "qc-3", "qc-4"],
+    certifiedRoles: ["QC"],
   },
 ];
 
@@ -891,6 +911,37 @@ export async function POST(req: NextRequest) {
           writeFallbackStore("roadmap", fullStore.roadmap);
         }
       }
+    }
+
+    // 16. Toggle Training Lesson Completion for a User Account
+    if (body.action === "TOGGLE_TRAINING_LESSON" && body.userId && body.lessonId) {
+      state.users = state.users.map((u) => {
+        if (u.id !== body.userId) return u;
+        const current = Array.isArray(u.completedLessons)
+          ? u.completedLessons
+          : [];
+        const exists = current.includes(body.lessonId);
+        const nextLessons = exists
+          ? current.filter((id) => id !== body.lessonId)
+          : [...current, body.lessonId];
+        return { ...u, completedLessons: nextLessons };
+      });
+    }
+
+    // 17. Certify User for a Specific Broadcast Role
+    if (body.action === "CERTIFY_USER_ROLE" && body.userId && body.role) {
+      state.users = state.users.map((u) => {
+        if (u.id !== body.userId) return u;
+        const current = Array.isArray(u.certifiedRoles)
+          ? u.certifiedRoles
+          : [];
+        const role = body.role as CrewRole;
+        const exists = current.includes(role);
+        const nextRoles = exists
+          ? current
+          : [...current, role];
+        return { ...u, certifiedRoles: nextRoles };
+      });
     }
 
     writeFallbackStore("crewQc", state);
