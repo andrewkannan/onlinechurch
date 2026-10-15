@@ -11,6 +11,7 @@ import {
 } from "@/lib/clientConfig";
 import { useAuth } from "@/components/AuthProvider";
 import { canAccessRoute, getRolePermissions } from "@/lib/rbac";
+import { formatMYTClockWithSeconds } from "@/lib/malaysiaTime";
 
 interface NavbarProps {
   churchName?: string;
@@ -42,6 +43,7 @@ export default function Navbar({
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [dbConnected, setDbConnected] = useState<boolean>(true);
+  const [mytClock, setMytClock] = useState<string>("");
 
   // Quick Branding Edit Modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -68,10 +70,16 @@ export default function Navbar({
 
   useEffect(() => {
     loadConfig();
+    setMytClock(formatMYTClockWithSeconds());
+    const clockInterval = setInterval(() => {
+      setMytClock(formatMYTClockWithSeconds());
+    }, 1000);
     const handleConfigUpdate = () => loadConfig();
     window.addEventListener("church-config-updated", handleConfigUpdate);
-    return () =>
+    return () => {
+      clearInterval(clockInterval);
       window.removeEventListener("church-config-updated", handleConfigUpdate);
+    };
   }, []);
 
   const openQuickEdit = () => {
@@ -204,6 +212,18 @@ export default function Navbar({
                 ) : (
                   <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/[0.05] text-zinc-400">
                     Standby
+                  </span>
+                )}
+                {mytClock && (
+                  <span
+                    title="Malaysia Time (Asia/Kuala_Lumpur · UTC+8) — Sunday Check 6:00 AM · Early Go-Live 8:25 AM · Service 8:30 AM"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-white/[0.04] text-zinc-300 border border-white/[0.08] tabular-nums"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span>{mytClock}</span>
+                    <span className="text-zinc-500 hidden md:inline">
+                      · Sun 06:00 Check / 08:25 Go-Live / 08:30 Service
+                    </span>
                   </span>
                 )}
               </div>

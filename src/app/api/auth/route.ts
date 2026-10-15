@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFallbackStore } from "@/lib/db";
 import { getCrewQcState, CrewUserAccount } from "@/app/api/crew-qc/route";
+import { formatMYTTime } from "@/lib/malaysiaTime";
 
 const SESSION_COOKIE_NAME = "church_auth_session";
 
@@ -102,10 +103,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const nowTime = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const nowTime = formatMYTTime();
 
       const deviceLabel = String(body.device || targetUser.device || "Console");
 
@@ -116,7 +114,7 @@ export async function POST(req: NextRequest) {
               ...u,
               status: "ON_DUTY",
               device: deviceLabel,
-              lastActiveAt: "Active now",
+              lastActiveAt: `Active now (${nowTime})`,
             }
           : u
       );
@@ -127,7 +125,7 @@ export async function POST(req: NextRequest) {
           c.role === targetUser.role
       );
       if (existingIdx >= 0) {
-        state.activeCrew[existingIdx].lastActiveAt = "Active now";
+        state.activeCrew[existingIdx].lastActiveAt = `Active now (${nowTime})`;
         state.activeCrew[existingIdx].device = deviceLabel;
       } else {
         state.activeCrew.unshift({
@@ -136,7 +134,7 @@ export async function POST(req: NextRequest) {
           role: targetUser.role,
           device: deviceLabel,
           loggedInAt: nowTime,
-          lastActiveAt: "Active now",
+          lastActiveAt: `Active now (${nowTime})`,
         });
       }
 

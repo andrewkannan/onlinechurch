@@ -15,12 +15,24 @@ import {
   getRolePermissions,
   canAccessCrewTab,
 } from "@/lib/rbac";
+import {
+  formatMYTTime,
+  getMalaysiaBroadcastCountdown,
+  MalaysiaBroadcastCountdown,
+} from "@/lib/malaysiaTime";
 
 type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
 type DutyStatus = "ON_DUTY" | "STANDBY" | "OFF_DUTY";
 type GoNoGoStatus = "GO" | "STANDBY" | "HOLD";
 type PreFlightPhase = "T-60M" | "T-30M" | "T-15M" | "T-5M";
+
+const MALAYSIA_PHASE_TIME_MAP: Record<PreFlightPhase, string> = {
+  "T-60M": "06:00 AM MYT · Check Start",
+  "T-30M": "07:00 AM MYT · Optics & Mix",
+  "T-15M": "08:00 AM MYT · Stream Preview",
+  "T-5M": "08:25 AM MYT · Early Go-Live (-5m)",
+};
 
 interface CrewUserAccount {
   id: string;
@@ -387,6 +399,24 @@ export default function CrewAndQcPage() {
   const [selectedMatrixRole, setSelectedMatrixRole] =
     useState<CrewRole>("DIRECTOR");
 
+  // Malaysia Time (MYT, UTC+8) Broadcast Clock & Sunday 6:00 AM -> 8:25 AM Early Go-Live -> 8:30 AM Service Countdown
+  const [simScheduleMode, setSimScheduleMode] = useState<
+    "REAL" | "SIM_615AM_CHECK" | "SIM_820AM_FINAL5M" | "SIM_825AM_GOLIVE"
+  >("REAL");
+  const [mytCountdown, setMytCountdown] = useState<MalaysiaBroadcastCountdown>(
+    () => getMalaysiaBroadcastCountdown(new Date(), "REAL")
+  );
+
+  useEffect(() => {
+    setMytCountdown(getMalaysiaBroadcastCountdown(new Date(), simScheduleMode));
+    const timer = setInterval(() => {
+      setMytCountdown(
+        getMalaysiaBroadcastCountdown(new Date(), simScheduleMode)
+      );
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [simScheduleMode]);
+
   useEffect(() => {
     if (authUser) {
       setMyIdentity({
@@ -543,12 +573,7 @@ export default function CrewAndQcPage() {
               ...item,
               checked: !item.checked,
               checkedBy: !item.checked ? myIdentity.name : null,
-              checkedAt: !item.checked
-                ? new Date().toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : null,
+              checkedAt: !item.checked ? formatMYTTime() : null,
             }
           : item
       )
@@ -566,6 +591,7 @@ export default function CrewAndQcPage() {
     if (res.ok) {
       const updated = await res.json();
       if (updated.checklists) setChecklists(updated.checklists);
+      if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
     }
   };
 
@@ -614,9 +640,10 @@ export default function CrewAndQcPage() {
     if (res.ok) {
       const updated = await res.json();
       if (updated.checklists) setChecklists(updated.checklists);
+      if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
       triggerToast(
         role === "ALL"
-          ? "All pre-flight checks verified"
+          ? "All pre-flight checks verified (100% Ready for Director Go-Live)"
           : `${role} station verified`
       );
     }
@@ -637,7 +664,22 @@ export default function CrewAndQcPage() {
   };
 
   const handleToggleGoLive = async () => {
+    if (myIdentity.role !== "DIRECTOR") {
+      triggerToast(
+        "Access Restricted: Only the Technical Director can confirm Go-Live"
+      );
+      return;
+    }
     const nextState = !directorSignOff.clearedToGoLive;
+    const allReady =
+      checklists.length > 0 && checklists.every((c) => c.checked);
+    if (nextState && !allReady) {
+      triggerToast(
+        "Cannot confirm Go-Live while pre-flight checks are still missing"
+      );
+      return;
+    }
+
     const res = await fetch("/api/crew-qc", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -645,17 +687,20 @@ export default function CrewAndQcPage() {
         action: "DIRECTOR_UPDATE",
         clearedToGoLive: nextState,
         directorName: myIdentity.name,
+        actorRole: myIdentity.role,
       }),
     });
-    if (res.ok) {
-      const updated = await res.json();
-      if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
-      triggerToast(
-        nextState
-          ? "Master Control: Broadcast Confirmed On Air"
-          : "Broadcast returned to Standby"
-      );
+    const updated = await res.json();
+    if (!res.ok) {
+      triggerToast(updated.error || "Unable to update Go-Live state");
+      return;
     }
+    if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
+    triggerToast(
+      nextState
+        ? "Director Confirmed: Broadcast On Air (Target 8:25 AM MYT Early Go-Live)"
+        : "Broadcast returned to Standby"
+    );
   };
 
   // User Account Management Handlers
@@ -1322,91 +1367,362 @@ export default function CrewAndQcPage() {
             VIEW 1: PRE-FLIGHT VERIFICATION & GO / NO-GO POLL
            =================================================================== */}
         {activeTab === "PRE_LIVE" && (
-          <div className="space-y-8">
-            {/* MASTER READINESS & GO/NO-GO COMMAND BAR */}
-            {is100PercentReady ? (
-              <div className="rounded-2xl p-5 bg-[#0e1914] border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-semibold text-xl tabular-nums">
-                    100%
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
-                        All Stations Verified ({completedChecks}/{totalChecks})
+          <div className="space-y-6">
+            {/* ===============================================================
+                MALAYSIA TIME (MYT · UTC+8) SUNDAY BROADCAST SCHEDULE & COUNTDOWN
+                06:00 AM Check Start -> 08:25 AM Early Go-Live (-5m) -> 08:30 AM Service
+               =============================================================== */}
+            <div className="rounded-2xl p-4 sm:p-5 bg-[#111114] border border-white/[0.09] space-y-4">
+              <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                {/* Left: Live Malaysia System Clock & Active Broadcast Window */}
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="px-4 py-2.5 rounded-xl bg-[#18181d] border border-white/[0.1] flex flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                        Malaysia System Time (UTC+8)
                       </span>
                     </div>
-                    <div className="text-lg font-semibold text-white tracking-tight mt-0.5">
-                      System Cleared for Live Broadcast
+                    <div className="text-lg sm:text-xl font-mono font-bold text-white tabular-nums tracking-tight mt-0.5">
+                      {mytCountdown.mytClock}
                     </div>
+                    <div className="text-[11px] text-zinc-400">
+                      {mytCountdown.mytDateLabel}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
+                          mytCountdown.windowState === "EARLY_GO_LIVE_825AM" ||
+                          mytCountdown.windowState === "SERVICE_LIVE_830AM"
+                            ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/35 animate-pulse"
+                            : mytCountdown.windowState === "CHECKING_WINDOW_6AM" ||
+                              mytCountdown.windowState === "FINAL_10M_ALERT"
+                            ? "bg-amber-500/15 text-amber-300 border-amber-500/35"
+                            : "bg-white/[0.05] text-zinc-300 border-white/[0.1]"
+                        }`}
+                      >
+                        {mytCountdown.windowHeadline}
+                      </span>
+                      <span className="text-xs font-medium text-zinc-400">
+                        Sunday Schedule: <strong className="text-white">6:00 AM MYT</strong> Check Start ·{" "}
+                        <strong className="text-emerald-300">8:25 AM MYT</strong> Early Go-Live (5m Early) ·{" "}
+                        <strong className="text-white">8:30 AM MYT</strong> Service Start
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-400">
+                      {mytCountdown.windowSubtext}
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                  {isDirector ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleResetChecklists}
-                        className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 text-xs font-medium border border-white/[0.08] transition"
-                      >
-                        Reset Session
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleToggleGoLive}
-                        className={`px-5 py-2 rounded-full text-xs font-semibold transition ${
-                          directorSignOff.clearedToGoLive
-                            ? "bg-emerald-400 text-black"
-                            : "bg-white text-black hover:bg-zinc-200"
-                        }`}
-                      >
-                        {directorSignOff.clearedToGoLive
-                          ? `On Air Confirmed (${directorSignOff.clearedAt})`
-                          : "Director: Confirm On Air"}
-                      </button>
-                    </>
-                  ) : (
-                    <span className="px-4 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-                      {directorSignOff.clearedToGoLive
-                        ? `Director Confirmed On Air (${directorSignOff.clearedAt})`
-                        : "Awaiting Director Final Go-Live"}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
-                    className="px-4 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-white text-xs font-semibold border border-white/[0.14] transition"
+                {/* Right: Live Countdowns to 8:25 AM Early Go-Live & 8:30 AM Service */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-right">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                      6:00 AM Check Start
+                    </div>
+                    <div className="text-sm font-mono font-bold text-zinc-200 tabular-nums mt-0.5">
+                      {mytCountdown.toCheckStart600.isReached
+                        ? "CHECK ACTIVE"
+                        : mytCountdown.toCheckStart600.formatted}
+                    </div>
+                  </div>
+
+                  <div
+                    className={`px-4 py-2 rounded-xl border text-right transition ${
+                      !is100PercentReady
+                        ? "bg-rose-500/12 border-rose-500/40"
+                        : !directorSignOff.clearedToGoLive
+                        ? "bg-emerald-500/15 border-emerald-400/50 animate-pulse"
+                        : "bg-emerald-500/10 border-emerald-500/30"
+                    }`}
                   >
-                    End Live & Start Shutdown →
-                  </button>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                      8:25 AM Early Go-Live (-5m)
+                    </div>
+                    <div className="text-base sm:text-lg font-mono font-bold text-white tabular-nums mt-0.5">
+                      {mytCountdown.toGoLive825.totalSeconds === 0
+                        ? "GO LIVE NOW"
+                        : mytCountdown.toGoLive825.formatted}
+                    </div>
+                  </div>
+
+                  <div className="px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-right">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                      8:30 AM Sunday Service
+                    </div>
+                    <div className="text-sm font-mono font-bold text-zinc-200 tabular-nums mt-0.5">
+                      {mytCountdown.toService830.isReached
+                        ? "SERVICE LIVE"
+                        : mytCountdown.toService830.formatted}
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* 3-Step Sunday Timeline Bar + Simulation Controls */}
+              <div className="pt-3 border-t border-white/[0.06] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
+                  <div
+                    className={`px-3 py-2 rounded-xl border text-xs flex items-center justify-between ${
+                      mytCountdown.windowState === "CHECKING_WINDOW_6AM" ||
+                      mytCountdown.windowState === "FINAL_10M_ALERT"
+                        ? "bg-amber-500/12 border-amber-500/35 text-amber-200"
+                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400"
+                    }`}
+                  >
+                    <div>
+                      <span className="font-mono font-bold text-white">
+                        06:00 AM MYT
+                      </span>
+                      <span className="ml-2">Pre-Flight Check Opens</span>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase">
+                      T-2h 25m
+                    </span>
+                  </div>
+
+                  <div
+                    className={`px-3 py-2 rounded-xl border text-xs flex items-center justify-between ${
+                      mytCountdown.windowState === "EARLY_GO_LIVE_825AM"
+                        ? "bg-emerald-500/15 border-emerald-400 text-emerald-200 animate-pulse"
+                        : "bg-emerald-500/[0.06] border-emerald-500/25 text-emerald-200"
+                    }`}
+                  >
+                    <div>
+                      <span className="font-mono font-bold text-emerald-300">
+                        08:25 AM MYT
+                      </span>
+                      <span className="ml-2 font-semibold">
+                        Target Go-Live (5m Early)
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase text-emerald-300">
+                      All Okay Gate
+                    </span>
+                  </div>
+
+                  <div
+                    className={`px-3 py-2 rounded-xl border text-xs flex items-center justify-between ${
+                      mytCountdown.windowState === "SERVICE_LIVE_830AM"
+                        ? "bg-rose-500/15 border-rose-500/40 text-rose-200"
+                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400"
+                    }`}
+                  >
+                    <div>
+                      <span className="font-mono font-bold text-white">
+                        08:30 AM MYT
+                      </span>
+                      <span className="ml-2">Sunday Service Starts</span>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase">
+                      00:00:00
+                    </span>
+                  </div>
+                </div>
+
+                {/* Test / Rehearsal Clock Mode Selector */}
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mr-1">
+                    Clock Mode:
+                  </span>
+                  {(
+                    [
+                      { id: "REAL", label: "Live MYT" },
+                      { id: "SIM_615AM_CHECK", label: "Sun 6:15 AM Check" },
+                      {
+                        id: "SIM_820AM_FINAL5M",
+                        label: "Sun 8:20 AM (-5m to Go-Live)",
+                      },
+                      {
+                        id: "SIM_825AM_GOLIVE",
+                        label: "Sun 8:25 AM Go-Live",
+                      },
+                    ] as const
+                  ).map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => setSimScheduleMode(mode.id)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition ${
+                        simScheduleMode === mode.id
+                          ? "bg-white text-black"
+                          : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.08]"
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ===============================================================
+                MASTER READINESS & DIRECTOR-ONLY GO/NO-GO COMMAND BAR
+                - BLINKING RED if any check is missing (!is100PercentReady)
+                - BLINKING GREEN once 100% all okay, awaiting Director Go-Live
+                - SOLID EMERALD once Director confirms On Air
+               =============================================================== */}
+            {is100PercentReady ? (
+              directorSignOff.clearedToGoLive ? (
+                /* STATE 3: DIRECTOR HAS CONFIRMED GO LIVE (ON AIR) */
+                <div className="rounded-2xl p-5 bg-[#0b1f16] border-2 border-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.2)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="px-4 py-2.5 rounded-xl bg-emerald-400 text-black font-bold text-xl tabular-nums">
+                      ON AIR
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
+                        </span>
+                        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-300">
+                          Director Confirmed Go-Live · {completedChecks}/{totalChecks} Checks Verified
+                        </span>
+                      </div>
+                      <div className="text-lg font-semibold text-white tracking-tight mt-0.5">
+                        Broadcast Live Confirmed by Director ({directorSignOff.directorName}) at{" "}
+                        <span className="text-emerald-300 font-mono">
+                          {directorSignOff.clearedAt}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-300 mt-0.5">
+                        5-Minute Early Go-Live Buffer Active (8:25 AM MYT) — YouTube & Instagram MAINSTREAM (Top/Bottom Blur + 16:9 Landscape) On Air for 8:30 AM MYT Sunday Service.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                    {isDirector ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleResetChecklists}
+                          className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.1] transition"
+                        >
+                          Reset Session
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleToggleGoLive}
+                          className="px-5 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-bold transition shadow-lg"
+                        >
+                          On Air Confirmed ({directorSignOff.clearedAt}) · Return to Standby
+                        </button>
+                      </>
+                    ) : (
+                      <span className="px-4 py-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-semibold">
+                        Director Confirmed On Air ({directorSignOff.clearedAt})
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
+                      className="px-4 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-white text-xs font-semibold border border-white/[0.14] transition"
+                    >
+                      End Live & Start Shutdown →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* STATE 2: 100% ALL OKAY — BLINKING GREEN FOR DIRECTOR TO CONFIRM GO LIVE */
+                <div className="rounded-2xl p-5 bg-[#0a2217] border-2 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.35)] animate-pulse flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="relative px-4 py-2.5 rounded-xl bg-emerald-400 text-black font-extrabold text-2xl tabular-nums shadow-[0_0_25px_rgba(52,211,153,0.6)]">
+                      100%
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="relative flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-90" />
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-black text-[10px] font-extrabold uppercase tracking-[0.14em]">
+                          BLINKING GREEN · ALL OKAY TO GO LIVE
+                        </span>
+                        <span className="text-xs font-semibold text-emerald-300">
+                          All {completedChecks}/{totalChecks} Station Checks Verified
+                        </span>
+                      </div>
+                      <div className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                        All Stations 100% Ready — Go Live at 8:25 AM MYT (5 Mins Before 8:30 AM Service)
+                      </div>
+                      <p className="text-xs text-emerald-200/90">
+                        Only the Technical Director can confirm final Go-Live. Click the blinking green button to confirm broadcast On Air.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                    {isDirector ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleResetChecklists}
+                          className="px-4 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-zinc-200 text-xs font-medium border border-white/[0.12] transition"
+                        >
+                          Reset Session
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleToggleGoLive}
+                          className="relative inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs sm:text-sm font-extrabold tracking-tight transition shadow-[0_0_30px_rgba(52,211,153,0.8)] ring-2 ring-white"
+                        >
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-black" />
+                          </span>
+                          <span>DIRECTOR ONLY: CONFIRM TO GO LIVE (8:25 AM MYT)</span>
+                        </button>
+                      </>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                        <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-400/20 border-2 border-emerald-400 text-emerald-200 text-xs font-bold">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                          <span>
+                            100% ALL OKAY — WAITING FOR DIRECTOR TO CONFIRM GO LIVE (DIRECTOR ONLY)
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
             ) : (
-              <div className="rounded-2xl p-5 bg-[#121215] border border-white/[0.1] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              /* STATE 1: MISSING CHECKS — BLINKING RED ALERT (GO-LIVE LOCKED) */
+              <div className="rounded-2xl p-5 bg-[#1c0d11] border-2 border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.28)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-4">
-                  <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-2xl tabular-nums">
+                  <div className="px-4 py-2.5 rounded-xl bg-rose-500 text-white font-extrabold text-2xl tabular-nums animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.6)]">
                     {overallPct}%
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <span className="w-2 h-2 rounded-full bg-rose-500" />
-                      <span className="text-sm font-semibold text-white tracking-tight">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-90" />
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold uppercase tracking-[0.14em] animate-pulse">
+                        BLINKING RED · MISSING CHECKS ({pendingCount} PENDING)
+                      </span>
+                      <span className="text-sm font-bold text-white tracking-tight">
                         {pendingCount}{" "}
                         {pendingCount === 1
-                          ? "Check Pending Verification"
-                          : "Checks Pending Verification"}
+                          ? "Check Still Missing Before 8:25 AM MYT Early Go-Live"
+                          : "Checks Still Missing Before 8:25 AM MYT Early Go-Live"}
                       </span>
-                      <span className="text-xs text-zinc-500 tabular-nums">
+                      <span className="text-xs text-rose-200/80 tabular-nums">
                         ({completedChecks} of {totalChecks} verified)
                       </span>
                     </div>
 
                     {/* Direct Operator Callouts for Technical Director */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] font-medium text-zinc-400">
-                        Holding Go-Live:
+                      <span className="text-[11px] font-semibold text-rose-300">
+                        Stations Holding Go-Live:
                       </span>
                       {pendingStations.map((ps) => {
                         const st = DEPT_STYLES[ps.role];
@@ -1433,7 +1749,18 @@ export default function CrewAndQcPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  {/* Locked Director Go-Live Pill */}
+                  <span
+                    title="Only the Director can confirm Go-Live once 100% of checks are completed"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-200 text-xs font-bold animate-pulse"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                    <span>
+                      GO-LIVE LOCKED ({pendingCount} MISSING) · DIRECTOR ONLY
+                    </span>
+                  </span>
+
                   {isDirector ? (
                     <>
                       <button
@@ -1505,7 +1832,7 @@ export default function CrewAndQcPage() {
                           </span>
                         </div>
                         {remaining > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-semibold tabular-nums">
+                          <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-semibold tabular-nums animate-pulse">
                             {remaining} Pending
                           </span>
                         ) : (
@@ -1547,7 +1874,7 @@ export default function CrewAndQcPage() {
               })}
             </div>
 
-            {/* FILTER BAR: DEPARTMENT, T-MINUS PHASE, AND OPERATOR */}
+            {/* FILTER BAR: DEPARTMENT, MALAYSIA SUNDAY PHASE, AND OPERATOR */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[#121215] border border-white/[0.08] rounded-2xl p-3">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
@@ -1588,18 +1915,28 @@ export default function CrewAndQcPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {/* T-Minus Phase Filter */}
+                {/* Malaysia Sunday Schedule Phase Filter */}
                 <select
                   value={phaseFilter}
                   onChange={(e) => setPhaseFilter(e.target.value as any)}
-                  aria-label="Filter by T-Minus Phase"
+                  aria-label="Filter by Sunday Malaysia Time Phase"
                   className="bg-[#18181c] border border-white/[0.1] rounded-full px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/30"
                 >
-                  <option value="ALL">All Phases (T-60m to T-5m)</option>
-                  <option value="T-60M">T-60M · Rig & Signal</option>
-                  <option value="T-30M">T-30M · Optics & Audio</option>
-                  <option value="T-15M">T-15M · Stream & Cues</option>
-                  <option value="T-5M">T-5M · Final Go Poll</option>
+                  <option value="ALL">
+                    All Sunday Phases (06:00 AM Check → 08:25 AM Early Go-Live)
+                  </option>
+                  <option value="T-60M">
+                    06:00 AM MYT (T-60M) · Check Start & Rig Power
+                  </option>
+                  <option value="T-30M">
+                    07:00 AM MYT (T-30M) · Optics, IG Blur & Soundcheck
+                  </option>
+                  <option value="T-15M">
+                    08:00 AM MYT (T-15M) · RTMPS Preview & Stream QC
+                  </option>
+                  <option value="T-5M">
+                    08:25 AM MYT (T-5M) · Early Go-Live (5m Before 8:30 AM)
+                  </option>
                 </select>
 
                 {/* Operator Filter */}
@@ -1637,14 +1974,14 @@ export default function CrewAndQcPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-500/20 pb-4">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
                       <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-400">
                         Pending Verification · {uncheckedVisible.length}{" "}
-                        Remaining
+                        Remaining Before 8:25 AM MYT Early Go-Live
                       </span>
                     </div>
                     <h2 className="text-base font-semibold text-white tracking-tight">
-                      Incomplete Pre-Flight Checks Blocking Go-Live
+                      Incomplete Pre-Flight Checks Blocking 8:25 AM MYT Go-Live
                     </h2>
                   </div>
 
@@ -1674,12 +2011,15 @@ export default function CrewAndQcPage() {
                               >
                                 {item.role}
                               </span>
-                              <span className="text-[10px] font-mono text-zinc-400 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
-                                {item.phase || "T-30M"}
+                              <span className="text-[10px] font-mono text-zinc-300 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
+                                {MALAYSIA_PHASE_TIME_MAP[
+                                  item.phase || "T-30M"
+                                ] || item.phase}
                               </span>
                             </div>
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-400">
-                              Pending
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-rose-400 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                              Missing
                             </span>
                           </div>
 

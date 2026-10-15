@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFallbackStore, writeFallbackStore } from "@/lib/db";
+import {
+  formatMYTTime,
+  formatMYTDate,
+  formatMYTIsoDate,
+} from "@/lib/malaysiaTime";
 
 export type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 export type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
@@ -174,20 +179,20 @@ const DEFAULT_USERS: CrewUserAccount[] = [
 ];
 
 const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
-  // CAMERA
+  // CAMERA (Starts 6:00 AM MYT)
   {
     id: "chk-cam-1",
     role: "CAMERA",
     phase: "T-60M",
     category: "Optics",
     task: "Pulpit Camera Framing & Focus Lock",
-    detail: "1080p60 · Headroom & sharpness calibrated",
+    detail: "06:15 AM MYT · 1080p60 headroom & sharpness calibrated",
     isCritical: true,
     assignedToUserId: "usr-camera-1",
     assignedToName: "Kevin Lim",
     checked: true,
     checkedBy: "Kevin Lim",
-    checkedAt: "09:32 AM",
+    checkedAt: "06:18 AM MYT",
   },
   {
     id: "chk-cam-2",
@@ -195,7 +200,7 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-30M",
     category: "Colorimetry",
     task: "White Balance 5600K Matched Across Cameras",
-    detail: "Cam 1 & Cam 2 color profiles aligned",
+    detail: "07:15 AM MYT · Cam 1 & Cam 2 color profiles aligned",
     isCritical: true,
     assignedToUserId: "usr-camera-1",
     assignedToName: "Kevin Lim",
@@ -209,13 +214,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-30M",
     category: "IG Layout",
     task: "IG Landscape Center + Top & Bottom Blur Scene",
-    detail: "16:9 broadcast centered in 9:16 canvas with top/bottom blur fill",
+    detail: "07:30 AM MYT · 16:9 broadcast centered in 9:16 canvas with top/bottom blur fill",
     isCritical: true,
     assignedToUserId: "usr-camera-1",
     assignedToName: "Kevin Lim",
     checked: true,
     checkedBy: "Kevin Lim",
-    checkedAt: "09:37 AM",
+    checkedAt: "07:32 AM MYT",
   },
   {
     id: "chk-cam-4",
@@ -223,29 +228,29 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-60M",
     category: "Signal",
     task: "AC Power & SDI/HDMI Switcher Lock",
-    detail: "Continuous power & zero frame drop",
+    detail: "06:05 AM MYT · Continuous power & zero frame drop",
     isCritical: true,
     assignedToUserId: "usr-camera-1",
     assignedToName: "Kevin Lim",
     checked: true,
     checkedBy: "Kevin Lim",
-    checkedAt: "09:38 AM",
+    checkedAt: "06:10 AM MYT",
   },
 
-  // AUDIO
+  // AUDIO (Starts 6:00 AM MYT)
   {
     id: "chk-aud-1",
     role: "AUDIO",
     phase: "T-30M",
     category: "Loudness",
     task: "Broadcast Bus Level (-14 LUFS / -6dB Peak)",
-    detail: "Limiter engaged, zero digital clipping",
+    detail: "07:05 AM MYT · Limiter engaged, zero digital clipping",
     isCritical: true,
     assignedToUserId: "usr-audio-1",
     assignedToName: "Jason Tan",
     checked: true,
     checkedBy: "Jason Tan",
-    checkedAt: "09:30 AM",
+    checkedAt: "07:08 AM MYT",
   },
   {
     id: "chk-aud-2",
@@ -253,13 +258,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-30M",
     category: "RF & Mics",
     task: "Pastor Primary & Backup Wireless Mics",
-    detail: "RF signal clean, battery > 85%",
+    detail: "07:20 AM MYT · RF signal clean, battery > 85%",
     isCritical: true,
     assignedToUserId: "usr-audio-1",
     assignedToName: "Jason Tan",
     checked: true,
     checkedBy: "Jason Tan",
-    checkedAt: "09:34 AM",
+    checkedAt: "07:24 AM MYT",
   },
   {
     id: "chk-aud-3",
@@ -267,13 +272,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-15M",
     category: "Ambience",
     task: "Room Condenser Mics & Worship Pad Balance",
-    detail: "Congregation stereo blend verified",
+    detail: "07:50 AM MYT · Congregation stereo blend verified",
     isCritical: false,
     assignedToUserId: "usr-audio-1",
     assignedToName: "Jason Tan",
     checked: true,
     checkedBy: "Jason Tan",
-    checkedAt: "09:40 AM",
+    checkedAt: "07:52 AM MYT",
   },
   {
     id: "chk-aud-4",
@@ -281,13 +286,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-15M",
     category: "Delay",
     task: "Audio-to-Video Lip Sync Alignment",
-    detail: "Frame delay verified on program feed",
+    detail: "08:00 AM MYT · Frame delay verified on program feed",
     isCritical: true,
     assignedToUserId: "usr-audio-1",
     assignedToName: "Jason Tan",
     checked: true,
     checkedBy: "Jason Tan",
-    checkedAt: "09:41 AM",
+    checkedAt: "08:03 AM MYT",
   },
 
   // MODERATOR
@@ -297,13 +302,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-30M",
     category: "Run Sheet",
     task: "Pastor Sermon Cues & Scripture Deck",
-    detail: "Lower-thirds & chat prompts staged",
+    detail: "07:30 AM MYT · Lower-thirds & chat prompts staged",
     isCritical: true,
     assignedToUserId: "usr-mod-1",
     assignedToName: "Hannah Lee",
     checked: true,
     checkedBy: "Hannah Lee",
-    checkedAt: "09:36 AM",
+    checkedAt: "07:35 AM MYT",
   },
   {
     id: "chk-mod-2",
@@ -311,13 +316,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-15M",
     category: "Ingest Chat",
     task: "YouTube & Instagram Prayer Router Active",
-    detail: "Auto-capture & platform reply verified",
+    detail: "08:00 AM MYT · Auto-capture & platform reply verified",
     isCritical: true,
     assignedToUserId: "usr-mod-1",
     assignedToName: "Hannah Lee",
     checked: true,
     checkedBy: "Hannah Lee",
-    checkedAt: "09:39 AM",
+    checkedAt: "08:04 AM MYT",
   },
   {
     id: "chk-mod-3",
@@ -325,13 +330,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-15M",
     category: "Presets",
     task: "Giving & First-Time Visitor Links Ready",
-    detail: "Pinned comment & bio links tested",
+    detail: "08:10 AM MYT · Pinned comment & bio links tested",
     isCritical: false,
     assignedToUserId: "usr-mod-1",
     assignedToName: "Hannah Lee",
     checked: true,
     checkedBy: "Hannah Lee",
-    checkedAt: "09:41 AM",
+    checkedAt: "08:11 AM MYT",
   },
   {
     id: "chk-mod-4",
@@ -339,13 +344,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-5M",
     category: "Attendance",
     task: "Audience & Visitor Check-In Roster Open",
-    detail: "Tracking repeating & new viewers",
+    detail: "08:20 AM MYT · Ready for 08:25 AM early Go-Live",
     isCritical: false,
     assignedToUserId: "usr-mod-1",
     assignedToName: "Hannah Lee",
     checked: true,
     checkedBy: "Hannah Lee",
-    checkedAt: "09:42 AM",
+    checkedAt: "08:20 AM MYT",
   },
 
   // QUALITY CHECKER (QC)
@@ -355,13 +360,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-15M",
     category: "YouTube CDN",
     task: "YouTube 1080p60 Return Feed Verified",
-    detail: "External monitor playback & stereo check",
+    detail: "08:05 AM MYT · External monitor playback & stereo check",
     isCritical: true,
     assignedToUserId: "usr-qc-1",
     assignedToName: "Daniel Wong",
     checked: true,
     checkedBy: "Daniel Wong",
-    checkedAt: "09:42 AM",
+    checkedAt: "08:06 AM MYT",
   },
   {
     id: "chk-qc-2",
@@ -369,13 +374,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-15M",
     category: "IG Live Layout",
     task: "IG Landscape Broadcast + Top & Bottom Blur Verified",
-    detail: "16:9 centered frame with blurred top & bottom fill on IG preview",
+    detail: "08:08 AM MYT · 16:9 centered frame with blurred top & bottom fill on IG preview",
     isCritical: true,
     assignedToUserId: "usr-qc-1",
     assignedToName: "Daniel Wong",
     checked: true,
     checkedBy: "Daniel Wong",
-    checkedAt: "09:43 AM",
+    checkedAt: "08:09 AM MYT",
   },
   {
     id: "chk-qc-5",
@@ -383,13 +388,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-15M",
     category: "IG RTMPS Key",
     task: "IG Live Producer 'MAINSTREAM' Persistent Key Connected",
-    detail: "rtmps://edgetee-upload... active & preview displayed before 'Go live'",
+    detail: "08:12 AM MYT · rtmps://edgetee-upload... active & preview displayed before 'Go live'",
     isCritical: true,
     assignedToUserId: "usr-qc-1",
     assignedToName: "Daniel Wong",
     checked: true,
     checkedBy: "Daniel Wong",
-    checkedAt: "09:43 AM",
+    checkedAt: "08:13 AM MYT",
   },
   {
     id: "chk-qc-3",
@@ -397,13 +402,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-15M",
     category: "Telemetry",
     task: "Encoder Bitrate Locked (0.0% Dropped Frames)",
-    detail: "Primary Ethernet uplink > 50 Mbps",
+    detail: "08:15 AM MYT · Primary Ethernet uplink > 50 Mbps",
     isCritical: true,
     assignedToUserId: "usr-qc-1",
     assignedToName: "Daniel Wong",
     checked: true,
     checkedBy: "Daniel Wong",
-    checkedAt: "09:43 AM",
+    checkedAt: "08:15 AM MYT",
   },
   {
     id: "chk-qc-4",
@@ -411,13 +416,13 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     phase: "T-5M",
     category: "Incident Pad",
     task: "Live QC Telemetry & Frame Capture Armed",
-    detail: "Ready to queue incidents for Director",
+    detail: "08:20 AM MYT · Armed for 08:25 AM early Go-Live",
     isCritical: false,
     assignedToUserId: "usr-qc-1",
     assignedToName: "Daniel Wong",
     checked: true,
     checkedBy: "Daniel Wong",
-    checkedAt: "09:44 AM",
+    checkedAt: "08:21 AM MYT",
   },
 
   // DIRECTOR
@@ -426,42 +431,42 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     role: "DIRECTOR",
     phase: "T-30M",
     category: "Comms",
-    task: "Production Comms Roll-Call & Briefing",
-    detail: "All 5 stations on intercom loop",
+    task: "06:00 AM Crew Roll-Call & Production Briefing",
+    detail: "06:00 AM MYT · All 5 stations on intercom loop",
     isCritical: true,
     assignedToUserId: "usr-director-1",
     assignedToName: "Andrew",
     checked: true,
     checkedBy: "Andrew",
-    checkedAt: "09:25 AM",
+    checkedAt: "06:02 AM MYT",
   },
   {
     id: "chk-dir-2",
     role: "DIRECTOR",
     phase: "T-15M",
     category: "Playout",
-    task: "Pre-Show Countdown Clock & Holding Slate",
-    detail: "Program timer synced to service start",
+    task: "Pre-Show Countdown Clock & Holding Slate Armed",
+    detail: "08:15 AM MYT · Synced to 08:25 AM Go-Live / 08:30 AM Service",
     isCritical: true,
     assignedToUserId: "usr-director-1",
     assignedToName: "Andrew",
     checked: true,
     checkedBy: "Andrew",
-    checkedAt: "09:50 AM",
+    checkedAt: "08:16 AM MYT",
   },
   {
     id: "chk-dir-3",
     role: "DIRECTOR",
     phase: "T-5M",
     category: "Master Go",
-    task: "Technical Director Go / No-Go Sign-Off",
-    detail: "All stations verified & cleared for air",
+    task: "08:25 AM MYT Early Go-Live Sign-Off (5 Mins Before 8:30 AM)",
+    detail: "08:25 AM MYT · All stations verified & streams live 5 mins early",
     isCritical: true,
     assignedToUserId: "usr-director-1",
     assignedToName: "Andrew",
     checked: true,
     checkedBy: "Andrew",
-    checkedAt: "09:55 AM",
+    checkedAt: "08:24 AM MYT",
   },
 ];
 
@@ -471,7 +476,7 @@ const DEFAULT_ACTIVE_CREW: ActiveCrewMember[] = [
     name: "Andrew",
     role: "DIRECTOR",
     device: "Mac Studio Console",
-    loggedInAt: "09:20 AM",
+    loggedInAt: "06:00 AM MYT",
     lastActiveAt: "Active now",
   },
   {
@@ -479,7 +484,7 @@ const DEFAULT_ACTIVE_CREW: ActiveCrewMember[] = [
     name: "Kevin Lim",
     role: "CAMERA",
     device: "iPhone 16 Pro",
-    loggedInAt: "09:28 AM",
+    loggedInAt: "06:02 AM MYT",
     lastActiveAt: "1m ago",
   },
   {
@@ -487,7 +492,7 @@ const DEFAULT_ACTIVE_CREW: ActiveCrewMember[] = [
     name: "Jason Tan",
     role: "AUDIO",
     device: "iPad Pro",
-    loggedInAt: "09:29 AM",
+    loggedInAt: "06:04 AM MYT",
     lastActiveAt: "2m ago",
   },
   {
@@ -495,7 +500,7 @@ const DEFAULT_ACTIVE_CREW: ActiveCrewMember[] = [
     name: "Hannah Lee",
     role: "MODERATOR",
     device: "MacBook Air",
-    loggedInAt: "09:31 AM",
+    loggedInAt: "06:10 AM MYT",
     lastActiveAt: "Active now",
   },
   {
@@ -503,7 +508,7 @@ const DEFAULT_ACTIVE_CREW: ActiveCrewMember[] = [
     name: "Daniel Wong",
     role: "QC",
     device: "iPhone 16",
-    loggedInAt: "09:35 AM",
+    loggedInAt: "06:12 AM MYT",
     lastActiveAt: "Active now",
   },
 ];
@@ -512,7 +517,7 @@ const DEFAULT_QC_LOGS: QcLogItem[] = [
   {
     id: "qc-seed-1",
     serviceDate: "2026-10-14",
-    streamTimestamp: "10:14 AM (+14m)",
+    streamTimestamp: "08:39 AM MYT (+9m)",
     type: "ISSUE",
     severity: "MAJOR",
     platform: "INSTAGRAM",
@@ -533,7 +538,7 @@ const DEFAULT_QC_LOGS: QcLogItem[] = [
   {
     id: "qc-seed-2",
     serviceDate: "2026-10-14",
-    streamTimestamp: "10:38 AM (+38m)",
+    streamTimestamp: "09:02 AM MYT (+32m)",
     type: "ACHIEVEMENT",
     severity: "WIN",
     platform: "BOTH",
@@ -553,7 +558,7 @@ const DEFAULT_QC_LOGS: QcLogItem[] = [
   {
     id: "qc-seed-3",
     serviceDate: "2026-10-14",
-    streamTimestamp: "10:52 AM (+52m)",
+    streamTimestamp: "09:18 AM MYT (+48m)",
     type: "IMPROVEMENT",
     severity: "MINOR",
     platform: "YOUTUBE",
@@ -970,6 +975,7 @@ export function getCrewQcState() {
     store.crewQc = {
       v3ApplePro: true,
       igBlurLayoutV1: true,
+      malaysiaTimeV1: true,
       users: DEFAULT_USERS,
       checklists: DEFAULT_CHECKLISTS,
       shutdownChecks: DEFAULT_SHUTDOWN_CHECKS,
@@ -982,7 +988,8 @@ export function getCrewQcState() {
         clearedToGoLive: false,
         directorName: "Andrew",
         clearedAt: null as string | null,
-        flashNotice: "All stations complete pre-flight verification.",
+        flashNotice:
+          "Sunday 6:00 AM MYT Check Start · Target Go-Live 8:25 AM MYT (5 mins early) · Service 8:30 AM MYT.",
       },
     };
     writeFallbackStore("crewQc", store.crewQc);
@@ -1032,7 +1039,7 @@ export function getCrewQcState() {
               category: "IG Layout",
               task: "IG Landscape Center + Top & Bottom Blur Scene",
               detail:
-                "16:9 broadcast centered in 9:16 canvas with top/bottom blur fill",
+                "07:30 AM MYT · 16:9 broadcast centered in 9:16 canvas with top/bottom blur fill",
             };
           }
           if (item.id === "chk-qc-2") {
@@ -1041,7 +1048,7 @@ export function getCrewQcState() {
               category: "IG Live Layout",
               task: "IG Landscape Broadcast + Top & Bottom Blur Verified",
               detail:
-                "16:9 centered frame with blurred top & bottom fill on IG preview",
+                "08:08 AM MYT · 16:9 centered frame with blurred top & bottom fill on IG preview",
             };
           }
           return item;
@@ -1061,13 +1068,13 @@ export function getCrewQcState() {
           category: "IG RTMPS Key",
           task: "IG Live Producer 'MAINSTREAM' Persistent Key Connected",
           detail:
-            "rtmps://edgetee-upload... active & preview displayed before 'Go live'",
+            "08:12 AM MYT · rtmps://edgetee-upload... active & preview displayed before 'Go live'",
           isCritical: true,
           assignedToUserId: "usr-qc-1",
           assignedToName: "Daniel Wong",
           checked: true,
           checkedBy: "Daniel Wong",
-          checkedAt: "09:43 AM",
+          checkedAt: "08:13 AM MYT",
         };
         if (qc2Idx >= 0) {
           store.crewQc.checklists.splice(qc2Idx + 1, 0, newQc5);
@@ -1091,6 +1098,53 @@ export function getCrewQcState() {
     }
     store.crewQc.postmortemFeedback = DEFAULT_POSTMORTEM_FEEDBACK;
     store.crewQc.weeklyCustody = DEFAULT_WEEKLY_CUSTODY;
+  }
+
+  // Migrate to Malaysia Time (MYT) 6:00 AM Check -> 8:25 AM Early Go-Live -> 8:30 AM Service schedule
+  if (!store.crewQc.malaysiaTimeV1) {
+    store.crewQc.malaysiaTimeV1 = true;
+    migrated = true;
+    if (Array.isArray(store.crewQc.checklists)) {
+      store.crewQc.checklists = store.crewQc.checklists.map(
+        (item: CrewChecklistItem) => {
+          const defItem = DEFAULT_CHECKLISTS.find((d) => d.id === item.id);
+          if (defItem) {
+            return {
+              ...item,
+              task: defItem.task,
+              detail: defItem.detail,
+              checkedAt: item.checked
+                ? defItem.checkedAt || formatMYTTime()
+                : null,
+            };
+          }
+          return {
+            ...item,
+            checkedAt:
+              item.checked && item.checkedAt && !item.checkedAt.includes("MYT")
+                ? `${item.checkedAt} MYT`
+                : item.checkedAt,
+          };
+        }
+      );
+    }
+    store.crewQc.activeCrew = DEFAULT_ACTIVE_CREW;
+    // Reset clearedToGoLive so the Director sees the blinking alert and confirms in MYT
+    if (store.crewQc.directorSignOff) {
+      store.crewQc.directorSignOff.clearedToGoLive = false;
+      store.crewQc.directorSignOff.clearedAt = null;
+    }
+  }
+
+  // Always ensure that if any check is unchecked, clearedToGoLive cannot remain true
+  if (
+    Array.isArray(store.crewQc.checklists) &&
+    store.crewQc.checklists.some((c: CrewChecklistItem) => !c.checked) &&
+    store.crewQc.directorSignOff?.clearedToGoLive
+  ) {
+    store.crewQc.directorSignOff.clearedToGoLive = false;
+    store.crewQc.directorSignOff.clearedAt = null;
+    migrated = true;
   }
 
   if (
@@ -1148,10 +1202,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Crew Member Login / Switch Active Operator
     if (body.action === "CREW_LOGIN" && body.name && body.role) {
-      const nowTime = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const nowTime = formatMYTTime();
       const existingIdx = state.activeCrew.findIndex(
         (c) =>
           c.role === body.role &&
@@ -1298,10 +1349,7 @@ export async function POST(req: NextRequest) {
 
     // 6. Toggle Checklist Item
     if (body.action === "TOGGLE_CHECK" && body.id) {
-      const nowTime = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const nowTime = formatMYTTime();
       state.checklists = state.checklists.map((item) => {
         if (item.id !== body.id) return item;
         const nextChecked = !item.checked;
@@ -1314,14 +1362,16 @@ export async function POST(req: NextRequest) {
           checkedAt: nextChecked ? nowTime : null,
         };
       });
+      // If any item is now unchecked, automatically revoke Go-Live confirmation
+      if (state.checklists.some((c) => !c.checked)) {
+        state.directorSignOff.clearedToGoLive = false;
+        state.directorSignOff.clearedAt = null;
+      }
     }
 
     // 7. Mark Entire Station or User's Tasks 100% Checked in 1 Tap
     if (body.action === "CHECK_ALL_STATION" && body.role) {
-      const nowTime = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const nowTime = formatMYTTime();
       state.checklists = state.checklists.map((item) => {
         if (body.role !== "ALL" && item.role !== body.role) return item;
         return {
@@ -1364,6 +1414,8 @@ export async function POST(req: NextRequest) {
         },
         ...state.checklists,
       ];
+      state.directorSignOff.clearedToGoLive = false;
+      state.directorSignOff.clearedAt = null;
     }
 
     // 9. Delete Check Item
@@ -1383,17 +1435,32 @@ export async function POST(req: NextRequest) {
       state.directorSignOff.clearedAt = null;
     }
 
-    // 11. Director Go-Live Update
+    // 11. Director Go-Live Update (Strictly Restricted to DIRECTOR & 100% Check Completion)
     if (body.action === "DIRECTOR_UPDATE") {
+      if (body.actorRole && body.actorRole !== "DIRECTOR") {
+        return NextResponse.json(
+          { error: "Only the Technical Director can confirm Go-Live." },
+          { status: 403 }
+        );
+      }
       if (body.clearedToGoLive !== undefined) {
+        const allChecked =
+          state.checklists.length > 0 &&
+          state.checklists.every((c) => c.checked);
+        if (Boolean(body.clearedToGoLive) && !allChecked) {
+          return NextResponse.json(
+            {
+              error:
+                "All pre-flight checks must be 100% verified before confirming Go-Live.",
+            },
+            { status: 400 }
+          );
+        }
         state.directorSignOff.clearedToGoLive = Boolean(body.clearedToGoLive);
         state.directorSignOff.directorName =
           body.directorName || state.directorSignOff.directorName;
         state.directorSignOff.clearedAt = body.clearedToGoLive
-          ? new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+          ? formatMYTTime()
           : null;
       }
     }
@@ -1403,13 +1470,8 @@ export async function POST(req: NextRequest) {
       const l = body.log;
       const newLog: QcLogItem = {
         id: `qc-${Date.now()}`,
-        serviceDate: l.serviceDate || new Date().toISOString().slice(0, 10),
-        streamTimestamp:
-          l.streamTimestamp ||
-          new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+        serviceDate: l.serviceDate || formatMYTIsoDate(),
+        streamTimestamp: l.streamTimestamp || formatMYTTime(),
         type: l.type || "ISSUE",
         severity: l.severity || "MAJOR",
         platform: l.platform || "BOTH",
@@ -1419,7 +1481,7 @@ export async function POST(req: NextRequest) {
         actionToTake: l.actionToTake ? String(l.actionToTake).trim() : "",
         assignedTo: l.assignedTo || "Pending Director",
         timelineToSolve: l.timelineToSolve || "Wait for Director",
-        targetDate: l.targetDate || new Date().toISOString().slice(0, 10),
+        targetDate: l.targetDate || formatMYTIsoDate(),
         status: l.type === "ACHIEVEMENT" ? "RESOLVED" : "WAITING_DIRECTOR",
         screenshotUrl: l.screenshotUrl || null,
         markerPos: l.markerPos || null,
@@ -1534,10 +1596,7 @@ export async function POST(req: NextRequest) {
 
     // 18. Toggle Post-Live Safe Shutdown Check Item
     if (body.action === "TOGGLE_SHUTDOWN_CHECK" && body.id) {
-      const nowTime = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const nowTime = formatMYTTime();
       state.shutdownChecks = state.shutdownChecks.map((item) => {
         if (item.id !== body.id) return item;
         const nextChecked = !item.checked;
@@ -1554,10 +1613,7 @@ export async function POST(req: NextRequest) {
 
     // 19. Check All Post-Live Shutdown Items for a Station or All Stations
     if (body.action === "CHECK_ALL_SHUTDOWN_STATION" && body.role) {
-      const nowTime = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const nowTime = formatMYTTime();
       state.shutdownChecks = state.shutdownChecks.map((item) => {
         if (body.role !== "ALL" && item.role !== body.role) return item;
         return {
@@ -1618,7 +1674,7 @@ export async function POST(req: NextRequest) {
       const f = body.feedback;
       const newFb: PostmortemFeedbackItem = {
         id: `fb-${Date.now()}`,
-        serviceDate: new Date().toISOString().slice(0, 10),
+        serviceDate: formatMYTIsoDate(),
         authorName: String(f.authorName || "Crew Operator").trim(),
         authorRole: (f.authorRole as CrewRole) || "CAMERA",
         authorCallsign: String(f.authorCallsign || "CREW").trim(),
@@ -1657,16 +1713,15 @@ export async function POST(req: NextRequest) {
           },
           ...state.checklists,
         ];
+        state.directorSignOff.clearedToGoLive = false;
+        state.directorSignOff.clearedAt = null;
       }
     }
 
     // 24. Update Weekly Custody Report (QC Lead + Moderator Lead + Director)
     if (body.action === "UPDATE_WEEKLY_CUSTODY" && body.patch) {
       const p = body.patch;
-      const nowTime = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const nowTime = formatMYTTime();
       state.weeklyCustody = {
         ...state.weeklyCustody,
         ...p,
@@ -1688,15 +1743,8 @@ export async function POST(req: NextRequest) {
       const preDone = state.checklists.filter((c) => c.checked).length;
       const shutTotal = state.shutdownChecks.length;
       const shutDone = state.shutdownChecks.filter((c) => c.checked).length;
-      const nowStamp = new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-      const nowTime = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const nowStamp = formatMYTDate();
+      const nowTime = formatMYTTime();
 
       const archived: ArchivedWeeklyReport = {
         id: `wk-rep-${Date.now()}`,
