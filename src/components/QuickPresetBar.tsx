@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Send, Copy, Plus } from "lucide-react";
 
 interface Preset {
   id: string;
@@ -25,12 +24,21 @@ export default function QuickPresetBar({
 
   const categories = [
     { id: "ALL", label: "All Presets" },
-    { id: "GREETING", label: "👋 Welcome" },
-    { id: "GIVING", label: "💳 Giving" },
-    { id: "CONNECT", label: "📝 Connect" },
-    { id: "PRAYER", label: "🙏 Prayer" },
-    { id: "SALVATION", label: "✝️ Salvation" },
+    { id: "GREETING", label: "Welcome" },
+    { id: "GIVING", label: "Giving" },
+    { id: "CONNECT", label: "Connect" },
+    { id: "PRAYER", label: "Prayer" },
+    { id: "SALVATION", label: "Salvation" },
   ];
+
+  // Clean any leading emojis from seeded database preset text for sleek broadcast display
+  const cleanText = (str: string) =>
+    str
+      .replace(
+        /^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]\s*/u,
+        ""
+      )
+      .trim();
 
   const filteredPresets =
     filterCategory === "ALL"
@@ -38,28 +46,28 @@ export default function QuickPresetBar({
       : presets.filter((p) => p.category === filterCategory);
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-indigo-400" />
-          <h3 className="text-sm font-bold text-white tracking-tight">
-            1-Click Ministry Presets
-          </h3>
-          <span className="text-[11px] text-slate-400">
-            (Tap to load in outbox or blast immediately)
+    <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+            Standard Broadcast Macros
           </span>
+          <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+            One-Tap Ministry Presets
+          </h3>
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+        {/* Apple Segmented Category Pills */}
+        <div className="flex items-center gap-1 bg-[#09090b] p-1 rounded-full border border-white/[0.08] overflow-x-auto">
           {categories.map((c) => (
             <button
               key={c.id}
+              type="button"
               onClick={() => setFilterCategory(c.id)}
-              className={`text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition ${
+              className={`text-xs px-3 py-1 rounded-full font-medium whitespace-nowrap transition ${
                 filterCategory === c.id
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-slate-800 text-slate-400 hover:text-white"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
               }`}
             >
               {c.label}
@@ -69,40 +77,47 @@ export default function QuickPresetBar({
       </div>
 
       {/* Preset Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-        {filteredPresets.map((preset) => (
-          <div
-            key={preset.id}
-            className="group bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 hover:border-slate-600 rounded-xl p-3 flex flex-col justify-between transition shadow-sm"
-          >
-            <div>
-              <div className="font-semibold text-xs text-white mb-1">
-                {preset.label}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filteredPresets.map((preset) => {
+          const cleanedLabel = cleanText(preset.label);
+          return (
+            <div
+              key={preset.id}
+              className="bg-[#09090b] border border-white/[0.08] hover:border-white/[0.18] rounded-2xl p-4 flex flex-col justify-between gap-3 transition"
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-white tracking-tight">
+                    {cleanedLabel}
+                  </span>
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-zinc-500 px-1.5 py-0.5 rounded bg-white/[0.04]">
+                    {preset.category}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                  {preset.content}
+                </p>
               </div>
-              <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-                {preset.content}
-              </p>
-            </div>
 
-            <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-slate-700/40">
-              <button
-                onClick={() => onSelectPreset(preset.content)}
-                className="flex-1 flex items-center justify-center gap-1 bg-slate-700/80 hover:bg-slate-700 text-slate-200 text-xs py-1.5 px-2 rounded-lg font-medium transition"
-              >
-                <Copy className="w-3 h-3" />
-                <span>Load in Outbox</span>
-              </button>
-              <button
-                onClick={() => onInstantBroadcast(preset.content)}
-                className="flex items-center justify-center gap-1 bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs py-1.5 px-2.5 rounded-lg font-medium transition shadow-sm shadow-indigo-600/30"
-                title="Broadcast immediately to selected platforms"
-              >
-                <Send className="w-3 h-3" />
-                <span>Blast</span>
-              </button>
+              <div className="flex items-center gap-2 pt-2.5 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => onSelectPreset(preset.content)}
+                  className="flex-1 py-1.5 px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-[11px] font-medium border border-white/[0.08] transition"
+                >
+                  Load Outbox
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onInstantBroadcast(preset.content)}
+                  className="py-1.5 px-3.5 rounded-full bg-white text-black hover:bg-zinc-200 text-[11px] font-semibold transition"
+                >
+                  Dispatch
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

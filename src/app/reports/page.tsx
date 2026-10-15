@@ -2,31 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/Navbar";
-import {
-  BarChart3,
-  Users,
-  HeartHandshake,
-  UserPlus,
-  Send,
-  Sparkles,
-  Printer,
-  Download,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  TrendingUp,
-  Repeat,
-  Eye,
-  Flame,
-  Plus,
-  Search,
-  Award,
-  Target,
-  Activity,
-  X,
-  Check,
-  Radio,
-} from "lucide-react";
 
 const LOCAL_ANALYTICS_KEY = "church_live_hub_analytics_v1";
 
@@ -82,7 +57,7 @@ export default function ReportsPage() {
 
   const triggerToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3200);
+    setTimeout(() => setToastMsg(null), 2800);
   };
 
   useEffect(() => {
@@ -105,11 +80,13 @@ export default function ReportsPage() {
           fetch("/api/analytics", { cache: "no-store" }),
         ]);
 
-        const s = await servRes.json();
-        const p = await prayRes.json();
-        const v = await visRes.json();
-        const b = await bcRes.json();
-        const a = await anaRes.json();
+        const [s, p, v, b, a] = await Promise.all([
+          servRes.json(),
+          prayRes.json(),
+          visRes.json(),
+          bcRes.json(),
+          anaRes.json(),
+        ]);
 
         if (s.service) setService(s.service);
         if (p.prayers) setPrayers(p.prayers);
@@ -141,7 +118,6 @@ export default function ReportsPage() {
     loadAllAnalytics();
   }, []);
 
-  // Active inspected service snapshot (defaults to latest)
   const currentSnapshot = useMemo(() => {
     if (serviceHistory.length === 0) {
       const liveYT = service?.peakViewersYT || 88;
@@ -169,9 +145,15 @@ export default function ReportsPage() {
         ? selectedServiceIdx
         : serviceHistory.length - 1;
     return serviceHistory[idx];
-  }, [serviceHistory, selectedServiceIdx, service, visitors, broadcasts, prayers]);
+  }, [
+    serviceHistory,
+    selectedServiceIdx,
+    service,
+    visitors,
+    broadcasts,
+    prayers,
+  ]);
 
-  // Previous service for Week-over-Week delta calculation
   const previousSnapshot = useMemo(() => {
     if (serviceHistory.length < 2) return null;
     const idx =
@@ -190,7 +172,6 @@ export default function ReportsPage() {
     );
   }, [currentSnapshot, previousSnapshot]);
 
-  // Repeating Audience Breakdown Stats
   const audienceStats = useMemo(() => {
     const totalTracked = audienceRoster.length;
     const coreRegulars = audienceRoster.filter(
@@ -283,7 +264,7 @@ export default function ReportsPage() {
     });
 
     setAudienceRoster(updated);
-    triggerToast(`Checked in ${name} (+1 repeating attendance)!`);
+    triggerToast(`Checked in ${name} (+1 repeating visit)`);
 
     try {
       await fetch("/api/analytics", {
@@ -297,6 +278,21 @@ export default function ReportsPage() {
   const handleAddViewer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newViewer.name.trim()) return;
+
+    const optimisticMember = {
+      id: `aud-${Date.now()}`,
+      name: newViewer.name.trim(),
+      handle:
+        newViewer.handle.trim() ||
+        `@${newViewer.name.trim().toLowerCase().replace(/\s+/g, "_")}`,
+      platform: newViewer.platform,
+      location: newViewer.location || "Online",
+      servicesAttended: newViewer.servicesAttended,
+      lastSeen: new Date().toISOString().slice(0, 10),
+    };
+    setAudienceRoster((prev) => [optimisticMember, ...prev]);
+    setShowAddViewerModal(false);
+    triggerToast("Viewer added to Repeating Audience Roster");
 
     try {
       const res = await fetch("/api/analytics", {
@@ -321,12 +317,13 @@ export default function ReportsPage() {
       servicesAttended: 2,
       prayerRequestsCount: 0,
     });
-    setShowAddViewerModal(false);
-    triggerToast("Viewer added to Repeating Audience Roster!");
   };
 
   const handleLogService = async (e: React.FormEvent) => {
     e.preventDefault();
+    setShowLogServiceModal(false);
+    triggerToast("Service telemetry snapshot logged");
+
     try {
       const res = await fetch("/api/analytics", {
         method: "POST",
@@ -342,9 +339,6 @@ export default function ReportsPage() {
         setSelectedServiceIdx(data.serviceHistory.length - 1);
       }
     } catch {}
-
-    setShowLogServiceModal(false);
-    triggerToast("Service metrics logged & graphs updated!");
   };
 
   const handleExportCsv = () => {
@@ -389,7 +383,7 @@ export default function ReportsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    triggerToast("Analytics CSV exported!");
+    triggerToast("Analytics CSV exported");
   };
 
   const handleGenerateAiReport = async () => {
@@ -426,14 +420,12 @@ export default function ReportsPage() {
     }
   };
 
-  // SVG Chart 1 Dimensions & Scaling (Multi-Week Attendance + Repeating Line)
   const maxChartY = Math.max(
     targetAttendance + 20,
     ...serviceHistory.map((s) => s.totalPeak + 20),
     220
   );
 
-  // Donut Chart Calculations for Audience Loyalty
   const totalDonut = Math.max(
     1,
     audienceStats.coreRegulars +
@@ -447,265 +439,212 @@ export default function ReportsPage() {
   const firstTimePct = Math.max(0, 100 - corePct - returningPct);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col w-full">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col w-full antialiased selection:bg-white selection:text-black">
       <Navbar />
 
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-emerald-400/40 text-xs font-semibold">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-white text-black px-4 py-2.5 rounded-full shadow-2xl text-xs font-semibold tracking-tight flex items-center gap-2 border border-black/10">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-6 space-y-6">
+      <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-6">
         {/* Top Executive Header & Controls */}
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950/35 to-slate-900 border border-slate-800 rounded-2xl p-6">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs text-indigo-400 font-semibold uppercase tracking-wide">
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Executive Online Church Intelligence & Audience Retention</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mt-1">
-              {currentSnapshot.title}
-            </h1>
-            <div className="text-xs text-slate-400 mt-1.5 flex flex-wrap items-center gap-3">
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Service Date: {currentSnapshot.date}</span>
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Broadcast Telemetry · Audience &amp; Retention Intelligence
               </span>
-              <span>•</span>
-              <span className="text-emerald-400 font-semibold">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold tabular-nums">
                 {audienceStats.repeatingPct}% Repeating Congregation
               </span>
-              <span>•</span>
-              <span className="text-amber-300 font-semibold">
-                Phase 1 Target: {currentSnapshot.totalPeak} / {targetAttendance} Peak Viewers
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-[-0.03em]">
+              {currentSnapshot.title}
+            </h1>
+
+            <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-3 tabular-nums">
+              <span>Service Date: {currentSnapshot.date}</span>
+              <span>·</span>
+              <span>
+                Phase 1 Target: {currentSnapshot.totalPeak} / {targetAttendance}{" "}
+                Peak Viewers
               </span>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Service Selector Dropdown */}
             {serviceHistory.length > 0 && (
               <select
                 value={selectedServiceIdx}
                 onChange={(e) => setSelectedServiceIdx(Number(e.target.value))}
-                className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-3 py-2"
+                aria-label="Select Service Snapshot"
+                className="bg-[#121215] border border-white/[0.1] text-zinc-200 text-xs font-medium rounded-full px-3.5 py-2 focus:outline-none"
               >
                 {serviceHistory.map((s, idx) => (
                   <option key={s.id} value={idx}>
-                    {s.label} — {s.title} ({s.totalPeak} Peak)
+                    {s.label} · {s.title} ({s.totalPeak} Peak)
                   </option>
                 ))}
               </select>
             )}
 
             <button
+              type="button"
               onClick={() => setShowLogServiceModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 transition"
+              className="px-3.5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.08] text-xs font-medium transition"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Log Service Data</span>
+              + Log Service
             </button>
 
             <button
+              type="button"
               onClick={handleExportCsv}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+              className="px-3.5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.08] text-xs font-medium transition"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              Export CSV
             </button>
 
             <button
+              type="button"
               onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+              className="px-3.5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.08] text-xs font-medium transition"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print / PDF</span>
+              Print Report
             </button>
 
             <button
+              type="button"
               onClick={handleGenerateAiReport}
               disabled={generatingReport}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition disabled:opacity-50"
+              className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition disabled:opacity-40"
             >
-              {generatingReport ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Synthesizing...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>AI Pastoral Briefing</span>
-                </>
-              )}
+              {generatingReport ? "Synthesizing..." : "Executive Briefing"}
             </button>
           </div>
         </div>
 
-        {/* 8 Executive KPI Metrics Grid */}
+        {/* 8 Executive KPI Bento Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-          {/* 1. Peak Concurrent */}
-          <div className="bg-slate-900/85 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-              <span>PEAK LIVE</span>
-              <Users className="w-3.5 h-3.5 text-indigo-400" />
+          {[
+            {
+              label: "Peak Live",
+              val: currentSnapshot.totalPeak,
+              sub: `${wowGrowthPct >= 0 ? `+${wowGrowthPct}%` : `${wowGrowthPct}%`} vs last wk`,
+              dot: "bg-sky-400",
+              subColor: "text-emerald-400",
+            },
+            {
+              label: "Repeating",
+              val: `${currentSnapshot.repeatingViewers} (${audienceStats.repeatingPct}%)`,
+              sub: `${audienceStats.coreRegulars} Core Regulars`,
+              dot: "bg-emerald-400",
+              subColor: "text-zinc-400",
+            },
+            {
+              label: "Unique Reach",
+              val: currentSnapshot.uniqueViewers,
+              sub: `YT ${currentSnapshot.peakYT} · IG ${currentSnapshot.peakIG}`,
+              dot: "bg-zinc-300",
+              subColor: "text-zinc-400",
+            },
+            {
+              label: "Watch Time",
+              val: `${currentSnapshot.avgWatchMinutes}m`,
+              sub: `${Math.round((currentSnapshot.avgWatchMinutes / 75) * 100)}% of 75m`,
+              dot: "bg-violet-400",
+              subColor: "text-violet-300",
+            },
+            {
+              label: "New Visitors",
+              val: currentSnapshot.firstTimeVisitors,
+              sub: "First-time check-ins",
+              dot: "bg-amber-400",
+              subColor: "text-amber-300",
+            },
+            {
+              label: "Salvations",
+              val: currentSnapshot.salvations || 6,
+              sub: "Altar call responses",
+              dot: "bg-rose-400",
+              subColor: "text-rose-300",
+            },
+            {
+              label: "Prayers",
+              val: currentSnapshot.prayerRequests,
+              sub: `${prayers.length} in triage queue`,
+              dot: "bg-emerald-400",
+              subColor: "text-zinc-400",
+            },
+            {
+              label: "Cues & Chat",
+              val: currentSnapshot.cuesReleased,
+              sub: `${currentSnapshot.chatMessages} interactions`,
+              dot: "bg-sky-400",
+              subColor: "text-zinc-400",
+            },
+          ].map((kpi) => (
+            <div
+              key={kpi.label}
+              className="bg-[#121215] border border-white/[0.08] rounded-2xl p-3.5 flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                <span>{kpi.label}</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${kpi.dot}`} />
+              </div>
+              <div className="text-xl font-semibold text-white tabular-nums tracking-tight mt-2">
+                {kpi.val}
+              </div>
+              <div className={`text-[10px] mt-1 tabular-nums ${kpi.subColor}`}>
+                {kpi.sub}
+              </div>
             </div>
-            <div className="text-2xl font-extrabold text-white mt-1.5">
-              {currentSnapshot.totalPeak}
-            </div>
-            <div className="text-[10px] text-emerald-400 font-semibold mt-1">
-              {wowGrowthPct >= 0 ? `+${wowGrowthPct}%` : `${wowGrowthPct}%`} vs last wk
-            </div>
-          </div>
-
-          {/* 2. Repeating Audience */}
-          <div className="bg-slate-900/85 border border-emerald-500/30 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-emerald-300 font-semibold">
-              <span>REPEATING</span>
-              <Repeat className="w-3.5 h-3.5 text-emerald-400" />
-            </div>
-            <div className="text-2xl font-extrabold text-white mt-1.5">
-              {currentSnapshot.repeatingViewers}{" "}
-              <span className="text-xs font-bold text-emerald-400">
-                ({audienceStats.repeatingPct}%)
-              </span>
-            </div>
-            <div className="text-[10px] text-slate-400 mt-1">
-              {audienceStats.coreRegulars} Core Regulars (3+)
-            </div>
-          </div>
-
-          {/* 3. Total Unique Reach */}
-          <div className="bg-slate-900/85 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-              <span>UNIQUE REACH</span>
-              <Eye className="w-3.5 h-3.5 text-sky-400" />
-            </div>
-            <div className="text-2xl font-extrabold text-white mt-1.5">
-              {currentSnapshot.uniqueViewers}
-            </div>
-            <div className="text-[10px] text-slate-400 mt-1">
-              YT: {currentSnapshot.peakYT} • IG: {currentSnapshot.peakIG} peak
-            </div>
-          </div>
-
-          {/* 4. Avg Watch Time */}
-          <div className="bg-slate-900/85 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-              <span>WATCH TIME</span>
-              <Clock className="w-3.5 h-3.5 text-violet-400" />
-            </div>
-            <div className="text-2xl font-extrabold text-white mt-1.5">
-              {currentSnapshot.avgWatchMinutes}m
-            </div>
-            <div className="text-[10px] text-violet-300 mt-1">
-              {Math.round((currentSnapshot.avgWatchMinutes / 75) * 100)}% of 75m service
-            </div>
-          </div>
-
-          {/* 5. First-Time Visitors */}
-          <div className="bg-slate-900/85 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-              <span>NEW VISITORS</span>
-              <UserPlus className="w-3.5 h-3.5 text-amber-400" />
-            </div>
-            <div className="text-2xl font-extrabold text-white mt-1.5">
-              {currentSnapshot.firstTimeVisitors}
-            </div>
-            <div className="text-[10px] text-amber-300 mt-1">
-              First-time check-ins
-            </div>
-          </div>
-
-          {/* 6. Salvations & Decisions */}
-          <div className="bg-slate-900/85 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-              <span>SALVATIONS</span>
-              <Flame className="w-3.5 h-3.5 text-rose-400" />
-            </div>
-            <div className="text-2xl font-extrabold text-white mt-1.5">
-              {currentSnapshot.salvations || 6}
-            </div>
-            <div className="text-[10px] text-rose-300 mt-1">
-              Altar call responses
-            </div>
-          </div>
-
-          {/* 7. Prayer Requests */}
-          <div className="bg-slate-900/85 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-              <span>PRAYERS</span>
-              <HeartHandshake className="w-3.5 h-3.5 text-emerald-400" />
-            </div>
-            <div className="text-2xl font-extrabold text-white mt-1.5">
-              {currentSnapshot.prayerRequests}
-            </div>
-            <div className="text-[10px] text-slate-400 mt-1">
-              {prayers.length} in triage queue
-            </div>
-          </div>
-
-          {/* 8. Prophetic Cues & Chat */}
-          <div className="bg-slate-900/85 border border-slate-800 rounded-xl p-3.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-              <span>CUES & CHAT</span>
-              <Send className="w-3.5 h-3.5 text-indigo-400" />
-            </div>
-            <div className="text-2xl font-extrabold text-white mt-1.5">
-              {currentSnapshot.cuesReleased}
-            </div>
-            <div className="text-[10px] text-slate-400 mt-1">
-              {currentSnapshot.chatMessages} chat interactions
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* ROW 1 OF GRAPHS: Multi-Week Attendance & Repeating Trend + Live 75m Retention Curve */}
+        {/* ROW 1 OF GRAPHS */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* GRAPH 1: Multi-Week Attendance, Repeating Audience & Target Goal Chart (7 cols) */}
-          <div className="xl:col-span-7 bg-slate-900/85 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          {/* GRAPH 1: Multi-Week Attendance & Repeating Line (7 cols) */}
+          <div className="xl:col-span-7 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] pb-4 mb-4">
                 <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-indigo-400" />
-                    <span>Multi-Service Attendance & Repeating Audience Growth</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                    Multi-Week Trend
+                  </span>
+                  <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                    Service Attendance &amp; Repeating Audience Trajectory
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    Click any Sunday bar to inspect that service. Compares YouTube + Instagram Peak vs Repeating Viewers & Target Goal.
-                  </p>
                 </div>
 
-                {/* Legend */}
                 <div className="flex flex-wrap items-center gap-3 text-[11px]">
-                  <span className="flex items-center gap-1.5 text-slate-300">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" />
-                    YouTube Peak
+                  <span className="flex items-center gap-1.5 text-zinc-300">
+                    <span className="w-2 h-2 rounded-full bg-sky-400" />
+                    YouTube
                   </span>
-                  <span className="flex items-center gap-1.5 text-slate-300">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-pink-500" />
-                    Instagram Peak
+                  <span className="flex items-center gap-1.5 text-zinc-300">
+                    <span className="w-2 h-2 rounded-full bg-pink-400" />
+                    Instagram
                   </span>
-                  <span className="flex items-center gap-1.5 text-emerald-300 font-semibold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                    Repeating Viewers
+                  <span className="flex items-center gap-1.5 text-emerald-300 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    Repeating
                   </span>
-                  <span className="flex items-center gap-1.5 text-amber-300 font-semibold">
-                    <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-400" />
+                  <span className="flex items-center gap-1.5 text-amber-300 font-medium">
+                    <span className="w-3 h-0.5 border-t border-dashed border-amber-400" />
                     Target ({targetAttendance})
                   </span>
                 </div>
               </div>
 
-              {/* SVG Combo Bar + Line Chart */}
               <div className="w-full overflow-x-auto">
                 <svg
                   viewBox="0 0 700 260"
                   className="w-full h-64 select-none overflow-visible"
                 >
-                  {/* Horizontal Grid Lines */}
                   {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
                     const y = 215 - ratio * 180;
                     const val = Math.round(ratio * maxChartY);
@@ -716,7 +655,7 @@ export default function ReportsPage() {
                           y1={y}
                           x2={680}
                           y2={y}
-                          stroke="#1e293b"
+                          stroke="rgba(255,255,255,0.06)"
                           strokeDasharray="3 3"
                           strokeWidth="1"
                         />
@@ -724,7 +663,7 @@ export default function ReportsPage() {
                           x={36}
                           y={y + 4}
                           textAnchor="end"
-                          className="fill-slate-500 text-[10px]"
+                          className="fill-zinc-500 text-[10px]"
                         >
                           {val}
                         </text>
@@ -732,11 +671,9 @@ export default function ReportsPage() {
                     );
                   })}
 
-                  {/* Target Attendance Dashed Goal Line */}
                   {(() => {
                     const targetY =
-                      215 -
-                      Math.min(1, targetAttendance / maxChartY) * 180;
+                      215 - Math.min(1, targetAttendance / maxChartY) * 180;
                     return (
                       <g>
                         <line
@@ -745,7 +682,7 @@ export default function ReportsPage() {
                           x2={680}
                           y2={targetY}
                           stroke="#fbbf24"
-                          strokeWidth="1.5"
+                          strokeWidth="1.2"
                           strokeDasharray="6 4"
                         />
                         <rect
@@ -754,7 +691,7 @@ export default function ReportsPage() {
                           width={88}
                           height={15}
                           rx={4}
-                          fill="#451a03"
+                          fill="#18181b"
                           stroke="#f59e0b"
                           strokeWidth="0.8"
                         />
@@ -762,7 +699,7 @@ export default function ReportsPage() {
                           x={634}
                           y={targetY - 6}
                           textAnchor="middle"
-                          className="fill-amber-300 text-[9px] font-bold"
+                          className="fill-amber-300 text-[9px] font-semibold"
                         >
                           Goal: {targetAttendance} Live
                         </text>
@@ -770,12 +707,11 @@ export default function ReportsPage() {
                     );
                   })()}
 
-                  {/* Stacked Bars (YT + IG) & Repeating Viewers Line */}
                   {serviceHistory.map((item, idx) => {
                     const count = serviceHistory.length;
                     const slotWidth = 620 / Math.max(1, count);
                     const centerX = 55 + idx * slotWidth + slotWidth / 2;
-                    const barW = Math.min(36, slotWidth * 0.55);
+                    const barW = Math.min(34, slotWidth * 0.52);
 
                     const ytH = (item.peakYT / maxChartY) * 180;
                     const igH = (item.peakIG / maxChartY) * 180;
@@ -794,71 +730,64 @@ export default function ReportsPage() {
                         onClick={() => setSelectedServiceIdx(idx)}
                         className="cursor-pointer group"
                       >
-                        {/* Selection highlight backdrop */}
                         {isSelected && (
                           <rect
                             x={centerX - barW / 2 - 6}
                             y={25}
                             width={barW + 12}
                             height={194}
-                            rx={6}
-                            fill="#312e81"
-                            fillOpacity="0.25"
+                            rx={8}
+                            fill="rgba(255,255,255,0.04)"
                           />
                         )}
 
-                        {/* YouTube Lower Bar */}
                         <rect
                           x={centerX - barW / 2}
                           y={ytY}
                           width={barW}
                           height={Math.max(2, ytH)}
-                          rx={2}
-                          fill={isSelected ? "#6366f1" : "#4f46e5"}
+                          rx={3}
+                          fill={isSelected ? "#38bdf8" : "#0284c7"}
                         />
 
-                        {/* Instagram Upper Stacked Bar */}
                         <rect
                           x={centerX - barW / 2}
                           y={igY}
                           width={barW}
                           height={Math.max(2, igH)}
-                          rx={2}
-                          fill={isSelected ? "#ec4899" : "#db2777"}
+                          rx={3}
+                          fill={isSelected ? "#f472b6" : "#db2777"}
                         />
 
-                        {/* Total Peak Label Above Bar */}
                         <text
                           x={centerX}
                           y={215 - totalH - 6}
                           textAnchor="middle"
-                          className={`text-[10px] font-bold ${
-                            isSelected ? "fill-white" : "fill-slate-400"
+                          className={`text-[10px] font-semibold ${
+                            isSelected ? "fill-white" : "fill-zinc-400"
                           }`}
                         >
                           {item.totalPeak}
                         </text>
 
-                        {/* Date Label on X Axis */}
                         <text
                           x={centerX}
                           y={233}
                           textAnchor="middle"
-                          className={`text-[10px] font-medium ${
+                          className={`text-[10px] ${
                             isSelected
-                              ? "fill-indigo-300 font-bold"
-                              : "fill-slate-400"
+                              ? "fill-white font-semibold"
+                              : "fill-zinc-500"
                           }`}
                         >
                           {item.label}
                         </text>
 
-                        {/* Repeating % sub-label */}
                         <text
                           x={centerX}
                           y={246}
                           textAnchor="middle"
-                          className="fill-emerald-400 text-[9px] font-semibold"
+                          className="fill-emerald-400 text-[9px] font-medium"
                         >
                           {item.repeatingViewers} rep
                         </text>
@@ -866,12 +795,11 @@ export default function ReportsPage() {
                     );
                   })}
 
-                  {/* Repeating Audience Line Polyline */}
                   {serviceHistory.length > 1 && (
                     <polyline
                       fill="none"
-                      stroke="#10b981"
-                      strokeWidth="2.5"
+                      stroke="#34d399"
+                      strokeWidth="2.2"
                       points={serviceHistory
                         .map((item, idx) => {
                           const slotWidth =
@@ -886,7 +814,6 @@ export default function ReportsPage() {
                     />
                   )}
 
-                  {/* Repeating Audience Dots */}
                   {serviceHistory.map((item, idx) => {
                     const slotWidth =
                       620 / Math.max(1, serviceHistory.length);
@@ -898,9 +825,9 @@ export default function ReportsPage() {
                         key={`dot-${item.id}`}
                         cx={centerX}
                         cy={repY}
-                        r={4}
-                        fill="#10b981"
-                        stroke="#022c22"
+                        r={3.5}
+                        fill="#34d399"
+                        stroke="#09090b"
                         strokeWidth="1.5"
                       />
                     );
@@ -909,7 +836,7 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800/80 text-xs text-slate-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-white/[0.06] text-xs text-zinc-400 tabular-nums">
               <span>
                 Repeating Congregation grew from{" "}
                 <strong className="text-emerald-300">
@@ -920,25 +847,23 @@ export default function ReportsPage() {
                   {currentSnapshot.repeatingViewers} returning viewers
                 </strong>
               </span>
-              <span className="text-indigo-300 font-semibold">
-                {Math.max(0, targetAttendance - currentSnapshot.totalPeak)} more viewers needed for Phase 1 Goal
+              <span className="text-zinc-300 font-medium">
+                {Math.max(0, targetAttendance - currentSnapshot.totalPeak)} to
+                Phase 1 Target
               </span>
             </div>
           </div>
 
-          {/* GRAPH 2: 75-Minute Live Service Retention & Prophetic Engagement Curve (5 cols) */}
-          <div className="xl:col-span-5 bg-slate-900/85 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          {/* GRAPH 2: 75-Min Retention Curve (5 cols) */}
+          <div className="xl:col-span-5 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex items-center justify-between gap-2 mb-4">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-400" />
-                    <span>75-Min Service Retention & Prophetic Peak Curve</span>
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Tracks where viewers join, peak during Sermon Cues, and stay through Altar Call
-                  </p>
-                </div>
+              <div className="border-b border-white/[0.08] pb-4 mb-4">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                  In-Service Telemetry
+                </span>
+                <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  75-Minute Service Retention &amp; Cue Velocity
+                </h2>
               </div>
 
               <div className="w-full overflow-x-auto">
@@ -946,7 +871,6 @@ export default function ReportsPage() {
                   viewBox="0 0 500 245"
                   className="w-full h-60 select-none overflow-visible"
                 >
-                  {/* Grid lines */}
                   {[0, 25, 50, 75, 100].map((val, i) => {
                     const y = 195 - (val / 100) * 155;
                     return (
@@ -956,14 +880,14 @@ export default function ReportsPage() {
                           y1={y}
                           x2={480}
                           y2={y}
-                          stroke="#1e293b"
+                          stroke="rgba(255,255,255,0.06)"
                           strokeDasharray="3 3"
                         />
                         <text
                           x={30}
                           y={y + 3}
                           textAnchor="end"
-                          className="fill-slate-500 text-[9px]"
+                          className="fill-zinc-500 text-[9px]"
                         >
                           {val}%
                         </text>
@@ -971,20 +895,17 @@ export default function ReportsPage() {
                     );
                   })}
 
-                  {/* Repeating Audience Loyalty Area */}
                   {retentionCurve.length > 1 && (
                     <>
                       <polygon
-                        fill="#10b981"
-                        fillOpacity="0.12"
+                        fill="#34d399"
+                        fillOpacity="0.1"
                         points={[
                           `45,195`,
                           ...retentionCurve.map((pt, i) => {
                             const x =
-                              45 +
-                              (i / (retentionCurve.length - 1)) * 425;
-                            const y =
-                              195 - (pt.repeatingActive / 100) * 155;
+                              45 + (i / (retentionCurve.length - 1)) * 425;
+                            const y = 195 - (pt.repeatingActive / 100) * 155;
                             return `${x},${y}`;
                           }),
                           `470,195`,
@@ -992,15 +913,13 @@ export default function ReportsPage() {
                       />
                       <polyline
                         fill="none"
-                        stroke="#10b981"
-                        strokeWidth="2.5"
+                        stroke="#34d399"
+                        strokeWidth="2.2"
                         points={retentionCurve
                           .map((pt, i) => {
                             const x =
-                              45 +
-                              (i / (retentionCurve.length - 1)) * 425;
-                            const y =
-                              195 - (pt.repeatingActive / 100) * 155;
+                              45 + (i / (retentionCurve.length - 1)) * 425;
+                            const y = 195 - (pt.repeatingActive / 100) * 155;
                             return `${x},${y}`;
                           })
                           .join(" ")}
@@ -1008,12 +927,11 @@ export default function ReportsPage() {
                     </>
                   )}
 
-                  {/* Chat Engagement Velocity Line */}
                   {retentionCurve.length > 1 && (
                     <polyline
                       fill="none"
-                      stroke="#818cf8"
-                      strokeWidth="2"
+                      stroke="#38bdf8"
+                      strokeWidth="1.8"
                       strokeDasharray="4 3"
                       points={retentionCurve
                         .map((pt, i) => {
@@ -1026,7 +944,6 @@ export default function ReportsPage() {
                     />
                   )}
 
-                  {/* Points & X-axis labels */}
                   {retentionCurve.map((pt, i) => {
                     const x =
                       45 +
@@ -1036,23 +953,13 @@ export default function ReportsPage() {
 
                     return (
                       <g key={pt.minute}>
-                        <circle
-                          cx={x}
-                          cy={repY}
-                          r={3.5}
-                          fill="#10b981"
-                        />
-                        <circle
-                          cx={x}
-                          cy={chatY}
-                          r={3}
-                          fill="#818cf8"
-                        />
+                        <circle cx={x} cy={repY} r={3} fill="#34d399" />
+                        <circle cx={x} cy={chatY} r={2.5} fill="#38bdf8" />
                         <text
                           x={x}
                           y={repY - 7}
                           textAnchor="middle"
-                          className="fill-emerald-300 text-[9px] font-bold"
+                          className="fill-emerald-300 text-[9px] font-semibold"
                         >
                           {pt.repeatingActive}%
                         </text>
@@ -1060,7 +967,7 @@ export default function ReportsPage() {
                           x={x}
                           y={212}
                           textAnchor="middle"
-                          className="fill-slate-300 text-[9px] font-bold"
+                          className="fill-zinc-300 text-[9px] font-medium"
                         >
                           {pt.minute}
                         </text>
@@ -1068,7 +975,7 @@ export default function ReportsPage() {
                           x={x}
                           y={224}
                           textAnchor="middle"
-                          className="fill-slate-500 text-[8px]"
+                          className="fill-zinc-500 text-[8px]"
                         >
                           {pt.segment.split(" ")[0]}
                         </text>
@@ -1079,34 +986,34 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-white/[0.06] text-[11px] text-zinc-400">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                <span>Green: Repeating Viewer Retention %</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>Repeating Viewer Retention %</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-                <span>Dashed: Live Chat Cue Velocity %</span>
+                <span className="w-2 h-2 rounded-full bg-sky-400" />
+                <span>Live Chat Cue Velocity %</span>
               </span>
             </div>
           </div>
         </div>
 
-        {/* ROW 2 OF GRAPHS: Repeating Audience Loyalty Donut + YouTube vs Instagram Comparison */}
+        {/* ROW 2 OF GRAPHS */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* GRAPH 3: Audience Composition & Repeating Loyalty Donut (5 cols) */}
-          <div className="lg:col-span-5 bg-slate-900/85 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          {/* GRAPH 3: Audience Composition Donut (5 cols) */}
+          <div className="lg:col-span-5 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 flex flex-col justify-between space-y-4">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Repeat className="w-4 h-4 text-emerald-400" />
-                <span>Congregation Loyalty & Repeating Viewer Breakdown</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Categorizes your online viewers by how many services they have attended
-              </p>
+              <div className="border-b border-white/[0.08] pb-4">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  Cohort Breakdown
+                </span>
+                <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  Congregation Loyalty &amp; Repeating Ratio
+                </h2>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center mt-5">
-                {/* SVG Donut Chart */}
                 <div className="flex items-center justify-center">
                   <svg viewBox="0 0 160 160" className="w-40 h-40">
                     <circle
@@ -1114,41 +1021,38 @@ export default function ReportsPage() {
                       cy="80"
                       r="56"
                       fill="none"
-                      stroke="#1e293b"
-                      strokeWidth="18"
+                      stroke="#18181b"
+                      strokeWidth="16"
                     />
-                    {/* Core Regulars Segment (Emerald) */}
                     <circle
                       cx="80"
                       cy="80"
                       r="56"
                       fill="none"
-                      stroke="#10b981"
-                      strokeWidth="18"
+                      stroke="#34d399"
+                      strokeWidth="16"
                       strokeDasharray={`${(corePct / 100) * 351.8} 351.8`}
                       strokeDashoffset="0"
                       transform="rotate(-90 80 80)"
                     />
-                    {/* Returning 2nd-Time Segment (Indigo) */}
                     <circle
                       cx="80"
                       cy="80"
                       r="56"
                       fill="none"
-                      stroke="#6366f1"
-                      strokeWidth="18"
+                      stroke="#38bdf8"
+                      strokeWidth="16"
                       strokeDasharray={`${(returningPct / 100) * 351.8} 351.8`}
                       strokeDashoffset={`-${(corePct / 100) * 351.8}`}
                       transform="rotate(-90 80 80)"
                     />
-                    {/* First-Time Visitors Segment (Amber) */}
                     <circle
                       cx="80"
                       cy="80"
                       r="56"
                       fill="none"
-                      stroke="#f59e0b"
-                      strokeWidth="18"
+                      stroke="#fbbf24"
+                      strokeWidth="16"
                       strokeDasharray={`${(firstTimePct / 100) * 351.8} 351.8`}
                       strokeDashoffset={`-${
                         ((corePct + returningPct) / 100) * 351.8
@@ -1159,7 +1063,7 @@ export default function ReportsPage() {
                       x="80"
                       y="76"
                       textAnchor="middle"
-                      className="fill-white text-xl font-extrabold"
+                      className="fill-white text-xl font-semibold"
                     >
                       {corePct + returningPct}%
                     </text>
@@ -1167,62 +1071,61 @@ export default function ReportsPage() {
                       x="80"
                       y="94"
                       textAnchor="middle"
-                      className="fill-emerald-400 text-[9px] font-bold uppercase"
+                      className="fill-emerald-400 text-[9px] font-semibold uppercase tracking-wider"
                     >
-                      Repeating Flock
+                      Repeating
                     </text>
                   </svg>
                 </div>
 
-                {/* Breakdown Legend Cards */}
                 <div className="space-y-2.5 text-xs">
-                  <div className="p-2.5 rounded-xl bg-slate-950/70 border border-emerald-500/30 flex items-center justify-between">
+                  <div className="p-3 rounded-2xl bg-[#09090b] border border-white/[0.08] flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
                       <div>
-                        <div className="font-bold text-white">
-                          Core Regulars (3+ Visits)
+                        <div className="font-semibold text-white">
+                          Core Regulars (3+)
                         </div>
-                        <div className="text-[10px] text-slate-400">
-                          Loyal weekly pillars
+                        <div className="text-[10px] text-zinc-500">
+                          Weekly congregation
                         </div>
                       </div>
                     </div>
-                    <span className="text-sm font-extrabold text-emerald-400">
+                    <span className="text-xs font-semibold text-emerald-300 tabular-nums">
                       {audienceStats.coreRegulars} ({corePct}%)
                     </span>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-slate-950/70 border border-indigo-500/30 flex items-center justify-between">
+                  <div className="p-3 rounded-2xl bg-[#09090b] border border-white/[0.08] flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-indigo-500 shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0" />
                       <div>
-                        <div className="font-bold text-white">
+                        <div className="font-semibold text-white">
                           2nd-Time Returning
                         </div>
-                        <div className="text-[10px] text-slate-400">
-                          Came back after 1st visit
+                        <div className="text-[10px] text-zinc-500">
+                          Returned after 1st visit
                         </div>
                       </div>
                     </div>
-                    <span className="text-sm font-extrabold text-indigo-400">
+                    <span className="text-xs font-semibold text-sky-300 tabular-nums">
                       {audienceStats.returningSecondTime} ({returningPct}%)
                     </span>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-slate-950/70 border border-amber-500/30 flex items-center justify-between">
+                  <div className="p-3 rounded-2xl bg-[#09090b] border border-white/[0.08] flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
                       <div>
-                        <div className="font-bold text-white">
+                        <div className="font-semibold text-white">
                           First-Time Visitors
                         </div>
-                        <div className="text-[10px] text-slate-400">
-                          Needs 24h follow-up care
+                        <div className="text-[10px] text-zinc-500">
+                          24h follow-up care
                         </div>
                       </div>
                     </div>
-                    <span className="text-sm font-extrabold text-amber-400">
+                    <span className="text-xs font-semibold text-amber-300 tabular-nums">
                       {audienceStats.firstTimers} ({firstTimePct}%)
                     </span>
                   </div>
@@ -1230,35 +1133,32 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-zinc-400 tabular-nums">
               <span>
-                Dual-Platform Watchers (YT + IG):{" "}
+                Dual-Platform Viewers:{" "}
                 <strong className="text-white">
-                  {audienceStats.dualPlatform} members
+                  {audienceStats.dualPlatform}
                 </strong>
               </span>
-              <span className="text-emerald-300 font-semibold">
-                {audienceStats.totalTracked} Named Profiles Tracked
+              <span className="text-zinc-300 font-medium">
+                {audienceStats.totalTracked} Profiles Tracked
               </span>
             </div>
           </div>
 
-          {/* GRAPH 4: YouTube Live vs Instagram Live Head-to-Head Comparison (7 cols) */}
-          <div className="lg:col-span-7 bg-slate-900/85 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          {/* GRAPH 4: YouTube vs Instagram Comparison (7 cols) */}
+          <div className="lg:col-span-7 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Radio className="w-4 h-4 text-pink-400" />
-                    <span>Platform Performance: YouTube Live vs Instagram Live</span>
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Side-by-side platform behavior comparison to guide camera framing (16:9 vs 9:16) & moderator focus
-                  </p>
-                </div>
+              <div className="border-b border-white/[0.08] pb-4 mb-4">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  Stream Distribution
+                </span>
+                <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  YouTube Live (16:9) vs Instagram Live (9:16)
+                </h2>
               </div>
 
-              <div className="space-y-3.5 mt-2">
+              <div className="space-y-4">
                 {[
                   {
                     metric: "Peak Concurrent Viewers",
@@ -1279,7 +1179,7 @@ export default function ReportsPage() {
                     unit: "mins",
                   },
                   {
-                    metric: "Live Chat & Prophetic Cue Engagement",
+                    metric: "Live Chat & Cue Engagement",
                     ytVal: Math.round(currentSnapshot.chatMessages * 0.58),
                     igVal: Math.round(currentSnapshot.chatMessages * 0.42),
                     unit: "msgs",
@@ -1291,24 +1191,24 @@ export default function ReportsPage() {
 
                   return (
                     <div key={idx} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-red-400 font-bold">
+                      <div className="flex items-center justify-between text-xs tabular-nums">
+                        <span className="text-sky-300 font-medium">
                           YouTube: {row.ytVal} {row.unit} ({ytPct}%)
                         </span>
-                        <span className="text-slate-300 font-semibold">
+                        <span className="text-zinc-300 font-semibold">
                           {row.metric}
                         </span>
-                        <span className="text-pink-400 font-bold">
+                        <span className="text-pink-300 font-medium">
                           Instagram: {row.igVal} {row.unit} ({igPct}%)
                         </span>
                       </div>
-                      <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden flex">
+                      <div className="w-full h-2 bg-[#09090b] rounded-full overflow-hidden flex border border-white/[0.06]">
                         <div
-                          className="h-full bg-gradient-to-r from-red-600 to-indigo-500 transition-all duration-500"
+                          className="h-full bg-sky-400 transition-all duration-300"
                           style={{ width: `${ytPct}%` }}
                         />
                         <div
-                          className="h-full bg-gradient-to-r from-pink-500 to-rose-400 transition-all duration-500"
+                          className="h-full bg-pink-400 transition-all duration-300"
                           style={{ width: `${igPct}%` }}
                         />
                       </div>
@@ -1318,83 +1218,79 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-slate-300">
-                <strong className="text-red-400">YouTube Live Insight:</strong>{" "}
-                Higher watch duration ({currentSnapshot.avgWatchMinutes + 6}m avg) on Smart TVs & laptops; clickable sermon & giving links convert best here.
+            <div className="pt-3 border-t border-white/[0.06] grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+              <div className="bg-[#09090b] border border-white/[0.06] rounded-2xl p-3 text-zinc-400">
+                <strong className="text-sky-300">YouTube 16:9:</strong> Higher
+                retention ({currentSnapshot.avgWatchMinutes + 6}m avg) on TV and
+                desktop displays.
               </div>
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-slate-300">
-                <strong className="text-pink-400">Instagram Live Insight:</strong>{" "}
-                Fastest discovery for first-time visitors; use 9:16 vertical camera crop & prompt viewers to DM keywords.
+              <div className="bg-[#09090b] border border-white/[0.06] rounded-2xl p-3 text-zinc-400">
+                <strong className="text-pink-300">Instagram 9:16:</strong>{" "}
+                Primary discovery funnel for first-time viewers; maintain clean
+                center vertical crop.
               </div>
             </div>
           </div>
         </div>
 
-        {/* REPEATING AUDIENCE & CONGREGATION CRM ROSTER TABLE */}
-        <div className="bg-slate-900/85 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* REPEATING AUDIENCE ROSTER TABLE */}
+        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Award className="w-5 h-5 text-emerald-400" />
-                <span>
-                  Repeating Audience & Online Congregation Attendance Roster
-                </span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                Attendance CRM
+              </span>
+              <h2 className="text-lg font-semibold text-white tracking-tight mt-0.5">
+                Repeating Audience &amp; Congregation Check-In Roster
               </h2>
-              <p className="text-xs text-slate-400">
-                Tracks every individual viewer across services so you can count repeating regulars vs first-time visitors. Click{" "}
-                <strong className="text-emerald-300">+1 Visit</strong> when they check in on Sunday!
-              </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search name, @handle, city..."
-                  value={audienceSearch}
-                  onChange={(e) => setAudienceSearch(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <input
+                type="text"
+                placeholder="Search name, @handle, or city..."
+                value={audienceSearch}
+                onChange={(e) => setAudienceSearch(e.target.value)}
+                className="bg-[#09090b] border border-white/[0.1] rounded-full px-4 py-1.5 text-xs text-white focus:outline-none focus:border-white/30"
+              />
 
               <button
+                type="button"
                 onClick={() => setShowAddViewerModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition"
+                className="px-4 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
               >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>+ Check-In / Add Viewer</span>
+                + Check-In Viewer
               </button>
             </div>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          {/* Apple Segmented Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1 bg-[#09090b] p-1.5 rounded-2xl border border-white/[0.08]">
             {[
               { id: "ALL", label: `All Tracked (${audienceRoster.length})` },
               {
                 id: "CORE",
-                label: `Core Regulars 3+ Visits (${audienceStats.coreRegulars})`,
+                label: `Core Regulars 3+ (${audienceStats.coreRegulars})`,
               },
               {
                 id: "RETURNING",
-                label: `2nd-Time Returning (${audienceStats.returningSecondTime})`,
+                label: `2nd-Time (${audienceStats.returningSecondTime})`,
               },
               {
                 id: "FIRST_TIME",
-                label: `First-Time Visitors (${audienceStats.firstTimers})`,
+                label: `First-Time (${audienceStats.firstTimers})`,
               },
-              { id: "YOUTUBE", label: "YouTube Viewers" },
-              { id: "INSTAGRAM", label: "Instagram Viewers" },
+              { id: "YOUTUBE", label: "YouTube" },
+              { id: "INSTAGRAM", label: "Instagram" },
             ].map((pill) => (
               <button
                 key={pill.id}
+                type="button"
                 onClick={() => setAudienceFilter(pill.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition ${
                   audienceFilter === pill.id
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-950 text-slate-400 hover:text-white border border-slate-800"
+                    ? "bg-white text-black font-semibold"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
                 {pill.label}
@@ -1402,21 +1298,20 @@ export default function ReportsPage() {
             ))}
           </div>
 
-          {/* Audience Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-800 text-[11px] text-slate-400 uppercase">
-                  <th className="py-2.5 px-3">Viewer / Handle</th>
-                  <th className="py-2.5 px-3">Platform</th>
-                  <th className="py-2.5 px-3">Location</th>
-                  <th className="py-2.5 px-3">Loyalty Tier</th>
-                  <th className="py-2.5 px-3">Services Attended</th>
-                  <th className="py-2.5 px-3">Last Seen</th>
-                  <th className="py-2.5 px-3 text-right">Quick Check-In</th>
+                <tr className="border-b border-white/[0.08] text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-3 px-3">Viewer / Handle</th>
+                  <th className="py-3 px-3">Platform</th>
+                  <th className="py-3 px-3">Location</th>
+                  <th className="py-3 px-3">Cohort</th>
+                  <th className="py-3 px-3">Services Attended</th>
+                  <th className="py-3 px-3">Last Seen</th>
+                  <th className="py-3 px-3 text-right">Quick Check-In</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-white/[0.05]">
                 {filteredAudience.map((member) => {
                   const isCore = member.servicesAttended >= 3;
                   const isReturning = member.servicesAttended === 2;
@@ -1424,69 +1319,69 @@ export default function ReportsPage() {
                   return (
                     <tr
                       key={member.id}
-                      className="hover:bg-slate-800/30 transition"
+                      className="hover:bg-white/[0.02] transition"
                     >
-                      <td className="py-2.5 px-3">
-                        <div className="font-bold text-white">{member.name}</div>
-                        <div className="text-[11px] text-slate-400">
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-white">
+                          {member.name}
+                        </div>
+                        <div className="text-[11px] text-zinc-500 font-mono">
                           {member.handle}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="py-3 px-3">
                         <span
-                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
+                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold ${
                             member.platform === "YOUTUBE"
-                              ? "bg-red-500/15 text-red-300 border border-red-500/30"
+                              ? "bg-sky-500/15 text-sky-300 border border-sky-500/30"
                               : member.platform === "INSTAGRAM"
                               ? "bg-pink-500/15 text-pink-300 border border-pink-500/30"
-                              : "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30"
+                              : "bg-white/[0.08] text-zinc-200 border border-white/[0.12]"
                           }`}
                         >
                           {member.platform}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-300">
+                      <td className="py-3 px-3 text-zinc-300">
                         {member.location}
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="py-3 px-3">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                             isCore
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                              ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
                               : isReturning
-                              ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                              : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              ? "bg-sky-500/15 text-sky-300 border border-sky-500/30"
+                              : "bg-amber-500/15 text-amber-300 border border-amber-500/30"
                           }`}
                         >
                           {isCore
-                            ? "★ Core Regular"
+                            ? "Core Regular"
                             : isReturning
-                            ? "↻ Returning (2x)"
-                            : "✦ First-Time"}
+                            ? "Returning (2x)"
+                            : "First-Time"}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-extrabold text-white">
-                            {member.servicesAttended}
-                          </span>
-                          <span className="text-[11px] text-slate-400">
-                            services
-                          </span>
-                        </div>
+                      <td className="py-3 px-3 tabular-nums">
+                        <span className="text-sm font-semibold text-white">
+                          {member.servicesAttended}
+                        </span>{" "}
+                        <span className="text-[11px] text-zinc-500">
+                          services
+                        </span>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-400">
+                      <td className="py-3 px-3 text-zinc-400 tabular-nums">
                         {member.lastSeen}
                       </td>
-                      <td className="py-2.5 px-3 text-right">
+                      <td className="py-3 px-3 text-right">
                         <button
+                          type="button"
                           onClick={() =>
                             handleIncrementVisit(member.id, member.name)
                           }
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-[11px] font-bold transition"
+                          className="px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white text-zinc-200 hover:text-black border border-white/[0.1] text-[11px] font-semibold transition"
                         >
-                          <Plus className="w-3 h-3" />
-                          <span>+1 Visit</span>
+                          +1 Visit
                         </button>
                       </td>
                     </tr>
@@ -1497,144 +1392,67 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* AI Pastoral Summary Card (If generated) */}
+        {/* Executive Pastoral Briefing (If generated) */}
         {aiReport && (
-          <div className="bg-gradient-to-b from-indigo-950/40 to-slate-900/80 border border-indigo-800/60 rounded-2xl p-6 shadow-xl">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-lg font-bold text-white tracking-tight">
-                AI Executive Pastoral Briefing (Gemini 3.8 Flash)
+          <div className="bg-[#121215] border border-white/[0.12] rounded-3xl p-6 space-y-4">
+            <div className="border-b border-white/[0.08] pb-3">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-400">
+                Automated Post-Service Synthesis
+              </span>
+              <h2 className="text-lg font-semibold text-white tracking-tight mt-0.5">
+                Executive Pastoral Briefing
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-              <div>
-                <h3 className="font-semibold text-indigo-300 text-xs uppercase tracking-wider mb-2">
-                  Executive Service Overview
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-zinc-300 uppercase tracking-wider text-[11px]">
+                  Service Overview
                 </h3>
-                <div className="text-slate-300 leading-relaxed whitespace-pre-line text-xs bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <div className="text-zinc-300 leading-relaxed whitespace-pre-line bg-[#09090b] p-4 rounded-2xl border border-white/[0.08]">
                   {aiReport.summary}
                 </div>
               </div>
 
-              <div>
-                <h3 className="font-semibold text-emerald-300 text-xs uppercase tracking-wider mb-2">
-                  Pastoral Action Items & Follow-ups
+              <div className="space-y-2">
+                <h3 className="font-semibold text-emerald-400 uppercase tracking-wider text-[11px]">
+                  Pastoral Action Items &amp; Follow-Ups
                 </h3>
-                <div className="text-slate-300 leading-relaxed whitespace-pre-line text-xs bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <div className="text-zinc-300 leading-relaxed whitespace-pre-line bg-[#09090b] p-4 rounded-2xl border border-white/[0.08]">
                   {aiReport.actionItems}
                 </div>
               </div>
             </div>
           </div>
         )}
-
-        {/* Service Details Grid: Live Visitors & Prayer Requests */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* First-Time Visitors Log */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-sm font-bold text-white mb-3 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-amber-400" /> First-Time Online
-                Visitors Logged
-              </span>
-              <span className="text-xs text-slate-500 font-normal">
-                {visitors.length} logged in live session
-              </span>
-            </h3>
-
-            {visitors.length === 0 ? (
-              <p className="text-xs text-slate-500 py-6 text-center italic">
-                No new visitors logged in the live broadcast widget yet. Use "+ Check-In / Add Viewer" above or log from Broadcast tab.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {visitors.map((v) => (
-                  <div
-                    key={v.id}
-                    className="p-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="font-semibold text-white">{v.name}</div>
-                      <div className="text-[11px] text-slate-400">
-                        {v.location || "Online"} • Via {v.platform}
-                      </div>
-                    </div>
-                    <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">
-                      {new Date(v.connectedAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Prayer Requests Log */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
-            <h3 className="text-sm font-bold text-white mb-3 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <HeartHandshake className="w-4 h-4 text-emerald-400" /> Prayer
-                Requests Logged
-              </span>
-              <span className="text-xs text-slate-500 font-normal">
-                {prayers.length} total
-              </span>
-            </h3>
-
-            {prayers.length === 0 ? (
-              <p className="text-xs text-slate-500 py-6 text-center italic">
-                No prayer requests logged for this session yet.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {prayers.map((p) => (
-                  <div
-                    key={p.id}
-                    className="p-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-xs"
-                  >
-                    <div className="flex items-center justify-between font-semibold text-white mb-1">
-                      <span>{p.requesterName}</span>
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded">
-                        {p.status}
-                      </span>
-                    </div>
-                    <p className="text-slate-300 leading-relaxed">
-                      "{p.requestText}"
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
       </main>
 
       {/* Modal 1: Log Service Snapshot */}
       {showLogServiceModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-base font-bold text-white">
-                  Log Service Attendance & Repeating Metrics
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-white/[0.12] rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                  Telemetry Entry
+                </span>
+                <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  Log Service Attendance &amp; Repeating Metrics
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowLogServiceModal(false)}
-                className="p-1 text-slate-400 hover:text-white"
+                className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-full bg-white/[0.05]"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
 
-            <form onSubmit={handleLogService} className="space-y-3 text-xs">
+            <form onSubmit={handleLogService} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Service Date
                   </label>
                   <input
@@ -1643,12 +1461,12 @@ export default function ReportsPage() {
                     onChange={(e) =>
                       setNewSrv({ ...newSrv, date: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
-                    Sermon / Service Title
+                  <label className="block text-zinc-400 mb-1 font-medium">
+                    Service Title
                   </label>
                   <input
                     type="text"
@@ -1656,14 +1474,14 @@ export default function ReportsPage() {
                     onChange={(e) =>
                       setNewSrv({ ...newSrv, title: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-red-400 mb-1 font-medium">
+                  <label className="block text-sky-300 mb-1 font-medium">
                     YouTube Peak
                   </label>
                   <input
@@ -1672,11 +1490,11 @@ export default function ReportsPage() {
                     onChange={(e) =>
                       setNewSrv({ ...newSrv, peakYT: Number(e.target.value) })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-pink-400 mb-1 font-medium">
+                  <label className="block text-pink-300 mb-1 font-medium">
                     Instagram Peak
                   </label>
                   <input
@@ -1685,11 +1503,11 @@ export default function ReportsPage() {
                     onChange={(e) =>
                       setNewSrv({ ...newSrv, peakIG: Number(e.target.value) })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-emerald-400 mb-1 font-medium">
+                  <label className="block text-emerald-300 mb-1 font-medium">
                     Repeating Viewers
                   </label>
                   <input
@@ -1701,11 +1519,11 @@ export default function ReportsPage() {
                         repeatingViewers: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-amber-400 mb-1 font-medium">
+                  <label className="block text-amber-300 mb-1 font-medium">
                     First-Time Visitors
                   </label>
                   <input
@@ -1717,11 +1535,11 @@ export default function ReportsPage() {
                         firstTimeVisitors: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Avg Watch (Mins)
                   </label>
                   <input
@@ -1733,12 +1551,12 @@ export default function ReportsPage() {
                         avgWatchMinutes: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-rose-400 mb-1 font-medium">
-                    Salvations / Altar
+                  <label className="block text-rose-300 mb-1 font-medium">
+                    Salvations
                   </label>
                   <input
                     type="number"
@@ -1749,25 +1567,24 @@ export default function ReportsPage() {
                         salvations: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowLogServiceModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                  className="px-4 py-2 rounded-full text-zinc-400 hover:text-white font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                  className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 font-semibold transition"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>Save to Graphs</span>
+                  Save Snapshot
                 </button>
               </div>
             </form>
@@ -1775,46 +1592,49 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* Modal 2: Check-In / Add Viewer to Repeating Roster */}
+      {/* Modal 2: Check-In Viewer */}
       {showAddViewerModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-base font-bold text-white">
-                  Check-In Viewer to Repeating Audience Roster
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-white/[0.12] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                  Roster Check-In
+                </span>
+                <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  Add Viewer to Repeating Roster
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddViewerModal(false)}
-                className="p-1 text-slate-400 hover:text-white"
+                className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-full bg-white/[0.05]"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
 
-            <form onSubmit={handleAddViewer} className="space-y-3 text-xs">
+            <form onSubmit={handleAddViewer} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">
-                  Viewer Full Name *
+                <label className="block text-zinc-400 mb-1 font-medium">
+                  Full Name
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g., Brother Jonathan Lim"
+                  placeholder="e.g. Jonathan Lim"
                   value={newViewer.name}
                   onChange={(e) =>
                     setNewViewer({ ...newViewer, name: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
-                    Chat Handle (@)
+                  <label className="block text-zinc-400 mb-1 font-medium">
+                    Handle (@)
                   </label>
                   <input
                     type="text"
@@ -1823,11 +1643,11 @@ export default function ReportsPage() {
                     onChange={(e) =>
                       setNewViewer({ ...newViewer, handle: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Platform
                   </label>
                   <select
@@ -1835,18 +1655,19 @@ export default function ReportsPage() {
                     onChange={(e) =>
                       setNewViewer({ ...newViewer, platform: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    aria-label="Platform"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   >
                     <option value="YOUTUBE">YouTube Live</option>
                     <option value="INSTAGRAM">Instagram Live</option>
-                    <option value="BOTH">Both (YT + IG)</option>
+                    <option value="BOTH">Both Streams</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     City / Country
                   </label>
                   <input
@@ -1855,12 +1676,12 @@ export default function ReportsPage() {
                     onChange={(e) =>
                       setNewViewer({ ...newViewer, location: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
-                    Services Attended Count
+                  <label className="block text-zinc-400 mb-1 font-medium">
+                    Services Attended
                   </label>
                   <input
                     type="number"
@@ -1872,22 +1693,22 @@ export default function ReportsPage() {
                         servicesAttended: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowAddViewerModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                  className="px-4 py-2 rounded-full text-zinc-400 hover:text-white font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+                  className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 font-semibold transition"
                 >
                   Add to Roster
                 </button>

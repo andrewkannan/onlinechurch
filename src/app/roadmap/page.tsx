@@ -2,33 +2,67 @@
 
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import {
-  Target,
-  Camera,
-  GraduationCap,
-  TrendingUp,
-  Trophy,
-  CheckCircle2,
-  Clock,
-  Plus,
-  Trash2,
-  Edit3,
-  Users,
-  Sparkles,
-  CheckSquare,
-  Square,
-  Calendar,
-  DollarSign,
-  Cpu,
-  Award,
-  Sliders,
-  X,
-  Check,
-  Radio,
-  HeartHandshake,
-} from "lucide-react";
 
 const LOCAL_ROADMAP_KEY = "church_live_hub_roadmap_v1";
+
+const CATEGORY_STYLES: Record<
+  string,
+  {
+    label: string;
+    code: string;
+    dot: string;
+    pill: string;
+    topBorder: string;
+    leftBorder: string;
+    bar: string;
+  }
+> = {
+  CAMERA_HARDWARE: {
+    label: "Camera & Hardware",
+    code: "CAM-HW",
+    dot: "bg-amber-400",
+    pill: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+    topBorder: "border-t-2 border-t-amber-400",
+    leftBorder: "border-l-4 border-l-amber-400",
+    bar: "bg-amber-400",
+  },
+  TEAM_TRAINING: {
+    label: "Team Training",
+    code: "CREW-SOP",
+    dot: "bg-violet-400",
+    pill: "bg-violet-500/15 text-violet-300 border border-violet-500/30",
+    topBorder: "border-t-2 border-t-violet-400",
+    leftBorder: "border-l-4 border-l-violet-400",
+    bar: "bg-violet-400",
+  },
+  BROADCAST_PRODUCTION: {
+    label: "Broadcast Production",
+    code: "PROD-ENG",
+    dot: "bg-sky-400",
+    pill: "bg-sky-500/15 text-sky-300 border border-sky-500/30",
+    topBorder: "border-t-2 border-t-sky-400",
+    leftBorder: "border-l-4 border-l-sky-400",
+    bar: "bg-sky-400",
+  },
+  PASTORAL_CARE: {
+    label: "Pastoral Care",
+    code: "CARE-24H",
+    dot: "bg-emerald-400",
+    pill: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    topBorder: "border-t-2 border-t-emerald-400",
+    leftBorder: "border-l-4 border-l-emerald-400",
+    bar: "bg-emerald-400",
+  },
+  AUDIENCE_GROWTH: {
+    label: "Audience Growth",
+    code: "GROWTH",
+    dot: "bg-pink-400",
+    pill: "bg-pink-500/15 text-pink-300 border border-pink-500/30",
+    topBorder: "border-t-2 border-t-pink-400",
+    leftBorder: "border-l-4 border-l-pink-400",
+    bar: "bg-pink-400",
+  },
+};
 
 export default function RoadmapPage() {
   const [goals, setGoals] = useState<any>({
@@ -86,7 +120,7 @@ export default function RoadmapPage() {
 
   const triggerToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3200);
+    setTimeout(() => setToastMsg(null), 2800);
   };
 
   const persistLocal = (nextGoals: any, nextMs: any[], nextAch: any[]) => {
@@ -136,7 +170,7 @@ export default function RoadmapPage() {
     e.preventDefault();
     persistLocal(goals, milestones, achievements);
     setShowGoalEditor(false);
-    triggerToast("Targeted Attendance & Ministry Goals saved!");
+    triggerToast("Attendance targets updated");
     try {
       await fetch("/api/roadmap", {
         method: "POST",
@@ -174,6 +208,26 @@ export default function RoadmapPage() {
             ],
     };
 
+    // Optimistic insertion
+    const optimisticItem = {
+      id: `ms-${Date.now()}`,
+      ...payload,
+      status: "UPCOMING",
+      phaseLabel:
+        payload.phase === "PHASE_1"
+          ? "Phase 1: Camera Hardware & Studio Foundation"
+          : payload.phase === "PHASE_2"
+          ? "Phase 2: Camera Crew & Moderator Training"
+          : payload.phase === "PHASE_3"
+          ? "Phase 3: Repeating Audience & Multi-Platform Funnel"
+          : "Phase 4: Digital Campus & 1,000+ Viewer Expansion",
+    };
+    const nextList = [optimisticItem, ...milestones];
+    setMilestones(nextList);
+    persistLocal(goals, nextList, achievements);
+    setShowAddMilestone(false);
+    triggerToast("Milestone added to timeline");
+
     try {
       const res = await fetch("/api/roadmap", {
         method: "POST",
@@ -185,24 +239,7 @@ export default function RoadmapPage() {
         setMilestones(data.milestones);
         persistLocal(goals, data.milestones, achievements);
       }
-    } catch {
-      const fallbackItem = {
-        id: `ms-${Date.now()}`,
-        ...payload,
-        status: "UPCOMING",
-        phaseLabel:
-          payload.phase === "PHASE_1"
-            ? "Phase 1: Camera Hardware & Studio Foundation"
-            : payload.phase === "PHASE_2"
-            ? "Phase 2: Camera Crew & Prophetic Moderator Training"
-            : payload.phase === "PHASE_3"
-            ? "Phase 3: Repeating Audience & Multi-Platform Funnel"
-            : "Phase 4: Digital Campus & 1,000+ Viewer Expansion",
-      };
-      const next = [fallbackItem, ...milestones];
-      setMilestones(next);
-      persistLocal(goals, next, achievements);
-    }
+    } catch {}
 
     setNewMs({
       phase: "PHASE_1",
@@ -217,8 +254,6 @@ export default function RoadmapPage() {
       attendanceImpact: "+25% Retention / +40 Viewers",
       checklistRaw: "",
     });
-    setShowAddMilestone(false);
-    triggerToast("New Timeline Milestone added to roadmap!");
   };
 
   const handleCycleStatus = async (id: string, currentStatus: string) => {
@@ -234,7 +269,7 @@ export default function RoadmapPage() {
     );
     setMilestones(updated);
     persistLocal(goals, updated, achievements);
-    triggerToast(`Milestone marked as ${nextStatus.replace("_", " ")}`);
+    triggerToast(`Milestone marked ${nextStatus.replace("_", " ")}`);
 
     try {
       await fetch("/api/roadmap", {
@@ -249,7 +284,10 @@ export default function RoadmapPage() {
     } catch {}
   };
 
-  const handleToggleChecklist = async (milestoneId: string, checkId: string) => {
+  const handleToggleChecklist = async (
+    milestoneId: string,
+    checkId: string
+  ) => {
     const updated = milestones.map((m) => {
       if (m.id !== milestoneId) return m;
       const list = (m.checklist || []).map((c: any) =>
@@ -283,7 +321,7 @@ export default function RoadmapPage() {
     const updated = milestones.filter((m) => m.id !== id);
     setMilestones(updated);
     persistLocal(goals, updated, achievements);
-    triggerToast("Timeline item removed.");
+    triggerToast("Milestone removed");
 
     try {
       await fetch("/api/roadmap", {
@@ -307,7 +345,7 @@ export default function RoadmapPage() {
     });
     setAchievements(updated);
     persistLocal(goals, milestones, updated);
-    triggerToast("Achievement status updated!");
+    triggerToast("Achievement status updated");
 
     try {
       await fetch("/api/roadmap", {
@@ -321,6 +359,16 @@ export default function RoadmapPage() {
   const handleAddAchievement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAch.title.trim()) return;
+
+    const optimisticAch = {
+      id: `ach-${Date.now()}`,
+      ...newAch,
+    };
+    const nextAch = [optimisticAch, ...achievements];
+    setAchievements(nextAch);
+    persistLocal(goals, milestones, nextAch);
+    setShowAddAchievement(false);
+    triggerToast("Custom achievement created");
 
     try {
       const res = await fetch("/api/roadmap", {
@@ -348,12 +396,17 @@ export default function RoadmapPage() {
       badgeColor: "amber",
       unlocked: false,
     });
-    setShowAddAchievement(false);
-    triggerToast("New Ministry Achievement added!");
   };
 
   const filteredMilestones = milestones.filter((m) =>
     categoryFilter === "ALL" ? true : m.category === categoryFilter
+  );
+
+  const activeMilestones = filteredMilestones.filter(
+    (m) => m.status !== "COMPLETED"
+  );
+  const completedMilestones = filteredMilestones.filter(
+    (m) => m.status === "COMPLETED"
   );
 
   const completedCount = milestones.filter(
@@ -377,172 +430,128 @@ export default function RoadmapPage() {
     )
   );
 
-  const getCategoryBadge = (cat: string) => {
-    switch (cat) {
-      case "CAMERA_HARDWARE":
-        return {
-          label: "Camera & Hardware",
-          icon: Camera,
-          cls: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-        };
-      case "TEAM_TRAINING":
-        return {
-          label: "Team Training",
-          icon: GraduationCap,
-          cls: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-        };
-      case "BROADCAST_PRODUCTION":
-        return {
-          label: "Broadcast Production",
-          icon: Radio,
-          cls: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
-        };
-      case "PASTORAL_CARE":
-        return {
-          label: "Pastoral Care",
-          icon: HeartHandshake,
-          cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-        };
-      default:
-        return {
-          label: "Audience Growth",
-          icon: TrendingUp,
-          cls: "bg-pink-500/15 text-pink-300 border-pink-500/30",
-        };
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col w-full">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col w-full antialiased selection:bg-white selection:text-black">
       <Navbar />
 
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-emerald-400/40 text-xs font-semibold">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-white text-black px-4 py-2.5 rounded-full shadow-2xl text-xs font-semibold tracking-tight flex items-center gap-2 border border-black/10">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-6 space-y-6">
-        {/* Hero Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-2xl p-6">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs text-indigo-400 font-semibold uppercase tracking-wider">
-              <Target className="w-3.5 h-3.5" />
-              <span>Online Ministry Growth Strategy & Upgrade Timeline</span>
+      <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-8">
+        {/* Top Executive Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Production Architecture · Growth &amp; Hardware Roadmap
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.08] text-[10px] font-semibold tabular-nums">
+                {completedCount}/{milestones.length} Milestones Verified
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mt-1">
-              Targeted Attendance, Camera Hardware & Team Training Roadmap
+            <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-[-0.03em]">
+              Targeted Attendance, Camera Hardware &amp; Team Training
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-3xl">
-              Build and track your end-to-end online service transformation — starting from 4K camera & broadcast audio hardware, training your camera and prophetic chat moderator team, to hitting your targeted attendance milestones.
+            <p className="text-xs text-zinc-400 max-w-3xl">
+              End-to-end production roadmap tracking 4K camera rigging, crew
+              SOP training, and repeating audience retention targets.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
+              type="button"
               onClick={() => setShowGoalEditor(true)}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+              className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.1] text-xs font-medium transition"
             >
-              <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Edit Attendance Targets</span>
+              Configure Targets
             </button>
 
             <button
+              type="button"
               onClick={() => setShowAddMilestone(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition"
+              className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
             >
-              <Plus className="w-4 h-4" />
-              <span>Add Timeline Milestone</span>
+              + Add Timeline Milestone
             </button>
           </div>
         </div>
 
-        {/* Targeted Attendance & KPI Progress Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {/* Card 1: Next Phase Attendance Target */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+        {/* 4 Apple Bento KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+          {/* Card 1 */}
+          <div className="bg-[#121215] border border-white/[0.08] border-t-2 border-t-sky-400 rounded-2xl p-5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase">
-                <span>Phase 1 Target Attendance</span>
-                <Users className="w-4 h-4 text-indigo-400" />
-              </div>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-3xl font-extrabold text-white">
-                  {goals.currentWeeklyAttendance}
-                </span>
-                <span className="text-sm text-slate-400 font-medium">
-                  / {goals.phase1TargetAttendance} peak live
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
-                <span className="text-red-400 font-medium">
-                  YT: {goals.currentYTViewers} → {goals.targetYTViewers}
-                </span>
-                <span>•</span>
-                <span className="text-pink-400 font-medium">
-                  IG: {goals.currentIGViewers} → {goals.targetIGViewers}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                <span>Progress to Phase 1 Goal</span>
-                <span className="text-indigo-300 font-bold">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-sky-400" />
+                  <span className="text-xs font-semibold text-white">
+                    Phase 1 Peak Target
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[10px] font-semibold tabular-nums">
                   {phase1Progress}%
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+
+              <div className="mt-3 flex items-baseline justify-between tabular-nums">
+                <span className="text-3xl font-semibold text-white tracking-tight">
+                  {goals.currentWeeklyAttendance}
+                </span>
+                <span className="text-xs text-zinc-400">
+                  of {goals.phase1TargetAttendance} peak
+                </span>
+              </div>
+
+              <div className="w-full h-1 bg-white/[0.07] rounded-full my-3 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500"
+                  className="h-full bg-sky-400 rounded-full transition-all duration-300"
                   style={{ width: `${phase1Progress}%` }}
                 />
               </div>
             </div>
+
+            <div className="flex items-center justify-between text-[11px] pt-2 border-t border-white/[0.05] text-zinc-400 tabular-nums">
+              <span>
+                YouTube: {goals.currentYTViewers} → {goals.targetYTViewers}
+              </span>
+              <span>
+                Instagram: {goals.currentIGViewers} → {goals.targetIGViewers}
+              </span>
+            </div>
           </div>
 
-          {/* Card 2: Repeating Audience Retention Goal */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          {/* Card 2 */}
+          <div className="bg-[#121215] border border-white/[0.08] border-t-2 border-t-emerald-400 rounded-2xl p-5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase">
-                <span>Repeating Viewer Target</span>
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-xs font-semibold text-white">
+                    Repeating Audience
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold">
+                  RETENTION
+                </span>
               </div>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-3xl font-extrabold text-white">
+
+              <div className="mt-3 flex items-baseline justify-between tabular-nums">
+                <span className="text-3xl font-semibold text-white tracking-tight">
                   {goals.currentRepeatingRate}%
                 </span>
-                <span className="text-sm text-slate-400 font-medium">
-                  / {goals.targetRepeatingRate}% goal
+                <span className="text-xs text-zinc-400">
+                  Target: {goals.targetRepeatingRate}%
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Avg Watch Time: {goals.currentWatchMinutes}m →{" "}
-                <span className="text-emerald-300 font-medium">
-                  {goals.targetWatchMinutes}m target
-                </span>
-              </p>
-            </div>
 
-            <div className="mt-4">
-              <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                <span>Retention Loyalty Index</span>
-                <span className="text-emerald-300 font-bold">
-                  {Math.min(
-                    100,
-                    Math.round(
-                      (goals.currentRepeatingRate /
-                        (goals.targetRepeatingRate || 75)) *
-                        100
-                    )
-                  )}
-                  %
-                </span>
-              </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="w-full h-1 bg-white/[0.07] rounded-full my-3 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                  className="h-full bg-emerald-400 rounded-full transition-all duration-300"
                   style={{
                     width: `${Math.min(
                       100,
@@ -556,45 +565,42 @@ export default function RoadmapPage() {
                 />
               </div>
             </div>
+
+            <div className="flex items-center justify-between text-[11px] pt-2 border-t border-white/[0.05] text-zinc-400 tabular-nums">
+              <span>Watch Duration: {goals.currentWatchMinutes}m</span>
+              <span className="text-emerald-300">
+                Goal: {goals.targetWatchMinutes}m
+              </span>
+            </div>
           </div>
 
-          {/* Card 3: Trained Camera & Moderator Squad */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          {/* Card 3 */}
+          <div className="bg-[#121215] border border-white/[0.08] border-t-2 border-t-violet-400 rounded-2xl p-5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase">
-                <span>Trained Media & Chat Team</span>
-                <GraduationCap className="w-4 h-4 text-violet-400" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-violet-400" />
+                  <span className="text-xs font-semibold text-white">
+                    Certified Production Crew
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/30 text-[10px] font-semibold">
+                  ROSTER
+                </span>
               </div>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-3xl font-extrabold text-white">
+
+              <div className="mt-3 flex items-baseline justify-between tabular-nums">
+                <span className="text-3xl font-semibold text-white tracking-tight">
                   {goals.currentTeamSize}
                 </span>
-                <span className="text-sm text-slate-400 font-medium">
-                  / {goals.targetTeamSize} certified crew
+                <span className="text-xs text-zinc-400">
+                  of {goals.targetTeamSize} operators
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Camera Operators, Switcher Director & Prophetic Chat Hosts
-              </p>
-            </div>
 
-            <div className="mt-4">
-              <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                <span>Team Readiness</span>
-                <span className="text-violet-300 font-bold">
-                  {Math.min(
-                    100,
-                    Math.round(
-                      (goals.currentTeamSize / (goals.targetTeamSize || 12)) *
-                        100
-                    )
-                  )}
-                  %
-                </span>
-              </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="w-full h-1 bg-white/[0.07] rounded-full my-3 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-500"
+                  className="h-full bg-violet-400 rounded-full transition-all duration-300"
                   style={{
                     width: `${Math.min(
                       100,
@@ -607,142 +613,150 @@ export default function RoadmapPage() {
                 />
               </div>
             </div>
+
+            <div className="flex items-center justify-between text-[11px] pt-2 border-t border-white/[0.05] text-zinc-400">
+              <span>Camera, Audio, Mod &amp; QC</span>
+              <span className="font-mono text-zinc-500">5 STATIONS</span>
+            </div>
           </div>
 
-          {/* Card 4: Overall Roadmap Execution */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          {/* Card 4 */}
+          <div className="bg-[#121215] border border-white/[0.08] border-t-2 border-t-amber-400 rounded-2xl p-5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase">
-                <span>Timeline Execution</span>
-                <Trophy className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-3xl font-extrabold text-white">
-                  {progressPct}%
-                </span>
-                <span className="text-sm text-slate-400 font-medium">
-                  ({completedCount} done, {inProgressCount} active)
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                12-Month Vision Target:{" "}
-                <span className="text-amber-300 font-bold">
-                  {goals.annualVisionAttendance} Weekly Viewers
-                </span>
-              </p>
-            </div>
-
-            <div className="mt-4">
-              <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                <span>Milestones Completed</span>
-                <span className="text-amber-300 font-bold">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="text-xs font-semibold text-white">
+                    Roadmap Execution
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-semibold tabular-nums">
                   {completedCount}/{milestones.length}
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+
+              <div className="mt-3 flex items-baseline justify-between tabular-nums">
+                <span className="text-3xl font-semibold text-white tracking-tight">
+                  {progressPct}%
+                </span>
+                <span className="text-xs text-zinc-400">
+                  {inProgressCount} active now
+                </span>
+              </div>
+
+              <div className="w-full h-1 bg-white/[0.07] rounded-full my-3 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-500"
+                  className="h-full bg-amber-400 rounded-full transition-all duration-300"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
             </div>
+
+            <div className="flex items-center justify-between text-[11px] pt-2 border-t border-white/[0.05] text-zinc-400 tabular-nums">
+              <span>12-Month Vision</span>
+              <span className="text-amber-300 font-semibold">
+                {goals.annualVisionAttendance} Viewers
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Visual Attendance Growth Trajectory Staircase (Phase 1 -> Phase 4) */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+        {/* 5-Stage Growth Trajectory Strip */}
+        <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-4">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-400" />
-                <span>Targeted Attendance Growth Trajectory by Upgrade Phase</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Phased Scaling Architecture
+              </span>
+              <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                Targeted Attendance Trajectory by Upgrade Phase
               </h2>
-              <p className="text-xs text-slate-400">
-                How Camera Hardware, Team Training, and Retention Funnels unlock each attendance tier
-              </p>
             </div>
-            <span className="text-xs bg-indigo-950/70 text-indigo-300 border border-indigo-800/60 px-3 py-1 rounded-lg font-medium">
-              Current Baseline: {goals.currentWeeklyAttendance} Live Viewers → Vision: {goals.annualVisionAttendance}+
+            <span className="text-xs text-zinc-400 px-3 py-1 rounded-full bg-[#09090b] border border-white/[0.08] tabular-nums">
+              Baseline: {goals.currentWeeklyAttendance} → Annual Vision:{" "}
+              {goals.annualVisionAttendance}+
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
             {[
               {
+                code: "STAGE 01",
                 step: "Current Baseline",
-                subtitle: "Single Cam + Basic Chat",
+                subtitle: "Single Cam & Basic Chat",
                 target: goals.currentWeeklyAttendance,
-                color: "from-slate-700 to-slate-600",
-                border: "border-slate-700",
-                badge: "Now",
+                bar: "bg-zinc-400",
+                badge: "Active",
                 pct: 25,
               },
               {
-                step: "Phase 1: Camera & Audio",
-                subtitle: "4K Multi-Cam + Clean Mix",
+                code: "STAGE 02",
+                step: "Phase 1 · Hardware",
+                subtitle: "4K Multi-Cam & -14 LUFS Mix",
                 target: goals.phase1TargetAttendance,
-                color: "from-amber-600 to-orange-500",
-                border: "border-amber-500/40",
+                bar: "bg-amber-400",
                 badge: "+40% Watch Time",
-                pct: 42,
+                pct: 45,
               },
               {
-                step: "Phase 2: Team Training",
-                subtitle: "Camera Crew + Fast Cues",
+                code: "STAGE 03",
+                step: "Phase 2 · Crew SOP",
+                subtitle: "Callsign Protocol & Fast Cues",
                 target: goals.phase2TargetAttendance,
-                color: "from-violet-600 to-indigo-500",
-                border: "border-violet-500/40",
+                bar: "bg-violet-400",
                 badge: "+30% Repeating",
-                pct: 62,
+                pct: 65,
               },
               {
-                step: "Phase 3: Retention Funnel",
-                subtitle: "Pre-Show + 24h Follow-Up",
+                code: "STAGE 04",
+                step: "Phase 3 · Retention",
+                subtitle: "Pre-Show & 24h Care Funnel",
                 target: goals.phase3TargetAttendance,
-                color: "from-emerald-600 to-teal-500",
-                border: "border-emerald-500/40",
-                badge: "70% Returning Flock",
-                pct: 80,
+                bar: "bg-emerald-400",
+                badge: "70% Returning",
+                pct: 82,
               },
               {
-                step: "Phase 4: Digital Campus",
-                subtitle: "Reels Engine + Watch Parties",
+                code: "STAGE 05",
+                step: "Phase 4 · Expansion",
+                subtitle: "Vertical Clips & Watch Parties",
                 target: goals.annualVisionAttendance,
-                color: "from-indigo-600 to-pink-500",
-                border: "border-indigo-500/50",
+                bar: "bg-sky-400",
                 badge: "Annual Vision",
                 pct: 100,
               },
             ].map((tier, i) => (
               <div
                 key={i}
-                className={`bg-slate-950/70 border ${tier.border} rounded-xl p-4 flex flex-col justify-between relative overflow-hidden`}
+                className="bg-[#09090b] border border-white/[0.08] rounded-2xl p-4 flex flex-col justify-between gap-4"
               >
                 <div>
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Stage {i + 1}
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      {tier.code}
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] text-zinc-300 border border-white/[0.08] font-medium">
                       {tier.badge}
                     </span>
                   </div>
-                  <div className="text-sm font-bold text-white">{tier.step}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
+                  <div className="text-sm font-semibold text-white tracking-tight">
+                    {tier.step}
+                  </div>
+                  <div className="text-[11px] text-zinc-400 mt-0.5">
                     {tier.subtitle}
                   </div>
                 </div>
 
-                <div className="mt-4">
-                  <div className="text-2xl font-extrabold text-white">
+                <div>
+                  <div className="text-2xl font-semibold text-white tabular-nums tracking-tight">
                     {tier.target}{" "}
-                    <span className="text-xs font-normal text-slate-400">
+                    <span className="text-xs font-normal text-zinc-500">
                       viewers
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                  <div className="w-full h-1 bg-white/[0.07] rounded-full mt-2 overflow-hidden">
                     <div
-                      className={`h-full bg-gradient-to-r ${tier.color} rounded-full`}
+                      className={`h-full ${tier.bar} rounded-full`}
                       style={{ width: `${tier.pct}%` }}
                     />
                   </div>
@@ -752,229 +766,290 @@ export default function RoadmapPage() {
           </div>
         </div>
 
-        {/* Interactive Timeline Section */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-400" />
-                <span>Step-by-Step Upgrade & Training Timeline</span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Click any checklist task to mark it done, or click the status badge on any card to cycle{" "}
-                <span className="text-slate-300 font-medium">
-                  UPCOMING → IN PROGRESS → COMPLETED
-                </span>
-              </p>
-            </div>
-
-            {/* Category Filters */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {[
-                { id: "ALL", label: "All Milestones" },
-                { id: "CAMERA_HARDWARE", label: "Camera & Hardware" },
-                { id: "TEAM_TRAINING", label: "Team Training" },
-                { id: "AUDIENCE_GROWTH", label: "Audience Growth" },
-                { id: "PASTORAL_CARE", label: "Pastoral Care" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setCategoryFilter(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                    categoryFilter === tab.id
-                      ? "bg-indigo-600 text-white shadow"
-                      : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+        {/* Category Filter Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121215] border border-white/[0.08] rounded-2xl p-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { id: "ALL", label: `All Milestones (${milestones.length})` },
+              { id: "CAMERA_HARDWARE", label: "Camera & Hardware" },
+              { id: "TEAM_TRAINING", label: "Team Training" },
+              { id: "BROADCAST_PRODUCTION", label: "Broadcast Production" },
+              { id: "AUDIENCE_GROWTH", label: "Audience Growth" },
+              { id: "PASTORAL_CARE", label: "Pastoral Care" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setCategoryFilter(tab.id)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition ${
+                  categoryFilter === tab.id
+                    ? "bg-white text-black font-semibold"
+                    : "text-zinc-400 hover:text-white bg-white/[0.03]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filteredMilestones.map((m) => {
-              const cat = getCategoryBadge(m.category);
-              const CatIcon = cat.icon;
-              const doneChecks = (m.checklist || []).filter(
-                (c: any) => c.done
-              ).length;
-              const totalChecks = (m.checklist || []).length;
-
-              return (
-                <div
-                  key={m.id}
-                  className={`bg-slate-900/85 border rounded-2xl p-5 flex flex-col justify-between transition ${
-                    m.status === "COMPLETED"
-                      ? "border-emerald-500/40 bg-emerald-950/10"
-                      : m.status === "IN_PROGRESS"
-                      ? "border-indigo-500/40"
-                      : "border-slate-800"
-                  }`}
-                >
-                  <div>
-                    {/* Top Row: Category Badge, Phase, Status Button, Delete */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${cat.cls}`}
-                        >
-                          <CatIcon className="w-3.5 h-3.5" />
-                          <span>{cat.label}</span>
-                        </span>
-                        <span className="text-[11px] text-slate-400 font-medium bg-slate-800/80 px-2.5 py-0.5 rounded-md">
-                          {m.phase.replace("_", " ")}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleCycleStatus(m.id, m.status)}
-                          title="Click to cycle status"
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
-                            m.status === "COMPLETED"
-                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                              : m.status === "IN_PROGRESS"
-                              ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40"
-                              : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
-                          }`}
-                        >
-                          {m.status === "COMPLETED"
-                            ? "✓ COMPLETED"
-                            : m.status === "IN_PROGRESS"
-                            ? "● IN PROGRESS"
-                            : "○ UPCOMING"}
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteMilestone(m.id)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-800 transition"
-                          title="Delete milestone"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Title & Description */}
-                    <h3 className="text-base font-bold text-white leading-snug">
-                      {m.title}
-                    </h3>
-                    <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
-                      {m.description}
-                    </p>
-
-                    {/* Hardware / Tool Spec & Impact Pills */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
-                      {m.hardwareOrToolSpec && (
-                        <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 text-[11px]">
-                          <div className="text-slate-400 font-medium flex items-center gap-1">
-                            <Cpu className="w-3 h-3 text-amber-400" />
-                            <span>Hardware / Tool Setup:</span>
-                          </div>
-                          <div className="text-slate-200 font-semibold mt-0.5">
-                            {m.hardwareOrToolSpec}
-                          </div>
-                        </div>
-                      )}
-                      <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 text-[11px]">
-                        <div className="text-slate-400 font-medium flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3 text-emerald-400" />
-                          <span>Expected Attendance Impact:</span>
-                        </div>
-                        <div className="text-emerald-300 font-semibold mt-0.5">
-                          {m.attendanceImpact}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Interactive Action Checklist */}
-                    {totalChecks > 0 && (
-                      <div className="mt-4 bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-2">
-                          <span>IMPLEMENTATION & TRAINING CHECKLIST</span>
-                          <span>
-                            {doneChecks}/{totalChecks} completed
-                          </span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {(m.checklist || []).map((item: any) => (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() =>
-                                handleToggleChecklist(m.id, item.id)
-                              }
-                              className="w-full flex items-start gap-2 text-left text-xs py-1 px-1.5 rounded-lg hover:bg-slate-900 transition"
-                            >
-                              {item.done ? (
-                                <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                              ) : (
-                                <Square className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                              )}
-                              <span
-                                className={
-                                  item.done
-                                    ? "line-through text-slate-500"
-                                    : "text-slate-200"
-                                }
-                              >
-                                {item.text}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Footer Metadata */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400">
-                    <span>
-                      Owner: <strong className="text-slate-200">{m.owner}</strong>
-                    </span>
-                    <div className="flex items-center gap-3">
-                      {m.estimatedBudget && (
-                        <span>
-                          Est. Budget:{" "}
-                          <strong className="text-amber-300">
-                            {m.estimatedBudget}
-                          </strong>
-                        </span>
-                      )}
-                      <span>
-                        Target Date:{" "}
-                        <strong className="text-indigo-300">
-                          {m.targetDate}
-                        </strong>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <span className="text-xs text-zinc-500 px-2">
+            Click any checklist item or status pill to advance progress
+          </span>
         </div>
 
-        {/* Ministry Achievements & Trophy Wall */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* SECTION 1 (TOP PRIORITY): ACTIVE & UPCOMING MILESTONES */}
+        {activeMilestones.length > 0 && (
+          <section className="rounded-3xl p-6 bg-[#121215] border border-white/[0.1] space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-400">
+                    Active Implementation Queue · {activeMilestones.length}{" "}
+                    Remaining
+                  </span>
+                </div>
+                <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  In-Progress &amp; Upcoming Hardware and Training Milestones
+                </h2>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {activeMilestones.map((m) => {
+                const cat =
+                  CATEGORY_STYLES[m.category] ||
+                  CATEGORY_STYLES.CAMERA_HARDWARE;
+                const doneChecks = (m.checklist || []).filter(
+                  (c: any) => c.done
+                ).length;
+                const totalChecks = (m.checklist || []).length;
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`rounded-2xl p-5 bg-[#09090b] border border-white/[0.1] ${cat.leftBorder} flex flex-col justify-between gap-4 transition hover:border-white/[0.2]`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${cat.pill}`}
+                          >
+                            {cat.label}
+                          </span>
+                          <span className="text-[10px] font-mono text-zinc-400 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
+                            {m.phase.replace("_", " ")}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCycleStatus(m.id, m.status)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border transition ${
+                              m.status === "IN_PROGRESS"
+                                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                : "bg-white/[0.05] text-zinc-400 border-white/[0.1] hover:text-white"
+                            }`}
+                          >
+                            {m.status.replace("_", " ")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMilestone(m.id)}
+                            className="text-[11px] text-zinc-500 hover:text-rose-400 px-2 py-1 rounded-full transition"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-base font-semibold text-white tracking-tight">
+                          {m.title}
+                        </h3>
+                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                          {m.description}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {m.hardwareOrToolSpec && (
+                          <div className="bg-[#121215] border border-white/[0.06] rounded-xl p-2.5 text-xs">
+                            <div className="text-[10px] uppercase tracking-wider text-zinc-500">
+                              Hardware / Tool Spec
+                            </div>
+                            <div className="text-zinc-200 font-medium mt-0.5">
+                              {m.hardwareOrToolSpec}
+                            </div>
+                          </div>
+                        )}
+                        <div className="bg-[#121215] border border-white/[0.06] rounded-xl p-2.5 text-xs">
+                          <div className="text-[10px] uppercase tracking-wider text-zinc-500">
+                            Projected Impact
+                          </div>
+                          <div className="text-emerald-300 font-medium mt-0.5">
+                            {m.attendanceImpact}
+                          </div>
+                        </div>
+                      </div>
+
+                      {totalChecks > 0 && (
+                        <div className="bg-[#121215] border border-white/[0.06] rounded-2xl p-3.5 space-y-2">
+                          <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                            <span className="font-medium text-zinc-300">
+                              Implementation Checklist
+                            </span>
+                            <span className="tabular-nums">
+                              {doneChecks}/{totalChecks} Verified
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {(m.checklist || []).map((item: any) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() =>
+                                  handleToggleChecklist(m.id, item.id)
+                                }
+                                className="w-full flex items-center gap-2.5 text-left text-xs py-1.5 px-2 rounded-xl hover:bg-white/[0.04] transition"
+                              >
+                                <span
+                                  className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                                    item.done
+                                      ? "bg-emerald-400 text-black"
+                                      : "border border-white/25 text-transparent"
+                                  }`}
+                                >
+                                  ✓
+                                </span>
+                                <span
+                                  className={
+                                    item.done
+                                      ? "line-through text-zinc-500"
+                                      : "text-zinc-200"
+                                  }
+                                >
+                                  {item.text}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-white/[0.06] text-[11px] text-zinc-400 tabular-nums">
+                      <span>
+                        Owner:{" "}
+                        <strong className="text-zinc-200">{m.owner}</strong>
+                      </span>
+                      <div className="flex items-center gap-3">
+                        {m.estimatedBudget && (
+                          <span>
+                            Budget:{" "}
+                            <strong className="text-amber-300">
+                              {m.estimatedBudget}
+                            </strong>
+                          </span>
+                        )}
+                        <span>
+                          Target:{" "}
+                          <strong className="text-white">{m.targetDate}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* SECTION 2 (SEPARATED BELOW): COMPLETED MILESTONES */}
+        {completedMilestones.length > 0 && (
+          <section className="rounded-3xl p-6 bg-[#111114] border border-white/[0.08] space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                    Verified &amp; Completed · {completedMilestones.length} Done
+                  </span>
+                </div>
+                <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  Completed Roadmap Upgrades
+                </h2>
+              </div>
+              <span className="text-xs text-zinc-500">
+                Click status badge to reopen
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {completedMilestones.map((m) => {
+                const cat =
+                  CATEGORY_STYLES[m.category] ||
+                  CATEGORY_STYLES.CAMERA_HARDWARE;
+                return (
+                  <div
+                    key={m.id}
+                    className="rounded-2xl p-4 bg-[#0e1512] border border-emerald-500/30 flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-5 h-5 rounded-md bg-emerald-400 text-black flex items-center justify-center text-[11px] font-bold shrink-0">
+                        ✓
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-white truncate">
+                          {m.title}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase tracking-wider ${cat.pill}`}
+                          >
+                            {cat.label}
+                          </span>
+                          <span className="text-[11px] text-zinc-400 truncate">
+                            {m.attendanceImpact}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCycleStatus(m.id, m.status)}
+                      className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold shrink-0"
+                    >
+                      Completed
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Ministry Achievements & Milestones Wall */}
+        <section className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-400" />
-                <span>Online Ministry Achievements & Trophy Wall</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
+                Production &amp; Ministry Benchmarks
+              </span>
+              <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                Broadcast Achievements &amp; Growth Benchmarks
               </h2>
-              <p className="text-xs text-slate-400">
-                Celebrate team milestones as your camera crew, moderators, and online congregation grow. Click any badge to toggle unlocked status.
-              </p>
             </div>
 
             <button
+              type="button"
               onClick={() => setShowAddAchievement(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition self-start sm:self-auto"
+              className="px-4 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition self-start sm:self-auto"
             >
-              <Award className="w-4 h-4" />
-              <span>+ Add Custom Achievement</span>
+              + Add Benchmark
             </button>
           </div>
 
@@ -988,67 +1063,49 @@ export default function RoadmapPage() {
                 <div
                   key={ach.id}
                   onClick={() => handleToggleAchievement(ach.id)}
-                  className={`cursor-pointer rounded-2xl p-4 border transition flex flex-col justify-between ${
+                  className={`cursor-pointer rounded-2xl p-5 border transition flex flex-col justify-between gap-4 ${
                     ach.unlocked
-                      ? "bg-gradient-to-br from-amber-950/35 via-slate-900 to-slate-900 border-amber-500/50 shadow-lg shadow-amber-500/5"
-                      : "bg-slate-950/60 border-slate-800 hover:border-slate-700 opacity-85"
+                      ? "bg-[#0e1512] border-emerald-500/35"
+                      : "bg-[#09090b] border-white/[0.08] hover:border-white/[0.18]"
                   }`}
                 >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            ach.unlocked
-                              ? "bg-amber-500/20 text-amber-300 border border-amber-400/40"
-                              : "bg-slate-800 text-slate-500 border border-slate-700"
-                          }`}
-                        >
-                          <Trophy className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
-                            {ach.category}
-                          </span>
-                          <h3 className="text-sm font-bold text-white leading-tight">
-                            {ach.title}
-                          </h3>
-                        </div>
-                      </div>
-
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                        {ach.category}
+                      </span>
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                        className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${
                           ach.unlocked
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                            : "bg-slate-800 text-slate-400"
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                            : "bg-white/[0.05] text-zinc-400 border border-white/[0.08]"
                         }`}
                       >
-                        {ach.unlocked ? "UNLOCKED" : "LOCKED"}
+                        {ach.unlocked ? "Unlocked" : "In Progress"}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-400 mt-2.5 leading-relaxed">
+                    <h3 className="text-sm font-semibold text-white tracking-tight">
+                      {ach.title}
+                    </h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
                       {ach.description}
                     </p>
                   </div>
 
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1.5 tabular-nums">
                       <span>
                         {ach.currentValue} / {ach.targetValue} {ach.unit}
                       </span>
-                      <span>
-                        {ach.unlocked && ach.unlockedAt
-                          ? `Achieved ${ach.unlockedAt}`
-                          : `${pct}%`}
+                      <span className="font-semibold text-white">
+                        {ach.unlocked ? "100%" : `${pct}%`}
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-white/[0.07] rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
-                          ach.unlocked
-                            ? "bg-gradient-to-r from-amber-400 to-emerald-400"
-                            : "bg-indigo-500"
+                          ach.unlocked ? "bg-emerald-400" : "bg-amber-400"
                         }`}
                         style={{ width: `${ach.unlocked ? 100 : pct}%` }}
                       />
@@ -1058,32 +1115,35 @@ export default function RoadmapPage() {
               );
             })}
           </div>
-        </div>
+        </section>
       </main>
 
-      {/* Modal 1: Edit Attendance Targets */}
+      {/* Modal 1: Configure Attendance Targets */}
       {showGoalEditor && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Target className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-base font-bold text-white">
-                  Configure Targeted Attendance & Growth Goals
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-white/[0.12] rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-400">
+                  Target Calibration
+                </span>
+                <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  Configure Attendance &amp; Retention Targets
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowGoalEditor(false)}
-                className="p-1 text-slate-400 hover:text-white"
+                className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-full bg-white/[0.05]"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
 
             <form onSubmit={handleSaveGoals} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Current Combined Peak
                   </label>
                   <input
@@ -1095,11 +1155,11 @@ export default function RoadmapPage() {
                         currentWeeklyAttendance: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Current YouTube Peak
                   </label>
                   <input
@@ -1111,11 +1171,11 @@ export default function RoadmapPage() {
                         currentYTViewers: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Current Instagram Peak
                   </label>
                   <input
@@ -1127,7 +1187,7 @@ export default function RoadmapPage() {
                         currentIGViewers: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
 
@@ -1144,7 +1204,7 @@ export default function RoadmapPage() {
                         phase1TargetAttendance: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
@@ -1160,7 +1220,7 @@ export default function RoadmapPage() {
                         phase2TargetAttendance: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
@@ -1176,12 +1236,12 @@ export default function RoadmapPage() {
                         phase3TargetAttendance: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-indigo-300 mb-1 font-medium">
+                  <label className="block text-sky-300 mb-1 font-medium">
                     12-Month Vision Target
                   </label>
                   <input
@@ -1193,11 +1253,11 @@ export default function RoadmapPage() {
                         annualVisionAttendance: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Repeating Viewer Goal (%)
                   </label>
                   <input
@@ -1209,12 +1269,12 @@ export default function RoadmapPage() {
                         targetRepeatingRate: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
-                    Trained Team Goal (Crew)
+                  <label className="block text-zinc-400 mb-1 font-medium">
+                    Certified Crew Target
                   </label>
                   <input
                     type="number"
@@ -1225,25 +1285,24 @@ export default function RoadmapPage() {
                         targetTeamSize: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowGoalEditor(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                  className="px-4 py-2 rounded-full text-zinc-400 hover:text-white font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+                  className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 font-semibold transition"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>Save Attendance Targets</span>
+                  Save Targets
                 </button>
               </div>
             </form>
@@ -1253,27 +1312,30 @@ export default function RoadmapPage() {
 
       {/* Modal 2: Add Timeline Milestone */}
       {showAddMilestone && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Plus className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-base font-bold text-white">
-                  Add Upgrade or Training Milestone to Timeline
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-white/[0.12] rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
+                  Roadmap Deployment
+                </span>
+                <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  Add Upgrade or Training Milestone
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddMilestone(false)}
-                className="p-1 text-slate-400 hover:text-white"
+                className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-full bg-white/[0.05]"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
 
-            <form onSubmit={handleAddMilestone} className="space-y-3 text-xs">
+            <form onSubmit={handleAddMilestone} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Roadmap Phase
                   </label>
                   <select
@@ -1281,13 +1343,14 @@ export default function RoadmapPage() {
                     onChange={(e) =>
                       setNewMs({ ...newMs, phase: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    aria-label="Roadmap Phase"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   >
                     <option value="PHASE_1">
-                      Phase 1: Camera Hardware & Studio
+                      Phase 1: Camera Hardware &amp; Studio
                     </option>
                     <option value="PHASE_2">
-                      Phase 2: Camera & Moderator Training
+                      Phase 2: Camera &amp; Moderator Training
                     </option>
                     <option value="PHASE_3">
                       Phase 3: Repeating Audience Funnel
@@ -1299,17 +1362,18 @@ export default function RoadmapPage() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
-                    Category
+                  <label className="block text-zinc-400 mb-1 font-medium">
+                    Department Category
                   </label>
                   <select
                     value={newMs.category}
                     onChange={(e) =>
                       setNewMs({ ...newMs, category: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    aria-label="Department Category"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   >
-                    <option value="CAMERA_HARDWARE">Camera & Hardware</option>
+                    <option value="CAMERA_HARDWARE">Camera &amp; Hardware</option>
                     <option value="TEAM_TRAINING">Team Training</option>
                     <option value="BROADCAST_PRODUCTION">
                       Broadcast Production
@@ -1321,44 +1385,44 @@ export default function RoadmapPage() {
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">
-                  Milestone Title *
+                <label className="block text-zinc-400 mb-1 font-medium">
+                  Milestone Title
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g., Install Wireless Tally Lights & Train 3 New Camera Volunteers"
+                  placeholder="e.g. Deploy Wireless Tally Lights & Train 3 Camera Operators"
                   value={newMs.title}
                   onChange={(e) =>
                     setNewMs({ ...newMs, title: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">
-                  Description & Objective
+                <label className="block text-zinc-400 mb-1 font-medium">
+                  Objective &amp; Scope
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Explain what hardware will be installed or how the team will be trained..."
+                  placeholder="Describe the hardware installation or crew training scope..."
                   value={newMs.description}
                   onChange={(e) =>
                     setNewMs({ ...newMs, description: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
-                    Camera / Hardware / Tool Spec
+                  <label className="block text-zinc-400 mb-1 font-medium">
+                    Hardware / Tool Spec
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g., Sony FX30 + Hollyland Intercom"
+                    placeholder="e.g. Sony FX30 + Hollyland Solidcom"
                     value={newMs.hardwareOrToolSpec}
                     onChange={(e) =>
                       setNewMs({
@@ -1366,29 +1430,29 @@ export default function RoadmapPage() {
                         hardwareOrToolSpec: e.target.value,
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Expected Attendance Impact
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g., +50 Peak Viewers / +25% Retention"
+                    placeholder="e.g. +50 Peak Viewers / +25% Retention"
                     value={newMs.attendanceImpact}
                     onChange={(e) =>
                       setNewMs({ ...newMs, attendanceImpact: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
-                    Assigned Owner
+                  <label className="block text-zinc-400 mb-1 font-medium">
+                    Assigned Lead
                   </label>
                   <input
                     type="text"
@@ -1396,11 +1460,11 @@ export default function RoadmapPage() {
                     onChange={(e) =>
                       setNewMs({ ...newMs, owner: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Estimated Budget
                   </label>
                   <input
@@ -1409,12 +1473,12 @@ export default function RoadmapPage() {
                     onChange={(e) =>
                       setNewMs({ ...newMs, estimatedBudget: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
-                    Target Completion Date
+                  <label className="block text-zinc-400 mb-1 font-medium">
+                    Target Date
                   </label>
                   <input
                     type="date"
@@ -1422,40 +1486,39 @@ export default function RoadmapPage() {
                     onChange={(e) =>
                       setNewMs({ ...newMs, targetDate: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">
-                  Action Checklist Items (One per line)
+                <label className="block text-zinc-400 mb-1 font-medium">
+                  Verification Checklist Items (One per line)
                 </label>
                 <textarea
                   rows={3}
-                  placeholder={`Mount tripod and run HDMI cable\nTrain Saturday team on framing\nTest live switch during worship rehearsal`}
+                  placeholder={`Mount tripod and run SDI cable\nTrain Saturday crew on 9:16 crop\nVerify switch on program feed`}
                   value={newMs.checklistRaw}
                   onChange={(e) =>
                     setNewMs({ ...newMs, checklistRaw: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowAddMilestone(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                  className="px-4 py-2 rounded-full text-zinc-400 hover:text-white font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+                  className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 font-semibold transition"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Add to Timeline</span>
+                  Add Milestone
                 </button>
               </div>
             </form>
@@ -1463,60 +1526,63 @@ export default function RoadmapPage() {
         </div>
       )}
 
-      {/* Modal 3: Add Custom Achievement */}
+      {/* Modal 3: Add Custom Benchmark */}
       {showAddAchievement && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-400" />
-                <h3 className="text-base font-bold text-white">
-                  Create Custom Ministry Achievement
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-white/[0.12] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
+                  Milestone Benchmark
+                </span>
+                <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                  Create Custom Ministry Benchmark
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddAchievement(false)}
-                className="p-1 text-slate-400 hover:text-white"
+                className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-full bg-white/[0.05]"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
 
-            <form onSubmit={handleAddAchievement} className="space-y-3 text-xs">
+            <form onSubmit={handleAddAchievement} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">
-                  Achievement Title *
+                <label className="block text-zinc-400 mb-1 font-medium">
+                  Benchmark Title
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g., 300+ Combined Easter Sunday Stream"
+                  placeholder="e.g. 300+ Combined Sunday Stream"
                   value={newAch.title}
                   onChange={(e) =>
                     setNewAch({ ...newAch, title: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">
+                <label className="block text-zinc-400 mb-1 font-medium">
                   Description
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="What milestone does this badge celebrate?"
+                  placeholder="Describe the benchmark criteria..."
                   value={newAch.description}
                   onChange={(e) =>
                     setNewAch({ ...newAch, description: e.target.value })
                   }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2.5">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Current
                   </label>
                   <input
@@ -1528,11 +1594,11 @@ export default function RoadmapPage() {
                         currentValue: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Target
                   </label>
                   <input
@@ -1544,11 +1610,11 @@ export default function RoadmapPage() {
                         targetValue: Number(e.target.value),
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white tabular-nums"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">
+                  <label className="block text-zinc-400 mb-1 font-medium">
                     Unit
                   </label>
                   <input
@@ -1557,24 +1623,24 @@ export default function RoadmapPage() {
                     onChange={(e) =>
                       setNewAch({ ...newAch, unit: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setShowAddAchievement(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                  className="px-4 py-2 rounded-full text-zinc-400 hover:text-white font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+                  className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 font-semibold transition"
                 >
-                  Add Achievement
+                  Add Benchmark
                 </button>
               </div>
             </form>

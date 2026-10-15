@@ -3,27 +3,17 @@
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import {
-  Settings,
-  Sparkles,
-  Tv,
-  Check,
-  ExternalLink,
-  Upload,
-  Trash2,
-  Database,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
-import { YouTubeIcon, InstagramIcon } from "@/components/Icons";
-import {
   fetchChurchConfig,
   saveChurchConfig,
   processLogoImageFile,
+  getLocalChurchConfig,
 } from "@/lib/clientConfig";
 
 export default function SettingsPage() {
   const [churchName, setChurchName] = useState("Grace Online Church");
-  const [subtitle, setSubtitle] = useState("Live Stream Broadcast & Ministry Hub");
+  const [subtitle, setSubtitle] = useState(
+    "Live Stream Broadcast & Ministry Hub"
+  );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [defaultTranslation, setDefaultTranslation] = useState("NIV");
   const [geminiKey, setGeminiKey] = useState("");
@@ -32,7 +22,6 @@ export default function SettingsPage() {
   const [instagramToken, setInstagramToken] = useState("");
   const [instagramLiveVideoId, setInstagramLiveVideoId] = useState("");
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dbConnected, setDbConnected] = useState(true);
   const [feedback, setFeedback] = useState<{
@@ -42,8 +31,21 @@ export default function SettingsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Instant hydration from local cache followed by background DB sync
   const loadSettings = async () => {
-    setLoading(true);
+    const cached = getLocalChurchConfig();
+    if (cached) {
+      setChurchName(cached.churchName || "Grace Online Church");
+      setSubtitle(cached.subtitle || "Live Stream Broadcast & Ministry Hub");
+      setLogoUrl(cached.logoUrl || null);
+      setDefaultTranslation(cached.defaultTranslation || "NIV");
+      setGeminiKey(cached.geminiApiKey || "");
+      setYoutubeApiKey(cached.youtubeApiKey || "");
+      setYoutubeLiveChatId(cached.youtubeLiveChatId || "");
+      setInstagramToken(cached.instagramAccessToken || "");
+      setInstagramLiveVideoId(cached.instagramLiveVideoId || "");
+    }
+
     try {
       const { config, dbConnected: isOnline } = await fetchChurchConfig();
       setChurchName(config.churchName || "Grace Online Church");
@@ -56,8 +58,8 @@ export default function SettingsPage() {
       setInstagramToken(config.instagramAccessToken || "");
       setInstagramLiveVideoId(config.instagramLiveVideoId || "");
       setDbConnected(isOnline);
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -104,9 +106,9 @@ export default function SettingsPage() {
       setDbConnected(isOnline);
       setFeedback({
         type: "success",
-        text: "Church name, logo, and platform credentials saved successfully!",
+        text: "Organization identity and stream credentials saved",
       });
-      setTimeout(() => setFeedback(null), 5000);
+      setTimeout(() => setFeedback(null), 4000);
     } catch (err: any) {
       setFeedback({
         type: "error",
@@ -118,364 +120,372 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col w-full">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col w-full antialiased selection:bg-white selection:text-black">
       <Navbar churchName={churchName} />
 
-      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 xl:px-10 py-6 space-y-6">
-        {/* Top Header & Database Status */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
-              <Settings className="w-6 h-6 text-indigo-400" />
-              <span>Church Branding, Logo & Platform Connections</span>
+      <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-6">
+        {/* Top System Preferences Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+          <div className="space-y-1">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+              System Configuration · Identity &amp; Stream APIs
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-[-0.03em]">
+              Organization Branding &amp; Platform Connections
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Customize your church name, upload your official church logo, and configure YouTube, Instagram, and Gemini AI.
+            <p className="text-xs text-zinc-400">
+              Manage your organization mark, default scripture translation, OBS
+              Studio dock integration, and live API credentials.
             </p>
           </div>
 
-          <div
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-semibold shrink-0 ${
-              dbConnected
-                ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
-                : "bg-amber-950/60 border-amber-800 text-amber-300"
-            }`}
-          >
-            <Database className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#121215] border border-white/[0.08] text-xs font-medium text-zinc-300 shrink-0">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                dbConnected ? "bg-emerald-400" : "bg-amber-400"
+              }`}
+            />
             <span>
               {dbConnected
-                ? "Database Connected (SQLite Active)"
+                ? "Database Connected (SQLite)"
                 : "Local Storage Sync Active"}
             </span>
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
-            <span>Loading church configuration...</span>
-          </div>
-        ) : (
-          <form onSubmit={handleSave} className="space-y-6">
-            {/* Responsive 2-Column Grid for Widescreen & Desktop */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-              {/* Left Column: Church Identity, Logo Upload & OBS Guide (6 cols) */}
-              <div className="xl:col-span-6 space-y-6">
-                {/* Church Branding & Logo Upload Card */}
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-5">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                      1. Church Identity & Logo Upload
-                    </h2>
-                    <span className="text-[11px] text-indigo-400 font-medium">
-                      Displayed across all screens & reports
+        <form onSubmit={handleSave} className="space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Organization Identity & OBS Dock Guide (6 cols) */}
+            <div className="xl:col-span-6 space-y-6">
+              {/* 1. Organization Identity */}
+              <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                      Section 01
                     </span>
+                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                      Organization Identity &amp; Logo Mark
+                    </h2>
+                  </div>
+                  <span className="text-[11px] text-zinc-400 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08]">
+                    Global Header
+                  </span>
+                </div>
+
+                {/* Logo Upload Bento */}
+                <div className="bg-[#09090b] border border-white/[0.08] rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-5">
+                  <div className="w-20 h-20 rounded-2xl bg-white/[0.04] border border-white/[0.12] flex items-center justify-center overflow-hidden shrink-0">
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt={churchName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-lg font-bold text-white tracking-tight">
+                        {churchName.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Logo Upload Box */}
-                  <div className="bg-slate-800/50 border border-slate-700/70 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-5">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center overflow-hidden shrink-0 border-2 border-indigo-400/40 shadow-lg">
-                      {logoUrl ? (
-                        <img
-                          src={logoUrl}
-                          alt={churchName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-3xl text-white font-bold">✝</span>
-                      )}
+                  <div className="flex-1 text-center sm:text-left space-y-2">
+                    <div className="text-sm font-semibold text-white">
+                      Official Organization Mark
                     </div>
-
-                    <div className="flex-1 text-center sm:text-left space-y-2">
-                      <div className="text-sm font-semibold text-white">
-                        Official Church Logo
-                      </div>
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        Upload a square PNG, JPG, SVG, or WebP image. It will automatically appear in the top navigation bar and printed reports.
-                      </p>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        className="hidden"
-                      />
-                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Upload a square PNG, JPG, SVG, or WebP mark. Automatically
+                      compressed and synced across the console and printed logs.
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                      >
+                        Upload Image
+                      </button>
+                      {logoUrl && (
                         <button
                           type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition"
+                          onClick={() => setLogoUrl(null)}
+                          className="px-3.5 py-1.5 rounded-full bg-white/[0.06] hover:bg-rose-500/20 text-zinc-300 hover:text-rose-300 border border-white/[0.08] text-xs font-medium transition"
                         >
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Choose Logo Image</span>
+                          Remove
                         </button>
-                        {logoUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setLogoUrl(null)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-red-950/60 text-slate-300 hover:text-red-300 border border-slate-700 text-xs font-medium transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Remove Logo</span>
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
+                </div>
 
-                  {/* Church Name & Translation Fields */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-slate-300 font-medium block mb-1.5">
-                        Church / Ministry Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={churchName}
-                        onChange={(e) => setChurchName(e.target.value)}
-                        placeholder="e.g. Kingdom Life Church"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-300 font-medium block mb-1.5">
-                        Default Bible Translation
-                      </label>
-                      <select
-                        value={defaultTranslation}
-                        onChange={(e) => setDefaultTranslation(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="NIV">NIV - New International Version</option>
-                        <option value="ESV">ESV - English Standard Version</option>
-                        <option value="NLT">NLT - New Living Translation</option>
-                        <option value="KJV">KJV - King James Version</option>
-                        <option value="NKJV">NKJV - New King James Version</option>
-                        <option value="CSB">CSB - Christian Standard Bible</option>
-                      </select>
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-slate-300 font-medium block mb-1.5">
-                      Header Subtitle / Tagline
+                    <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                      Organization Name
                     </label>
                     <input
                       type="text"
-                      value={subtitle}
-                      onChange={(e) => setSubtitle(e.target.value)}
-                      placeholder="Live Stream Broadcast & Ministry Hub"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      required
+                      value={churchName}
+                      onChange={(e) => setChurchName(e.target.value)}
+                      placeholder="e.g. Grace Online Church"
+                      className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                      Default Bible Translation
+                    </label>
+                    <select
+                      value={defaultTranslation}
+                      onChange={(e) => setDefaultTranslation(e.target.value)}
+                      aria-label="Default Bible Translation"
+                      className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
+                    >
+                      <option value="NIV">
+                        NIV · New International Version
+                      </option>
+                      <option value="ESV">ESV · English Standard Version</option>
+                      <option value="NLT">NLT · New Living Translation</option>
+                      <option value="KJV">KJV · King James Version</option>
+                      <option value="NKJV">NKJV · New King James Version</option>
+                      <option value="CSB">CSB · Christian Standard Bible</option>
+                    </select>
                   </div>
                 </div>
 
-                {/* OBS Dock Guide Banner */}
-                <div className="bg-gradient-to-r from-blue-950/40 via-indigo-950/40 to-slate-900/80 border border-indigo-800/60 rounded-2xl p-5 shadow-lg">
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-                      <Tv className="w-5 h-5" />
-                    </div>
-                    <div className="text-xs space-y-1.5">
-                      <h3 className="font-bold text-sm text-white">
-                        How to Embed Directly Inside OBS Studio
-                      </h3>
-                      <p className="text-slate-300 leading-relaxed">
-                        You can dock this app right into your OBS interface so your media volunteer never has to leave OBS:
-                      </p>
-                      <ol className="list-decimal list-inside text-slate-400 space-y-1 pl-1">
-                        <li>
-                          In OBS Studio, click the top menu:{" "}
-                          <strong className="text-white">
-                            Docks &rarr; Custom Browser Docks...
-                          </strong>
-                        </li>
-                        <li>
-                          Enter Dock Name:{" "}
-                          <strong className="text-white">Church Chat Hub</strong>
-                        </li>
-                        <li>
-                          Enter URL:{" "}
-                          <code className="bg-slate-800 text-indigo-300 px-1.5 py-0.5 rounded">
-                            http://localhost:3000
-                          </code>{" "}
-                          (or your hosted domain)
-                        </li>
-                        <li>
-                          Click <strong>Apply</strong> and drag the dock next to your OBS preview!
-                        </li>
-                      </ol>
-                    </div>
-                  </div>
+                <div>
+                  <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                    Console Subtitle
+                  </label>
+                  <input
+                    type="text"
+                    value={subtitle}
+                    onChange={(e) => setSubtitle(e.target.value)}
+                    placeholder="Live Stream Broadcast & Ministry Hub"
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
+                  />
                 </div>
               </div>
 
-              {/* Right Column: AI & Live Platform Credentials (6 cols) */}
-              <div className="xl:col-span-6 space-y-6">
-                {/* AI Settings (Gemini) */}
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-indigo-400" />
-                      <h2 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                        2. Google Gemini AI (3.8 Flash)
-                      </h2>
-                    </div>
-                    <a
-                      href="https://aistudio.google.com/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-                    >
-                      <span>Get free Gemini API Key</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-
+              {/* OBS Studio Custom Browser Dock Integration */}
+              <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-3">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <div>
-                    <label className="text-xs text-slate-300 font-medium block mb-1.5">
-                      Gemini API Key
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-400">
+                      Broadcast Switcher Integration
+                    </span>
+                    <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                      Embed Console Directly Inside OBS Studio
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-500">
+                    CUSTOM DOCK
+                  </span>
+                </div>
+
+                <ol className="list-decimal list-inside text-xs text-zinc-400 space-y-2 leading-relaxed">
+                  <li>
+                    In OBS Studio, open{" "}
+                    <strong className="text-white">
+                      Docks → Custom Browser Docks
+                    </strong>
+                    .
+                  </li>
+                  <li>
+                    Enter Dock Name:{" "}
+                    <strong className="text-white">Broadcast Control</strong>.
+                  </li>
+                  <li>
+                    Enter URL:{" "}
+                    <code className="bg-[#09090b] border border-white/[0.08] text-zinc-200 px-2 py-0.5 rounded font-mono">
+                      http://localhost:3000
+                    </code>{" "}
+                    (or your production URL).
+                  </li>
+                  <li>
+                    Click <strong className="text-white">Apply</strong> and dock
+                    the panel next to your multiview monitor.
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Right Column: AI & Stream Credentials (6 cols) */}
+            <div className="xl:col-span-6 space-y-6">
+              {/* 2. Gemini API */}
+              <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-400">
+                      Section 02
+                    </span>
+                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                      Google Gemini Intelligence Engine
+                    </h2>
+                  </div>
+                  <a
+                    href="https://aistudio.google.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-zinc-300 hover:text-white underline underline-offset-4 transition"
+                  >
+                    Get API Key →
+                  </a>
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                    Gemini API Key
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="AIzaSy..."
+                    value={geminiKey}
+                    onChange={(e) => setGeminiKey(e.target.value)}
+                    className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                  />
+                  <p className="text-[11px] text-zinc-500 mt-1.5">
+                    Powers sermon outline extraction, scripture formatting,
+                    pastoral replies, and executive briefings.
+                  </p>
+                </div>
+              </div>
+
+              {/* 3. YouTube Live */}
+              <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-400">
+                      Section 03 · 16:9 Stream
+                    </span>
+                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                      YouTube Live Data API
+                    </h2>
+                  </div>
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                      YouTube Data API Key / OAuth Token
                     </label>
                     <input
                       type="password"
                       placeholder="AIzaSy..."
-                      value={geminiKey}
-                      onChange={(e) => setGeminiKey(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      value={youtubeApiKey}
+                      onChange={(e) => setYoutubeApiKey(e.target.value)}
+                      className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
                     />
-                    <p className="text-[11px] text-slate-400 mt-1.5">
-                      Powers Pastor&apos;s Sermon PDF parsing, instant scripture formatting, prayer reply drafting, and post-service reports.
-                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                      Active Live Chat ID
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Cg0KC..."
+                      value={youtubeLiveChatId}
+                      onChange={(e) => setYoutubeLiveChatId(e.target.value)}
+                      className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                    />
                   </div>
                 </div>
+                <p className="text-[11px] text-zinc-500">
+                  When left blank, the console operates in Simulation Mode for
+                  safe crew rehearsal.
+                </p>
+              </div>
 
-                {/* YouTube Settings */}
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                    <YouTubeIcon className="w-4 h-4 text-red-500" />
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                      3. YouTube Live Stream
+              {/* 4. Instagram Live */}
+              <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-pink-400">
+                      Section 04 · 9:16 Vertical Stream
+                    </span>
+                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                      Instagram Live Graph API
                     </h2>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-slate-300 font-medium block mb-1.5">
-                        YouTube Data API Key / Token
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="AIzaSy..."
-                        value={youtubeApiKey}
-                        onChange={(e) => setYoutubeApiKey(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-300 font-medium block mb-1.5">
-                        Active Live Chat ID
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Cg0KC..."
-                        value={youtubeLiveChatId}
-                        onChange={(e) => setYoutubeLiveChatId(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-red-500"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    When left blank, the app runs in{" "}
-                    <strong>Simulation / Test Mode</strong> so your team can safely rehearse without affecting your public channel.
-                  </p>
+                  <span className="w-2 h-2 rounded-full bg-pink-400" />
                 </div>
 
-                {/* Instagram Settings */}
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                    <InstagramIcon className="w-4 h-4 text-pink-500" />
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                      4. Instagram Live (Professional Account)
-                    </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                      Meta Graph API Access Token
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="EAA..."
+                      value={instagramToken}
+                      onChange={(e) => setInstagramToken(e.target.value)}
+                      className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                    />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-slate-300 font-medium block mb-1.5">
-                        Meta Graph API Access Token
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="EAA..."
-                        value={instagramToken}
-                        onChange={(e) => setInstagramToken(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-pink-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-300 font-medium block mb-1.5">
-                        Live Video Media ID
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="1829..."
-                        value={instagramLiveVideoId}
-                        onChange={(e) => setInstagramLiveVideoId(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-pink-500"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                      Live Video Media ID
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="1829..."
+                      value={instagramLiveVideoId}
+                      onChange={(e) => setInstagramLiveVideoId(e.target.value)}
+                      className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                    />
                   </div>
-                  <p className="text-[11px] text-slate-400">
-                    Obtained from Meta Live Producer or Graph API for your Instagram Professional Account.
-                  </p>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Bottom Save Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sticky bottom-4 shadow-2xl">
-              <div>
-                {feedback ? (
-                  <div
-                    className={`flex items-center gap-2 text-xs font-semibold ${
+          {/* Sticky Apple Command Footer */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#121215]/95 backdrop-blur-xl border border-white/[0.1] rounded-2xl p-4 sticky bottom-4 shadow-2xl">
+            <div>
+              {feedback ? (
+                <div
+                  className={`flex items-center gap-2 text-xs font-semibold ${
+                    feedback.type === "success"
+                      ? "text-emerald-400"
+                      : "text-rose-400"
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
                       feedback.type === "success"
-                        ? "text-emerald-400"
-                        : "text-red-400"
+                        ? "bg-emerald-400"
+                        : "bg-rose-400"
                     }`}
-                  >
-                    {feedback.type === "success" ? (
-                      <Check className="w-4 h-4 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                    )}
-                    <span>{feedback.text}</span>
-                  </div>
-                ) : (
-                  <span className="text-xs text-slate-400">
-                    All changes are saved directly to your database and synced across all screens.
-                  </span>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition active:scale-95 disabled:opacity-50"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Save All Configuration</span>
-                  </>
-                )}
-              </button>
+                  />
+                  <span>{feedback.text}</span>
+                </div>
+              ) : (
+                <span className="text-xs text-zinc-400">
+                  Changes sync immediately across the navigation bar, broadcast
+                  console, and post-show reports.
+                </span>
+              )}
             </div>
-          </form>
-        )}
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition disabled:opacity-40"
+            >
+              {saving ? "Saving Configuration..." : "Save All Configuration"}
+            </button>
+          </div>
+        </form>
       </main>
     </div>
   );

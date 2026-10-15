@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Heart, MessageSquare, Send, Sparkles, Loader2, ArrowRight } from "lucide-react";
 
 interface AiAssistantDockProps {
   onPushToOutbox: (text: string) => void;
@@ -12,9 +11,10 @@ interface AiAssistantDockProps {
 export default function AiAssistantDock({
   onPushToOutbox,
   onInstantBroadcast,
-  prayers = [],
 }: AiAssistantDockProps) {
-  const [activeTab, setActiveTab] = useState<"SCRIPTURE" | "PRAYER" | "QUESTIONS">("SCRIPTURE");
+  const [activeTab, setActiveTab] = useState<
+    "SCRIPTURE" | "PRAYER" | "QUESTIONS"
+  >("SCRIPTURE");
 
   // Scripture state
   const [reference, setReference] = useState("");
@@ -25,7 +25,9 @@ export default function AiAssistantDock({
   // Prayer triage state
   const [prayerName, setPrayerName] = useState("");
   const [prayerNeed, setPrayerNeed] = useState("");
-  const [prayerReplyResult, setPrayerReplyResult] = useState<string | null>(null);
+  const [prayerReplyResult, setPrayerReplyResult] = useState<string | null>(
+    null
+  );
   const [loadingPrayer, setLoadingPrayer] = useState(false);
 
   // Questions state
@@ -33,10 +35,9 @@ export default function AiAssistantDock({
   const [generatedQuestions, setGeneratedQuestions] = useState<string[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
 
-  // Quick Scripture Lookup handler
   const handleLookupScripture = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reference) return;
+    if (!reference.trim()) return;
     setLoadingScripture(true);
     setScriptureResult(null);
 
@@ -57,10 +58,9 @@ export default function AiAssistantDock({
     }
   };
 
-  // Prayer Drafter handler
   const handleDraftPrayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prayerNeed) return;
+    if (!prayerNeed.trim()) return;
     setLoadingPrayer(true);
     setPrayerReplyResult(null);
 
@@ -84,10 +84,9 @@ export default function AiAssistantDock({
     }
   };
 
-  // Questions generator handler
   const handleGenerateQuestions = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sermonTopic) return;
+    if (!sermonTopic.trim()) return;
     setLoadingQuestions(true);
 
     try {
@@ -108,84 +107,71 @@ export default function AiAssistantDock({
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col h-full">
-      {/* Header & Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-            <Sparkles className="w-4 h-4" />
+    <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
+      {/* Header & Apple Segmented Control */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-sky-400" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-400">
+              MOD-01 · Scripture &amp; Pastoral Desk
+            </span>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-white tracking-tight">
-              Live AI Ministry Assistant
-            </h3>
-            <span className="text-[10px] text-slate-400">Powered by Gemini 3.8 Flash</span>
-          </div>
+          <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
+            Live Scripture Formatter &amp; Discussion Prompts
+          </h3>
         </div>
 
-        {/* Tab Controls */}
-        <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab("SCRIPTURE")}
-            className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-md font-medium transition ${
-              activeTab === "SCRIPTURE"
-                ? "bg-indigo-600 text-white"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Scripture</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("PRAYER")}
-            className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-md font-medium transition ${
-              activeTab === "PRAYER"
-                ? "bg-indigo-600 text-white"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            <Heart className="w-3.5 h-3.5" />
-            <span>Prayer</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("QUESTIONS")}
-            className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-md font-medium transition ${
-              activeTab === "QUESTIONS"
-                ? "bg-indigo-600 text-white"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Questions</span>
-          </button>
+        <div className="flex items-center gap-1 bg-[#09090b] p-1 rounded-full border border-white/[0.08] shrink-0">
+          {(
+            [
+              { id: "SCRIPTURE", label: "Scripture" },
+              { id: "PRAYER", label: "Pastoral Reply" },
+              { id: "QUESTIONS", label: "Discussion" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition ${
+                activeTab === t.id
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* TAB 1: SCRIPTURE FORMATTER */}
       {activeTab === "SCRIPTURE" && (
-        <div className="flex-1 flex flex-col justify-between">
+        <div className="space-y-4">
           <form onSubmit={handleLookupScripture} className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2.5">
               <div className="col-span-2">
-                <label className="text-xs text-slate-300 font-medium block mb-1">
-                  Verse Reference
+                <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                  Scripture Reference
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. John 3:16 or Rom 8:28"
+                  placeholder="e.g. John 3:16 or Romans 8:28"
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-300 font-medium block mb-1">
+                <label className="text-xs text-zinc-400 font-medium block mb-1.5">
                   Translation
                 </label>
                 <select
                   value={translation}
                   onChange={(e) => setTranslation(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  aria-label="Bible Translation"
+                  className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none"
                 >
                   <option value="NIV">NIV</option>
                   <option value="ESV">ESV</option>
@@ -197,51 +183,59 @@ export default function AiAssistantDock({
               </div>
             </div>
 
+            <div className="flex flex-wrap items-center gap-1.5">
+              {["Matthew 14:29-31", "Isaiah 43:2", "Psalm 23:1-4", "Philippians 4:6-7"].map(
+                (sampleRef) => (
+                  <button
+                    key={sampleRef}
+                    type="button"
+                    onClick={() => setReference(sampleRef)}
+                    className="px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white border border-white/[0.06] text-[10px] font-medium transition"
+                  >
+                    {sampleRef}
+                  </button>
+                )
+              )}
+            </div>
+
             <button
               type="submit"
-              disabled={loadingScripture || !reference}
-              className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 rounded-xl py-2 text-xs font-semibold transition"
+              disabled={loadingScripture || !reference.trim()}
+              className="w-full py-2.5 rounded-full bg-white text-black hover:bg-zinc-200 disabled:opacity-40 text-xs font-semibold transition"
             >
-              {loadingScripture ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Looking up verse with Gemini...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Format Verse for Live Chat</span>
-                </>
-              )}
+              {loadingScripture
+                ? "Formatting Scripture..."
+                : "Format Scripture for Live Chat"}
             </button>
           </form>
 
-          {/* Scripture Result Card */}
           {scriptureResult && (
-            <div className="mt-3 p-3 bg-indigo-950/40 border border-indigo-800/60 rounded-xl">
-              <div className="text-[11px] font-semibold text-indigo-300 mb-1 flex items-center justify-between">
-                <span>Formatted Ready to Send:</span>
-                <span className="text-[10px] bg-indigo-900/60 px-2 py-0.5 rounded text-indigo-200">
+            <div className="p-4 bg-[#09090b] border border-white/[0.1] rounded-2xl space-y-3">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-semibold text-sky-400 uppercase tracking-wider">
+                  Formatted Passage
+                </span>
+                <span className="font-mono text-zinc-400 px-2 py-0.5 rounded bg-white/[0.05]">
                   {translation}
                 </span>
               </div>
-              <p className="text-xs text-slate-200 leading-relaxed font-serif italic mb-3">
+              <p className="text-xs text-zinc-200 leading-relaxed">
                 {scriptureResult}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
                 <button
+                  type="button"
                   onClick={() => onPushToOutbox(scriptureResult)}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 py-1.5 px-3 rounded-lg font-medium transition"
+                  className="flex-1 py-1.5 px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.08] transition"
                 >
-                  <ArrowRight className="w-3.5 h-3.5" />
-                  <span>Push to Outbox</span>
+                  Edit in Outbox
                 </button>
                 <button
+                  type="button"
                   onClick={() => onInstantBroadcast(scriptureResult)}
-                  className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs text-white py-1.5 px-3 rounded-lg font-medium transition shadow-md shadow-indigo-600/30"
+                  className="py-1.5 px-4 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Blast Now</span>
+                  Dispatch Now
                 </button>
               </div>
             </div>
@@ -249,77 +243,68 @@ export default function AiAssistantDock({
         </div>
       )}
 
-      {/* TAB 2: PRAYER REPLY DRAFTER */}
+      {/* TAB 2: PASTORAL REPLY DRAFTER */}
       {activeTab === "PRAYER" && (
-        <div className="flex-1 flex flex-col justify-between">
+        <div className="space-y-4">
           <form onSubmit={handleDraftPrayer} className="space-y-3">
             <div>
-              <label className="text-xs text-slate-300 font-medium block mb-1">
-                Requester Name / Handle
+              <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                Viewer Name or Handle
               </label>
               <input
                 type="text"
-                placeholder="e.g. John Doe or @johnd"
+                placeholder="e.g. @johndoe"
                 value={prayerName}
                 onChange={(e) => setPrayerName(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-300 font-medium block mb-1">
-                Prayer Request Posted by Viewer
+              <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                Prayer Request Context
               </label>
               <textarea
                 rows={2}
-                placeholder="Paste the prayer request from YouTube or Instagram..."
+                placeholder="Paste the viewer's prayer request..."
                 value={prayerNeed}
                 onChange={(e) => setPrayerNeed(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 resize-none"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loadingPrayer || !prayerNeed}
-              className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 rounded-xl py-2 text-xs font-semibold transition"
+              disabled={loadingPrayer || !prayerNeed.trim()}
+              className="w-full py-2.5 rounded-full bg-white text-black hover:bg-zinc-200 disabled:opacity-40 text-xs font-semibold transition"
             >
-              {loadingPrayer ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Drafting Christ-Centered Reply...</span>
-                </>
-              ) : (
-                <>
-                  <Heart className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Draft Empathetic Chat Reply</span>
-                </>
-              )}
+              {loadingPrayer
+                ? "Drafting Pastoral Response..."
+                : "Draft Pastoral Response"}
             </button>
           </form>
 
-          {/* Prayer Reply Result */}
           {prayerReplyResult && (
-            <div className="mt-3 p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl">
-              <div className="text-[11px] font-semibold text-emerald-300 mb-1">
-                Drafted Live Pastoral Response:
+            <div className="p-4 bg-[#09090b] border border-white/[0.1] rounded-2xl space-y-3">
+              <div className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">
+                Drafted Pastoral Response
               </div>
-              <p className="text-xs text-slate-200 leading-relaxed mb-3">
+              <p className="text-xs text-zinc-200 leading-relaxed">
                 {prayerReplyResult}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
                 <button
+                  type="button"
                   onClick={() => onPushToOutbox(prayerReplyResult)}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 py-1.5 px-3 rounded-lg font-medium transition"
+                  className="flex-1 py-1.5 px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.08] transition"
                 >
-                  <ArrowRight className="w-3.5 h-3.5" />
-                  <span>Push to Outbox</span>
+                  Edit in Outbox
                 </button>
                 <button
+                  type="button"
                   onClick={() => onInstantBroadcast(prayerReplyResult)}
-                  className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs text-white py-1.5 px-3 rounded-lg font-medium transition shadow-md shadow-emerald-600/30"
+                  className="py-1.5 px-4 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Blast Reply</span>
+                  Dispatch Reply
                 </button>
               </div>
             </div>
@@ -329,53 +314,58 @@ export default function AiAssistantDock({
 
       {/* TAB 3: SERMON DISCUSSION QUESTIONS */}
       {activeTab === "QUESTIONS" && (
-        <div className="flex-1 flex flex-col justify-between">
+        <div className="space-y-4">
           <form onSubmit={handleGenerateQuestions} className="space-y-3">
             <div>
-              <label className="text-xs text-slate-300 font-medium block mb-1">
-                Today's Sermon Topic / Title
+              <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                Active Sermon Topic or Title
               </label>
               <input
                 type="text"
                 placeholder="e.g. Walking in Faith Through the Storm"
                 value={sermonTopic}
                 onChange={(e) => setSermonTopic(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
               />
             </div>
             <button
               type="submit"
-              disabled={loadingQuestions || !sermonTopic}
-              className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-xl py-2 text-xs font-semibold transition"
+              disabled={loadingQuestions || !sermonTopic.trim()}
+              className="w-full py-2.5 rounded-full bg-white text-black hover:bg-zinc-200 disabled:opacity-40 text-xs font-semibold transition"
             >
-              {loadingQuestions ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Sparking Chat Questions...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Generate Chat Discussion Questions</span>
-                </>
-              )}
+              {loadingQuestions
+                ? "Generating Discussion Prompts..."
+                : "Generate Audience Discussion Prompts"}
             </button>
           </form>
 
-          {/* Generated Questions List */}
           {generatedQuestions.length > 0 && (
-            <div className="mt-3 space-y-2">
-              <div className="text-[11px] font-semibold text-amber-300">
-                Tap to drop into outbox:
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                Select Prompt to Load or Dispatch
               </div>
               {generatedQuestions.map((q, idx) => (
                 <div
                   key={idx}
-                  onClick={() => onPushToOutbox(q)}
-                  className="p-2.5 bg-slate-800/90 hover:bg-slate-800 border border-slate-700/60 hover:border-amber-500/50 rounded-xl cursor-pointer transition text-xs text-slate-200 leading-snug flex items-center justify-between group"
+                  className="p-3.5 bg-[#09090b] border border-white/[0.08] rounded-2xl text-xs text-zinc-200 leading-relaxed flex items-center justify-between gap-3"
                 >
-                  <span>{q}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 shrink-0 ml-2" />
+                  <span className="flex-1">{q}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onPushToOutbox(q)}
+                      className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 text-[11px] font-medium border border-white/[0.08] transition"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onInstantBroadcast(q)}
+                      className="px-3 py-1 rounded-full bg-white text-black hover:bg-zinc-200 text-[11px] font-semibold transition"
+                    >
+                      Dispatch
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
