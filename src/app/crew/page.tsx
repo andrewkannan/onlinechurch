@@ -232,10 +232,24 @@ const QUICK_QC_PRESETS: {
   platform: "INSTAGRAM" | "YOUTUBE" | "BOTH";
 }[] = [
   {
-    label: "IG 9:16 Safe-Zone Edge Clipped",
+    label: "IG Top/Bottom Blur Fill Missing or Black Seam",
     type: "ISSUE",
     severity: "MAJOR",
     station: "CAMERA",
+    platform: "INSTAGRAM",
+  },
+  {
+    label: "IG Centered 16:9 Landscape Frame Misaligned",
+    type: "ISSUE",
+    severity: "MAJOR",
+    station: "CAMERA",
+    platform: "INSTAGRAM",
+  },
+  {
+    label: "IG 'MAINSTREAM' RTMPS Key Disconnected",
+    type: "ISSUE",
+    severity: "CRITICAL",
+    station: "NETWORK",
     platform: "INSTAGRAM",
   },
   {
@@ -267,34 +281,20 @@ const QUICK_QC_PRESETS: {
     platform: "BOTH",
   },
   {
-    label: "Lower-Third / Scripture Cue Delayed",
-    type: "IMPROVEMENT",
-    severity: "MINOR",
-    station: "MODERATOR",
-    platform: "YOUTUBE",
-  },
-  {
-    label: "Sub-2s Scripture & Prayer Queue Sync",
-    type: "ACHIEVEMENT",
-    severity: "WIN",
-    station: "MODERATOR",
-    platform: "BOTH",
-  },
-  {
-    label: "Crisp Camera Switching & Broadcast Mix",
+    label: "IG Landscape + Top/Bottom Blur Clean & Synced",
     type: "ACHIEVEMENT",
     severity: "WIN",
     station: "CAMERA",
-    platform: "BOTH",
+    platform: "INSTAGRAM",
   },
 ];
 
 const DIRECTOR_ACTION_PRESETS = [
-  "Recalibrate 9:16 center guide on Cam 1",
+  "Lock 16:9 landscape center + top/bottom blur fill on IG scene",
+  "Verify IG Live Producer 'MAINSTREAM' RTMPS preview before Go Live",
   "Lock 5600K Kelvin profile on all cameras",
   "Boost broadcast bus +3 dB during spoken prayer",
   "Adjust audio delay +40 ms on switcher input",
-  "Stage sermon cue deck by Saturday 6:00 PM",
 ];
 
 function compressScreenshotDataUrl(file: File): Promise<string> {
@@ -1813,6 +1813,169 @@ export default function CrewAndQcPage() {
                 </div>
               </section>
             )}
+
+            {/* ===============================================================
+                INSTAGRAM LIVE BROADCAST LAYOUT & QC SPECIFICATION CARD
+                (Top Blur + Centered 16:9 Landscape + Bottom Blur · RTMPS)
+               =============================================================== */}
+            {(stationFilter === "ALL" ||
+              stationFilter === "QC" ||
+              stationFilter === "CAMERA" ||
+              stationFilter === "DIRECTOR") && (
+              <section className="rounded-3xl p-6 bg-[#121215] border border-white/[0.08] space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                        Instagram Live Broadcast Standard · Go Live With Streaming Software
+                      </span>
+                    </div>
+                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
+                      IG 9:16 Canvas: Blurred Top + Centered 16:9 Landscape Broadcast + Blurred Bottom
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[11px] font-semibold">
+                      Stream Key: MAINSTREAM (Connected)
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-white/[0.04] text-zinc-400 border border-white/[0.08] text-[11px] font-mono">
+                      rtmps://edgetee-upload-kul2-2.xx.fbcdn.net:443/rtmp/
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                  {/* Left (4 Cols): Visual 9:16 IG Live Producer Preview Mockup */}
+                  <div className="lg:col-span-4 flex justify-center">
+                    <div className="w-56 rounded-2xl overflow-hidden border border-white/[0.14] bg-[#09090b] shadow-2xl flex flex-col">
+                      {/* Modal Top Bar */}
+                      <div className="px-3 py-2 bg-[#1c1c21] border-b border-white/[0.08] flex items-center justify-between text-[10px]">
+                        <span className="text-zinc-300 font-semibold">
+                          Live video
+                        </span>
+                        <span className="text-sky-400 font-semibold">
+                          Go live
+                        </span>
+                      </div>
+
+                      {/* 1. TOP BLUR ZONE */}
+                      <div className="h-20 relative overflow-hidden bg-gradient-to-b from-zinc-800/70 via-zinc-700/50 to-zinc-900/80 flex items-center justify-center border-b border-white/[0.08]">
+                        <div className="absolute inset-0 backdrop-blur-xl bg-amber-100/10" />
+                        <div className="relative z-10 text-center px-2">
+                          <span className="px-2 py-0.5 rounded bg-black/60 border border-white/15 text-[9px] font-semibold uppercase tracking-wider text-zinc-200">
+                            Top Blur Fill (Gaussian Blur)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 2. CENTER 16:9 LANDSCAPE BROADCAST */}
+                      <div className="h-28 relative bg-[#050507] border-y border-emerald-400/50 flex flex-col items-center justify-center px-3 text-center">
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                          16:9 Landscape Live Feed
+                        </span>
+                        <span className="text-xs font-semibold text-white mt-0.5">
+                          Full Horizontal Broadcast
+                        </span>
+                        <span className="text-[10px] text-zinc-400 mt-0.5">
+                          Centered · Zero Side Clipping
+                        </span>
+                      </div>
+
+                      {/* 3. BOTTOM BLUR ZONE */}
+                      <div className="h-20 relative overflow-hidden bg-gradient-to-t from-zinc-800/70 via-zinc-700/50 to-zinc-900/80 flex flex-col justify-between p-2 border-t border-white/[0.08]">
+                        <div className="absolute inset-0 backdrop-blur-xl bg-amber-100/10" />
+                        <div className="relative z-10 text-center mt-2">
+                          <span className="px-2 py-0.5 rounded bg-black/60 border border-white/15 text-[9px] font-semibold uppercase tracking-wider text-zinc-200">
+                            Bottom Blur Fill (Gaussian Blur)
+                          </span>
+                        </div>
+                        <div className="relative z-10 flex items-center justify-between text-[9px] text-zinc-300 px-1">
+                          <span className="px-2 py-0.5 rounded-full bg-black/65 border border-white/10">
+                            Add link
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded-full bg-black/65 border border-white/10">
+                            Audio On
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right (8 Cols): 4-Point IG Live QC Checklist */}
+                  <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="rounded-2xl p-4 bg-[#0c0c0f] border border-white/[0.08] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+                          1 · Top Blur Zone
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          CAM / OBS Scene
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-white">
+                        Blurred Top Background Fill Active
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        Duplicate background video layer scaled to fill the upper 9:16 area with smooth Gaussian blur and no black gap at the top border.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl p-4 bg-[#0c0c0f] border border-white/[0.08] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                          2 · Center 16:9 Broadcast
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          1080p60 Landscape
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-white">
+                        Full Landscape Program Centered
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        Full 16:9 horizontal broadcast frame centered vertically so speakers, worship band, and lower-third scriptures are never cropped on the sides.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl p-4 bg-[#0c0c0f] border border-white/[0.08] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+                          3 · Bottom Blur Zone
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          CAM / OBS Scene
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-white">
+                        Blurred Bottom Fill Behind IG Chat
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        Symmetrical blurred bottom fill sits cleanly behind Instagram Live viewer comments and the &ldquo;Add link&rdquo; pill with zero hard seams.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl p-4 bg-[#0c0c0f] border border-white/[0.08] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-400">
+                          4 · IG Live Producer RTMPS
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          QC-01 / TD-01
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-white">
+                        MAINSTREAM Key Connected &amp; Preview Live
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        Select persistent key <span className="text-zinc-200 font-medium">MAINSTREAM (Connected)</span>, confirm preview displays in the Instagram modal, unmute preview check, then click <span className="text-sky-400 font-medium">Go live</span>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         )}
 
@@ -1838,14 +2001,14 @@ export default function CrewAndQcPage() {
 
               <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
                 <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                  <span>Instagram Vertical RTMP</span>
+                  <span>Instagram Live RTMPS</span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
                 <div className="text-lg font-semibold text-white tabular-nums mt-1">
-                  9:16 Crop · 4.2 Mbps
+                  Landscape + Blur
                 </div>
-                <div className="text-[11px] text-zinc-400 mt-0.5">
-                  Center Grid Active
+                <div className="text-[11px] text-sky-400 mt-0.5">
+                  Top/Bottom Blur · MAINSTREAM
                 </div>
               </div>
 
@@ -1914,7 +2077,7 @@ export default function CrewAndQcPage() {
                       }`}
                     >
                       {plat === "INSTAGRAM"
-                        ? "Instagram 9:16"
+                        ? "IG Landscape + Blur"
                         : plat === "YOUTUBE"
                         ? "YouTube 16:9"
                         : "Both Streams"}

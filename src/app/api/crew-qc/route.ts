@@ -207,9 +207,9 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     id: "chk-cam-3",
     role: "CAMERA",
     phase: "T-30M",
-    category: "Aspect Ratio",
-    task: "Instagram 9:16 Vertical Safe-Zone",
-    detail: "Center crop markers verified on monitor",
+    category: "IG Layout",
+    task: "IG Landscape Center + Top & Bottom Blur Scene",
+    detail: "16:9 broadcast centered in 9:16 canvas with top/bottom blur fill",
     isCritical: true,
     assignedToUserId: "usr-camera-1",
     assignedToName: "Kevin Lim",
@@ -367,9 +367,23 @@ const DEFAULT_CHECKLISTS: CrewChecklistItem[] = [
     id: "chk-qc-2",
     role: "QC",
     phase: "T-15M",
-    category: "Instagram CDN",
-    task: "Instagram Vertical Stream Verified on Mobile",
-    detail: "9:16 framing & mobile loudness clear",
+    category: "IG Live Layout",
+    task: "IG Landscape Broadcast + Top & Bottom Blur Verified",
+    detail: "16:9 centered frame with blurred top & bottom fill on IG preview",
+    isCritical: true,
+    assignedToUserId: "usr-qc-1",
+    assignedToName: "Daniel Wong",
+    checked: true,
+    checkedBy: "Daniel Wong",
+    checkedAt: "09:43 AM",
+  },
+  {
+    id: "chk-qc-5",
+    role: "QC",
+    phase: "T-15M",
+    category: "IG RTMPS Key",
+    task: "IG Live Producer 'MAINSTREAM' Persistent Key Connected",
+    detail: "rtmps://edgetee-upload... active & preview displayed before 'Go live'",
     isCritical: true,
     assignedToUserId: "usr-qc-1",
     assignedToName: "Daniel Wong",
@@ -503,15 +517,16 @@ const DEFAULT_QC_LOGS: QcLogItem[] = [
     severity: "MAJOR",
     platform: "INSTAGRAM",
     station: "CAMERA",
-    title: "IG 9:16 Vertical Crop Clipped Right Edge",
-    description: "Speaker stepped outside right safe-zone during welcome.",
+    title: "IG Top/Bottom Blur Fill Seam Visible on Landscape Feed",
+    description:
+      "Thin black gap between centered 16:9 broadcast frame and bottom blur background on IG Live.",
     actionToTake: "",
     assignedTo: "Pending Director",
     timelineToSolve: "Wait for Director",
     targetDate: "2026-10-18",
     status: "WAITING_DIRECTOR",
     screenshotUrl: null,
-    markerPos: { x: 78, y: 45 },
+    markerPos: { x: 50, y: 68 },
     loggedBy: "Daniel Wong",
     createdAt: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
   },
@@ -860,8 +875,9 @@ const DEFAULT_POSTMORTEM_FEEDBACK: PostmortemFeedbackItem[] = [
     category: "BOTTLENECK",
     department: "CAMERA",
     comment:
-      "Cam 1 right-edge 9:16 safe-zone marker needs physical tape guide on the field monitor so speaker movement doesn't clip on Instagram.",
-    actionItem: "Apply 9:16 physical frame guide overlay on Cam 1 monitor before Saturday rehearsal",
+      "IG Live scene needs the top and bottom blur background layers locked tightly against the centered 16:9 landscape frame so no thin black seam appears.",
+    actionItem:
+      "Lock 16:9 landscape center + top/bottom Gaussian blur scene preset before Saturday rehearsal",
     convertedToCheck: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
   },
@@ -906,7 +922,7 @@ const DEFAULT_WEEKLY_CUSTODY: WeeklyCustodyState = {
   qcLeadSignedOff: true,
   qcLeadSignedAt: "11:52 AM",
   qcSummaryNotes:
-    "YouTube 1080p60 maintained 0.0% dropped frames throughout 75m broadcast. Two minor adjustments flagged for Saturday rehearsal: Cam 1 9:16 right-edge safe-zone calibration and +3dB synth pad lift on broadcast bus during altar call.",
+    "YouTube 1080p60 and Instagram RTMPS (MAINSTREAM persistent key, centered 16:9 landscape with top/bottom blur fill) maintained 0.0% dropped frames throughout 75m broadcast. Two minor refinements flagged for Saturday rehearsal: lock top/bottom blur overlap seam on IG scene and +3dB synth pad lift on broadcast bus during altar call.",
   streamHealthScore: 96,
   modLeadName: "Hannah Lee",
   modLeadCallsign: "MOD-01",
@@ -920,7 +936,7 @@ const DEFAULT_WEEKLY_CUSTODY: WeeklyCustodyState = {
   directorName: "Andrew",
   directorApprovedAt: null,
   meetingTakeaways:
-    "1. Kevin (CAM-01) to recalibrate 9:16 center guide on Cam 1.\n2. Jason (A1-MIX) to program +3dB altar prayer scene recall.\n3. Daniel (QC-01) & Hannah (MOD-01) holding this week's report for Saturday pre-rehearsal review.",
+    "1. Kevin (CAM-01) & QC (QC-01) to verify IG centered 16:9 landscape + top/bottom blur fill scene and MAINSTREAM RTMPS preview at T-15M.\n2. Jason (A1-MIX) to program +3dB altar prayer scene recall.\n3. Daniel (QC-01) & Hannah (MOD-01) holding this week's report for Saturday pre-rehearsal review.",
 };
 
 const DEFAULT_WEEKLY_ARCHIVE: ArchivedWeeklyReport[] = [
@@ -953,6 +969,7 @@ export function getCrewQcState() {
   if (!store.crewQc || !store.crewQc.v3ApplePro) {
     store.crewQc = {
       v3ApplePro: true,
+      igBlurLayoutV1: true,
       users: DEFAULT_USERS,
       checklists: DEFAULT_CHECKLISTS,
       shutdownChecks: DEFAULT_SHUTDOWN_CHECKS,
@@ -1001,6 +1018,80 @@ export function getCrewQcState() {
     }
     return u;
   });
+
+  // Migrate IG checklists & QC logs to Top/Bottom Blur + Landscape Broadcast workflow
+  if (!store.crewQc.igBlurLayoutV1) {
+    store.crewQc.igBlurLayoutV1 = true;
+    migrated = true;
+    if (Array.isArray(store.crewQc.checklists)) {
+      store.crewQc.checklists = store.crewQc.checklists.map(
+        (item: CrewChecklistItem) => {
+          if (item.id === "chk-cam-3") {
+            return {
+              ...item,
+              category: "IG Layout",
+              task: "IG Landscape Center + Top & Bottom Blur Scene",
+              detail:
+                "16:9 broadcast centered in 9:16 canvas with top/bottom blur fill",
+            };
+          }
+          if (item.id === "chk-qc-2") {
+            return {
+              ...item,
+              category: "IG Live Layout",
+              task: "IG Landscape Broadcast + Top & Bottom Blur Verified",
+              detail:
+                "16:9 centered frame with blurred top & bottom fill on IG preview",
+            };
+          }
+          return item;
+        }
+      );
+      const hasQc5 = store.crewQc.checklists.some(
+        (c: CrewChecklistItem) => c.id === "chk-qc-5"
+      );
+      if (!hasQc5) {
+        const qc2Idx = store.crewQc.checklists.findIndex(
+          (c: CrewChecklistItem) => c.id === "chk-qc-2"
+        );
+        const newQc5: CrewChecklistItem = {
+          id: "chk-qc-5",
+          role: "QC",
+          phase: "T-15M",
+          category: "IG RTMPS Key",
+          task: "IG Live Producer 'MAINSTREAM' Persistent Key Connected",
+          detail:
+            "rtmps://edgetee-upload... active & preview displayed before 'Go live'",
+          isCritical: true,
+          assignedToUserId: "usr-qc-1",
+          assignedToName: "Daniel Wong",
+          checked: true,
+          checkedBy: "Daniel Wong",
+          checkedAt: "09:43 AM",
+        };
+        if (qc2Idx >= 0) {
+          store.crewQc.checklists.splice(qc2Idx + 1, 0, newQc5);
+        } else {
+          store.crewQc.checklists.push(newQc5);
+        }
+      }
+    }
+    if (Array.isArray(store.crewQc.qcLogs)) {
+      store.crewQc.qcLogs = store.crewQc.qcLogs.map((log: QcLogItem) =>
+        log.id === "qc-seed-1"
+          ? {
+              ...log,
+              title: "IG Top/Bottom Blur Fill Seam Visible on Landscape Feed",
+              description:
+                "Thin black gap between centered 16:9 broadcast frame and bottom blur background on IG Live.",
+              markerPos: { x: 50, y: 68 },
+            }
+          : log
+      );
+    }
+    store.crewQc.postmortemFeedback = DEFAULT_POSTMORTEM_FEEDBACK;
+    store.crewQc.weeklyCustody = DEFAULT_WEEKLY_CUSTODY;
+  }
 
   if (
     !Array.isArray(store.crewQc.shutdownChecks) ||

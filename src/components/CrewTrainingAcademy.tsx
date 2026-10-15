@@ -71,9 +71,11 @@ const CALLSIGN_DIRECTORY: {
     title: "Camera Operator (Pulpit & Wide)",
     channel: "CH 1 · Master Production Loop",
     primaryDuty:
-      "Maintains 1080p60 focus, 5600K white balance match, and keeps subject inside both 16:9 YouTube and 9:16 Instagram center safe-zones.",
-    pollResponse: '"CAM-01 GO. Framing, 5600K color, and 9:16 safe-zone locked."',
-    emergencyPhrase: '"TD from CAM-01: Subject stepping outside 9:16 crop, panning right."',
+      "Maintains 1080p60 focus, 5600K white balance match, and clean 16:9 landscape framing for YouTube & Instagram's centered landscape + top/bottom blur layout.",
+    pollResponse:
+      '"CAM-01 GO. 16:9 landscape framing, 5600K color, and IG top/bottom blur scene locked."',
+    emergencyPhrase:
+      '"TD from CAM-01: Adjusting landscape framing for pulpit movement."',
   },
   {
     callsign: "A1-MIX",
@@ -101,8 +103,9 @@ const CALLSIGN_DIRECTORY: {
     title: "Stream Quality Controller",
     channel: "CH 1 & 2 · All-Call Telemetry",
     primaryDuty:
-      "Audits public YouTube 16:9 TV feed and Instagram 9:16 mobile feed continuously, logging frame/audio faults to the Director Queue.",
-    pollResponse: '"QC-01 GO. 0.0% dropped frames, YouTube and IG return feeds clean."',
+      "Audits YouTube 16:9 feed and Instagram Live RTMPS (MAINSTREAM key, centered 16:9 landscape + top/bottom blur fill), logging faults to the Director Queue.",
+    pollResponse:
+      '"QC-01 GO. 0.0% dropped frames, YouTube 16:9 and IG landscape + blur feeds clean."',
     emergencyPhrase: '"TD from QC-01: Incident queued with frame capture—check Director Queue."',
   },
 ];
@@ -134,13 +137,13 @@ const PRODUCTION_FLOW_TIMELINE: {
     id: "flow-2",
     phase: "T-30M",
     window: "30 Mins Before Air",
-    title: "Optics, 5600K Color Match & Broadcast Bus Soundcheck",
+    title: "Optics, 5600K Color Match & IG Blur Scene Setup",
     leadCallsign: "CAM-01 & A1-MIX",
     summary:
-      "Calibrate camera white balance and dual 16:9 / 9:16 safe-zones while Audio sets broadcast limiter and tests Pastor primary + backup mics.",
+      "Calibrate camera white balance and verify the IG 9:16 scene (top/bottom blur fill + centered 16:9 landscape broadcast) while Audio sets broadcast limiter.",
     checkpoints: [
       "Dial manual 5600K white balance and match skin tones across Cam 1 and Cam 2.",
-      "Align center 9:16 vertical markers so Instagram Live never clips the speaker.",
+      "Verify IG scene has blurred top & bottom fill with the full 16:9 landscape broadcast centered in the middle.",
       "Set broadcast mix bus target to -14 LUFS with -1.5 dBTP brickwall ceiling.",
     ],
   },
@@ -148,13 +151,13 @@ const PRODUCTION_FLOW_TIMELINE: {
     id: "flow-3",
     phase: "T-15M",
     window: "15 Mins Before Air",
-    title: "Private CDN Ingest, Sermon Cue Deck & Prayer Router",
+    title: "YouTube & IG RTMPS ('MAINSTREAM') Ingest & Prayer Router",
     leadCallsign: "QC-01 & MOD-01",
     summary:
-      "Start encoder streams to YouTube and Instagram, verify lip-sync on external consumer devices, and arm the auto-prayer chat router.",
+      "Connect RTMPS to Instagram Live Producer ('MAINSTREAM' persistent key) and YouTube, verify preview & lip-sync, and arm the auto-prayer chat router.",
     checkpoints: [
-      "Verify 0.0% dropped frames and stable 6.8 Mbps bitrate on encoder.",
-      "Check YouTube 16:9 on studio TV and Instagram 9:16 on an actual mobile phone.",
+      "Select 'MAINSTREAM (Connected)' in Instagram Web Live Producer and verify rtmps://edgetee-upload... preview displays cleanly.",
+      "Check YouTube 16:9 on studio TV and Instagram centered landscape + top/bottom blur on mobile.",
       "Load Pastor sermon PDF cues and test platform-matched reply routing.",
     ],
   },
@@ -253,29 +256,30 @@ const INTERCOM_SCENARIOS: {
   },
   {
     id: "scen-2",
-    title: "Scenario 2 · Instagram 9:16 Vertical Safe-Zone Recovery",
+    title:
+      "Scenario 2 · Instagram Live Top/Bottom Blur + Centered Landscape Scene Check",
     context:
-      "When the speaker walks toward the stage edge and clips out of the vertical mobile frame.",
+      "Verifying the Instagram 9:16 canvas has clean top and bottom Gaussian blur fill with the full 16:9 landscape broadcast centered in the middle.",
     lines: [
       {
         speaker: "Quality Control",
         callsign: "QC-01",
-        text: "TD from QC-01: Speaker stepped outside right 9:16 border on Instagram. Queued frame in Director pad.",
+        text: "TD from QC-01: IG Live Producer 'MAINSTREAM' key is connected, but there is a thin black seam below the centered 16:9 landscape frame.",
       },
       {
         speaker: "Technical Director",
         callsign: "TD-01",
-        text: "Copy QC-01. CAM-02, widen your shot slightly. CAM-01, pan right 10% to re-center the 9:16 guide.",
+        text: "Copy QC-01. Adjusting the bottom blur background fill overlap by 2% in the IG scene preset.",
       },
       {
-        speaker: "Camera Lead",
-        callsign: "CAM-01",
-        text: "CAM-01 re-centered inside 9:16 safe-zone. Ready.",
+        speaker: "Quality Control",
+        callsign: "QC-01",
+        text: "QC-01: Top blur, centered 16:9 landscape broadcast, and bottom blur are seamless in the IG preview. Ready to click Go live.",
       },
       {
         speaker: "Technical Director",
         callsign: "TD-01",
-        text: "Clean on multiview. Marking QC item resolved.",
+        text: "Clean on IG Live Producer. Clicking Go live now.",
       },
     ],
   },
@@ -311,31 +315,33 @@ const ROLE_CURRICULUMS: Record<CrewRole, RoleCurriculum> = {
     callsignFormat: "CAM-01 (Tight Pulpit) · CAM-02 (Wide / Stage)",
     stationHardware: "Sony FX3 / PTZ Chain · SDI/HDMI 1080p60 · Tally System",
     missionStatement:
-      "Deliver cinema-grade, color-matched framing that simultaneously satisfies 16:9 YouTube widescreen and 9:16 Instagram vertical center-crop viewers.",
+      "Deliver cinema-grade, color-matched 16:9 landscape framing that broadcasts full-width on YouTube and centered between top & bottom blur layers on Instagram Live.",
     keyMetrics: [
       { label: "Color Temp", value: "5600K Manual" },
       { label: "Shutter Speed", value: "1/120s (60fps)" },
-      { label: "Dual Framing", value: "16:9 + 9:16 Grid" },
+      { label: "IG Layout", value: "16:9 + Top/Bot Blur" },
       { label: "Skin Zebra", value: "70 IRE Target" },
     ],
     lessons: [
       {
         id: "cam-1",
         code: "CAM-101",
-        title: "Dual Aspect Framing: 16:9 YouTube + 9:16 Instagram Safe-Zone",
+        title:
+          "16:9 Landscape Broadcast + Instagram Top & Bottom Blur Layout",
         duration: "6 min",
         summary:
-          "Because our broadcast feeds both YouTube widescreen and Instagram vertical simultaneously, the speaker must stay inside the central 9:16 vertical guide.",
-        targetSpec: "Eyes at top third line; shoulders inside center 9:16 markers.",
+          "Instead of cropping out the sides of our 16:9 broadcast on Instagram, we center the full 16:9 landscape feed inside the 9:16 vertical frame with a blurred top and blurred bottom background fill.",
+        targetSpec:
+          "Full 16:9 landscape frame centered vertically; Gaussian blur top & bottom fill with zero black seams.",
         steps: [
-          "Enable on-camera 9:16 vertical center guide markers on your monitor.",
-          "Maintain two-finger headroom above the speaker's head—excessive headroom looks amateur on mobile.",
-          "When the speaker walks laterally, feather your pan smoothly so they never touch the 9:16 border.",
+          "Frame full 16:9 widescreen compositions cleanly with two-finger headroom above the speaker.",
+          "Verify the Instagram output scene places the uncropped 16:9 broadcast in the vertical center.",
+          "Ensure the duplicated background layer is scaled and blurred on the top and bottom so no black bars appear.",
         ],
         commsCallout:
-          '"CAM-01: 16:9 and 9:16 center safe-zone locked on pulpit."',
+          '"CAM-01: 16:9 landscape frame and IG top/bottom blur scene locked."',
         failureRecovery:
-          "If the speaker moves too fast and exits the 9:16 frame, pause 1 second until TD switches to Wide Cam 2, then whip-pan to re-frame.",
+          "If a thin black line appears above or below the centered 16:9 frame on Instagram, nudge the background blur scale up by 2–3%.",
       },
       {
         id: "cam-2",
@@ -394,15 +400,15 @@ const ROLE_CURRICULUMS: Record<CrewRole, RoleCurriculum> = {
       {
         id: "q-cam-1",
         question:
-          "Why must Camera Operators keep the speaker centered inside the 9:16 vertical markers?",
+          "How is our 16:9 landscape broadcast formatted for Instagram Live?",
         options: [
-          "Because the projector screen in the sanctuary is vertical",
-          "So the simultaneous Instagram 9:16 vertical stream never clips the speaker off-screen",
-          "To reduce network bandwidth on the encoder",
+          "It is rotated sideways 90 degrees",
+          "The full 16:9 landscape broadcast is centered in the middle with a blurred top and blurred bottom fill",
+          "Only the left half of the camera is shown",
         ],
         correctIndex: 1,
         explanation:
-          "Our broadcast feeds both 16:9 YouTube and 9:16 Instagram Live. Keeping the subject inside the 9:16 center guide guarantees both streams look properly framed.",
+          "Centering the 16:9 landscape broadcast with blurred top and bottom fill preserves the full horizontal frame without cutting off speakers or graphics.",
       },
       {
         id: "q-cam-2",
@@ -706,20 +712,22 @@ const ROLE_CURRICULUMS: Record<CrewRole, RoleCurriculum> = {
       {
         id: "qc-1",
         code: "QC-101",
-        title: "Dual-Device Public Stream Auditing (TV + Mobile Phone)",
+        title:
+          "Instagram Web Live Producer ('MAINSTREAM') & Top/Bottom Blur Verification",
         duration: "6 min",
         summary:
-          "Never rely only on the control-room multiview. You must watch the actual public YouTube and Instagram streams as a viewer sees them.",
-        targetSpec: "YouTube 1080p60 on reference screen + Instagram 9:16 on cellular phone.",
+          "Verify the Instagram 'Go live with streaming software' modal is connected to the MAINSTREAM persistent key and displays the centered 16:9 landscape feed with top & bottom blur fill.",
+        targetSpec:
+          "MAINSTREAM (Connected) RTMPS active + Top/Bottom Blur + Centered 16:9 Landscape.",
         steps: [
-          "Open the live YouTube broadcast on a dedicated monitor/TV and verify 1080p60 resolution.",
-          "Open the live Instagram broadcast on a mobile phone (off studio Wi-Fi if possible) to verify real-world mobile playback.",
-          "Alternate headphone monitoring between YouTube and Instagram every 5 minutes.",
+          "Open Instagram Web 'Go live with streaming software' and select the 'MAINSTREAM (Connected)' persistent stream key.",
+          "Verify the preview displays the full 16:9 landscape broadcast centered vertically with smooth Gaussian blur fill on top and bottom.",
+          "Check YouTube 1080p60 on the reference screen and Instagram playback + audio on mobile once 'Go live' is clicked.",
         ],
         commsCallout:
-          '"QC-01: Public YouTube 16:9 and Instagram 9:16 return feeds verified."',
+          '"QC-01: YouTube 16:9 and IG MAINSTREAM landscape + top/bottom blur feeds verified."',
         failureRecovery:
-          "If the studio multiview looks fine but the public stream is buffering, immediately alert TD-01 of a CDN/encoder uplink issue.",
+          "If the IG preview shows black bars or a disconnected key, re-paste the RTMPS URL/key into streaming software before clicking 'Go live'.",
       },
       {
         id: "qc-2",
@@ -730,13 +738,13 @@ const ROLE_CURRICULUMS: Record<CrewRole, RoleCurriculum> = {
           "When you spot an issue or broadcast win during the service, log it in under 5 seconds so it enters the Technical Director's Decision Queue.",
         targetSpec: "Select Platform -> Tap Preset -> Grab Screen -> Send to Director Queue.",
         steps: [
-          "Select the affected platform ('Instagram 9:16', 'YouTube 16:9', or 'Both Streams').",
+          "Select the affected platform ('IG Landscape + Blur', 'YouTube 16:9', or 'Both Streams').",
           "Tap one of the 8 One-Tap Observation Presets (or type a short headline).",
           "Click 'Capture Stream' (or paste a screenshot) and click the image to place the red target reticle on the exact problem area.",
           "Click 'Send to Technical Director Queue'—do NOT waste time typing action plans; the Director assigns those.",
         ],
         commsCallout:
-          '"QC-01 to TD: Logged IG framing clip with screenshot in Director Queue."',
+          '"QC-01 to TD: Logged IG blur seam / framing note with screenshot in Director Queue."',
         failureRecovery:
           "For CRITICAL faults (total audio loss or stream offline), call TD-01 on intercom immediately FIRST, then log the screenshot.",
       },
@@ -806,15 +814,15 @@ const ROLE_CURRICULUMS: Record<CrewRole, RoleCurriculum> = {
       {
         id: "q-qc-3",
         question:
-          "Why must QC-01 monitor an actual mobile phone for Instagram Live in addition to the studio monitor?",
+          "What must QC-01 verify in the Instagram 'Go live with streaming software' window before going live?",
         options: [
-          "To play games during the sermon",
-          "To verify real-world 9:16 vertical crop and mobile speaker loudness as public viewers experience it",
-          "Because studio monitors cannot display color",
+          "Only that the browser tab is open",
+          "That 'MAINSTREAM (Connected)' is active and the preview shows the centered 16:9 landscape feed with blurred top and bottom fill",
+          "That the video is upside down",
         ],
         correctIndex: 1,
         explanation:
-          "Public mobile playback reveals 9:16 crop clipping and small-speaker audio translation issues that studio monitors hide.",
+          "Verifying the MAINSTREAM persistent key connection and the top/bottom blur + centered 16:9 landscape layout ensures a clean Instagram Live broadcast.",
       },
     ],
   },
