@@ -557,6 +557,397 @@ const DEFAULT_QC_LOGS: QcLogItem[] = [
   },
 ];
 
+export type ShutdownStage = "STREAM_CLOSE" | "DATA_ARCHIVE" | "GEAR_STRIKE";
+
+export interface ShutdownCheckItem {
+  id: string;
+  role: CrewRole;
+  stage: ShutdownStage;
+  category: string;
+  task: string;
+  detail: string;
+  isCritical: boolean;
+  assignedToUserId: string;
+  assignedToName: string;
+  checked: boolean;
+  checkedBy?: string | null;
+  checkedAt?: string | null;
+}
+
+export interface PostmortemFeedbackItem {
+  id: string;
+  serviceDate: string;
+  authorName: string;
+  authorRole: CrewRole;
+  authorCallsign: string;
+  category: "WIN" | "BOTTLENECK" | "ACTION_IDEA";
+  department: CrewRole;
+  comment: string;
+  actionItem?: string;
+  convertedToCheck?: boolean;
+  createdAt: string;
+}
+
+export interface WeeklyCustodyState {
+  weekLabel: string;
+  qcLeadName: string;
+  qcLeadCallsign: string;
+  qcLeadSignedOff: boolean;
+  qcLeadSignedAt: string | null;
+  qcSummaryNotes: string;
+  streamHealthScore: number;
+  modLeadName: string;
+  modLeadCallsign: string;
+  modLeadSignedOff: boolean;
+  modLeadSignedAt: string | null;
+  modSummaryNotes: string;
+  prayerFollowUpNotes: string;
+  directorApproved: boolean;
+  directorName: string;
+  directorApprovedAt: string | null;
+  meetingTakeaways: string;
+}
+
+export interface ArchivedWeeklyReport {
+  id: string;
+  weekLabel: string;
+  savedAt: string;
+  qcLeadName: string;
+  qcLeadCallsign: string;
+  modLeadName: string;
+  modLeadCallsign: string;
+  directorName: string;
+  streamHealthScore: number;
+  preFlightPct: number;
+  shutdownPct: number;
+  totalIssues: number;
+  totalWins: number;
+  qcSummaryNotes: string;
+  modSummaryNotes: string;
+  prayerFollowUpNotes: string;
+  meetingTakeaways: string;
+}
+
+const DEFAULT_SHUTDOWN_CHECKS: ShutdownCheckItem[] = [
+  // DIRECTOR
+  {
+    id: "shut-dir-1",
+    role: "DIRECTOR",
+    stage: "STREAM_CLOSE",
+    category: "Master Feed",
+    task: "End Master RTMP Stream & Confirm Clean Cut",
+    detail: "Terminate ATEM / encoder stream after 15s closing slate hold",
+    isCritical: true,
+    assignedToUserId: "usr-director-1",
+    assignedToName: "Andrew",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+  {
+    id: "shut-dir-2",
+    role: "DIRECTOR",
+    stage: "DATA_ARCHIVE",
+    category: "Master ISO",
+    task: "Verify Program Master Recording Saved to SSD",
+    detail: "Confirm HyperDeck / local SSD file integrity before power-off",
+    isCritical: true,
+    assignedToUserId: "usr-director-1",
+    assignedToName: "Andrew",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+  {
+    id: "shut-dir-3",
+    role: "DIRECTOR",
+    stage: "GEAR_STRIKE",
+    category: "Clearance",
+    task: "Confirm All Stations Shut Down & Call Postmortem Corner",
+    detail: "Verify all 5 stations cleared and convene team at Postmortem Corner",
+    isCritical: true,
+    assignedToUserId: "usr-director-1",
+    assignedToName: "Andrew",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+
+  // CAMERA
+  {
+    id: "shut-cam-1",
+    role: "CAMERA",
+    stage: "DATA_ARCHIVE",
+    category: "Media Cards",
+    task: "Stop Camera Internal Recordings & Verify SD/CFexpress Cards",
+    detail: "Ensure red tally is off and card write completes before ejecting",
+    isCritical: true,
+    assignedToUserId: "usr-camera-1",
+    assignedToName: "Kevin Lim",
+    checked: true,
+    checkedBy: "Kevin Lim",
+    checkedAt: "11:48 AM",
+  },
+  {
+    id: "shut-cam-2",
+    role: "CAMERA",
+    stage: "GEAR_STRIKE",
+    category: "Optics & Bodies",
+    task: "Cap Lenses, Lock Fluid Heads & Power Down Camera Bodies",
+    detail: "Sony FX3 & PTZ units powered off, lens caps secured, SDI coiled",
+    isCritical: true,
+    assignedToUserId: "usr-camera-1",
+    assignedToName: "Kevin Lim",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+  {
+    id: "shut-cam-3",
+    role: "CAMERA",
+    stage: "GEAR_STRIKE",
+    category: "Power",
+    task: "Dock All Camera & Monitor Batteries on Charging Bays",
+    detail: "Place NP-FZ100 & V-Mount packs onto charging stations for next week",
+    isCritical: false,
+    assignedToUserId: "usr-camera-1",
+    assignedToName: "Kevin Lim",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+
+  // AUDIO
+  {
+    id: "shut-aud-1",
+    role: "AUDIO",
+    stage: "STREAM_CLOSE",
+    category: "Console",
+    task: "Mute Broadcast Bus & Save Sunday Console Scene Snapshot",
+    detail: "Store Allen & Heath SQ Sunday mix snapshot and mute master bus",
+    isCritical: true,
+    assignedToUserId: "usr-audio-1",
+    assignedToName: "Jason Tan",
+    checked: true,
+    checkedBy: "Jason Tan",
+    checkedAt: "11:46 AM",
+  },
+  {
+    id: "shut-aud-2",
+    role: "AUDIO",
+    stage: "GEAR_STRIKE",
+    category: "RF & Mics",
+    task: "Collect Wireless Mics, Power Off Packs & Dock Batteries",
+    detail: "Verify Pastor lapel, handhelds, and IEM packs are returned & charging",
+    isCritical: true,
+    assignedToUserId: "usr-audio-1",
+    assignedToName: "Jason Tan",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+  {
+    id: "shut-aud-3",
+    role: "AUDIO",
+    stage: "GEAR_STRIKE",
+    category: "Power Sequence",
+    task: "Sequential Power-Down (Stage Monitors/Amps First, Console Last)",
+    detail: "Follow safe power-down sequence to prevent transducer pop",
+    isCritical: true,
+    assignedToUserId: "usr-audio-1",
+    assignedToName: "Jason Tan",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+
+  // MODERATOR
+  {
+    id: "shut-mod-1",
+    role: "MODERATOR",
+    stage: "STREAM_CLOSE",
+    category: "Live Chat",
+    task: "Post Closing Benediction, Replay Link & Next Steps in Chat",
+    detail: "Drop final connect & prayer link on YouTube & Instagram before close",
+    isCritical: true,
+    assignedToUserId: "usr-mod-1",
+    assignedToName: "Hannah Lee",
+    checked: true,
+    checkedBy: "Hannah Lee",
+    checkedAt: "11:45 AM",
+  },
+  {
+    id: "shut-mod-2",
+    role: "MODERATOR",
+    stage: "DATA_ARCHIVE",
+    category: "Pastoral Care",
+    task: "Verify 100% Prayer Queue Covered & First-Time Visitors Logged",
+    detail: "Ensure zero unanswered prayer requests and all new visitors saved",
+    isCritical: true,
+    assignedToUserId: "usr-mod-1",
+    assignedToName: "Hannah Lee",
+    checked: true,
+    checkedBy: "Hannah Lee",
+    checkedAt: "11:49 AM",
+  },
+  {
+    id: "shut-mod-3",
+    role: "MODERATOR",
+    stage: "DATA_ARCHIVE",
+    category: "Weekly Custody",
+    task: "Lock Moderator Weekly Engagement & Prayer Report for Postmortem",
+    detail: "Prepare chat engagement & prayer follow-up report to hold for the week",
+    isCritical: true,
+    assignedToUserId: "usr-mod-1",
+    assignedToName: "Hannah Lee",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+
+  // QUALITY CONTROL (QC)
+  {
+    id: "shut-qc-1",
+    role: "QC",
+    stage: "STREAM_CLOSE",
+    category: "CDN & VOD",
+    task: "Verify YouTube & Instagram Streams Ended Cleanly & VOD Processing",
+    detail: "Confirm neither platform is stuck live and replay audio is unmuted",
+    isCritical: true,
+    assignedToUserId: "usr-qc-1",
+    assignedToName: "Daniel Wong",
+    checked: true,
+    checkedBy: "Daniel Wong",
+    checkedAt: "11:47 AM",
+  },
+  {
+    id: "shut-qc-2",
+    role: "QC",
+    stage: "DATA_ARCHIVE",
+    category: "Incident Log",
+    task: "Finalize All Live Stream QC Timestamps & Frame Captures",
+    detail: "Ensure all service faults, refinements, and wins are queued for debrief",
+    isCritical: true,
+    assignedToUserId: "usr-qc-1",
+    assignedToName: "Daniel Wong",
+    checked: true,
+    checkedBy: "Daniel Wong",
+    checkedAt: "11:50 AM",
+  },
+  {
+    id: "shut-qc-3",
+    role: "QC",
+    stage: "DATA_ARCHIVE",
+    category: "Weekly Custody",
+    task: "Lock QC Weekly Technical Report with Moderator Lead",
+    detail: "Sign off weekly stream health report to hold for postmortem & week follow-up",
+    isCritical: true,
+    assignedToUserId: "usr-qc-1",
+    assignedToName: "Daniel Wong",
+    checked: false,
+    checkedBy: null,
+    checkedAt: null,
+  },
+];
+
+const DEFAULT_POSTMORTEM_FEEDBACK: PostmortemFeedbackItem[] = [
+  {
+    id: "fb-seed-1",
+    serviceDate: "2026-10-15",
+    authorName: "Daniel Wong",
+    authorRole: "QC",
+    authorCallsign: "QC-01",
+    category: "BOTTLENECK",
+    department: "CAMERA",
+    comment:
+      "Cam 1 right-edge 9:16 safe-zone marker needs physical tape guide on the field monitor so speaker movement doesn't clip on Instagram.",
+    actionItem: "Apply 9:16 physical frame guide overlay on Cam 1 monitor before Saturday rehearsal",
+    convertedToCheck: false,
+    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+  },
+  {
+    id: "fb-seed-2",
+    serviceDate: "2026-10-15",
+    authorName: "Hannah Lee",
+    authorRole: "MODERATOR",
+    authorCallsign: "MOD-01",
+    category: "WIN",
+    department: "MODERATOR",
+    comment:
+      "Auto-detected prayer queue allowed 100% platform-matched replies on YouTube and Instagram within 45 seconds of each comment.",
+    actionItem: "Maintain dual-platform prayer reply template readiness at T-15M",
+    convertedToCheck: true,
+    createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+  },
+  {
+    id: "fb-seed-3",
+    serviceDate: "2026-10-15",
+    authorName: "Jason Tan",
+    authorRole: "AUDIO",
+    authorCallsign: "A1-MIX",
+    category: "ACTION_IDEA",
+    department: "AUDIO",
+    comment:
+      "Add a +3dB broadcast bus fader macro when the band drops to synth pad during altar ministry so mobile listeners hear spoken prayer clearly.",
+    actionItem: "Program SoftKey 4 on Allen & Heath SQ for Altar Prayer +3dB lift",
+    convertedToCheck: false,
+    createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+  },
+];
+
+const DEFAULT_WEEKLY_CUSTODY: WeeklyCustodyState = {
+  weekLabel: `Week of ${new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`,
+  qcLeadName: "Daniel Wong",
+  qcLeadCallsign: "QC-01",
+  qcLeadSignedOff: true,
+  qcLeadSignedAt: "11:52 AM",
+  qcSummaryNotes:
+    "YouTube 1080p60 maintained 0.0% dropped frames throughout 75m broadcast. Two minor adjustments flagged for Saturday rehearsal: Cam 1 9:16 right-edge safe-zone calibration and +3dB synth pad lift on broadcast bus during altar call.",
+  streamHealthScore: 96,
+  modLeadName: "Hannah Lee",
+  modLeadCallsign: "MOD-01",
+  modLeadSignedOff: true,
+  modLeadSignedAt: "11:54 AM",
+  modSummaryNotes:
+    "Strong audience engagement across both YouTube and Instagram. All incoming prayer requests were auto-captured and replied on their native platform before stream close. First-time visitors logged for mid-week pastoral follow-up.",
+  prayerFollowUpNotes:
+    "Pastoral care team to follow up with 4 open healing & family prayer requests by Wednesday 5:00 PM.",
+  directorApproved: false,
+  directorName: "Andrew",
+  directorApprovedAt: null,
+  meetingTakeaways:
+    "1. Kevin (CAM-01) to recalibrate 9:16 center guide on Cam 1.\n2. Jason (A1-MIX) to program +3dB altar prayer scene recall.\n3. Daniel (QC-01) & Hannah (MOD-01) holding this week's report for Saturday pre-rehearsal review.",
+};
+
+const DEFAULT_WEEKLY_ARCHIVE: ArchivedWeeklyReport[] = [
+  {
+    id: "wk-rep-prev-1",
+    weekLabel: "Week of Oct 8, 2026",
+    savedAt: "Oct 8, 2026 · 12:10 PM",
+    qcLeadName: "Daniel Wong",
+    qcLeadCallsign: "QC-01",
+    modLeadName: "Hannah Lee",
+    modLeadCallsign: "MOD-01",
+    directorName: "Andrew",
+    streamHealthScore: 94,
+    preFlightPct: 100,
+    shutdownPct: 100,
+    totalIssues: 2,
+    totalWins: 3,
+    qcSummaryNotes:
+      "Resolved HDMI switcher frame sync and matched 5600K white balance across Cam 1 and Cam 2.",
+    modSummaryNotes:
+      "100% of YouTube & Instagram prayer requests answered live; 14 first-time visitors welcomed.",
+    prayerFollowUpNotes: "All 9 prayer requests followed up by pastoral team.",
+    meetingTakeaways:
+      "Locked Saturday 6:00 PM sermon cue sheet deadline; improved lower-third sync to sub-2s.",
+  },
+];
+
 export function getCrewQcState() {
   const store = readFallbackStore();
   if (!store.crewQc || !store.crewQc.v3ApplePro) {
@@ -564,6 +955,10 @@ export function getCrewQcState() {
       v3ApplePro: true,
       users: DEFAULT_USERS,
       checklists: DEFAULT_CHECKLISTS,
+      shutdownChecks: DEFAULT_SHUTDOWN_CHECKS,
+      postmortemFeedback: DEFAULT_POSTMORTEM_FEEDBACK,
+      weeklyCustody: DEFAULT_WEEKLY_CUSTODY,
+      weeklyReportsArchive: DEFAULT_WEEKLY_ARCHIVE,
       activeCrew: DEFAULT_ACTIVE_CREW,
       qcLogs: DEFAULT_QC_LOGS,
       directorSignOff: {
@@ -607,6 +1002,26 @@ export function getCrewQcState() {
     return u;
   });
 
+  if (
+    !Array.isArray(store.crewQc.shutdownChecks) ||
+    store.crewQc.shutdownChecks.length === 0
+  ) {
+    store.crewQc.shutdownChecks = DEFAULT_SHUTDOWN_CHECKS;
+    migrated = true;
+  }
+  if (!Array.isArray(store.crewQc.postmortemFeedback)) {
+    store.crewQc.postmortemFeedback = DEFAULT_POSTMORTEM_FEEDBACK;
+    migrated = true;
+  }
+  if (!store.crewQc.weeklyCustody) {
+    store.crewQc.weeklyCustody = DEFAULT_WEEKLY_CUSTODY;
+    migrated = true;
+  }
+  if (!Array.isArray(store.crewQc.weeklyReportsArchive)) {
+    store.crewQc.weeklyReportsArchive = DEFAULT_WEEKLY_ARCHIVE;
+    migrated = true;
+  }
+
   if (migrated) {
     writeFallbackStore("crewQc", store.crewQc);
   }
@@ -615,6 +1030,10 @@ export function getCrewQcState() {
     v3ApplePro: boolean;
     users: CrewUserAccount[];
     checklists: CrewChecklistItem[];
+    shutdownChecks: ShutdownCheckItem[];
+    postmortemFeedback: PostmortemFeedbackItem[];
+    weeklyCustody: WeeklyCustodyState;
+    weeklyReportsArchive: ArchivedWeeklyReport[];
     activeCrew: ActiveCrewMember[];
     qcLogs: QcLogItem[];
     directorSignOff: {
@@ -1020,6 +1439,197 @@ export async function POST(req: NextRequest) {
           : [...current, role];
         return { ...u, certifiedRoles: nextRoles };
       });
+    }
+
+    // 18. Toggle Post-Live Safe Shutdown Check Item
+    if (body.action === "TOGGLE_SHUTDOWN_CHECK" && body.id) {
+      const nowTime = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      state.shutdownChecks = state.shutdownChecks.map((item) => {
+        if (item.id !== body.id) return item;
+        const nextChecked = !item.checked;
+        return {
+          ...item,
+          checked: nextChecked,
+          checkedBy: nextChecked
+            ? body.memberName || item.assignedToName || "Operator"
+            : null,
+          checkedAt: nextChecked ? nowTime : null,
+        };
+      });
+    }
+
+    // 19. Check All Post-Live Shutdown Items for a Station or All Stations
+    if (body.action === "CHECK_ALL_SHUTDOWN_STATION" && body.role) {
+      const nowTime = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      state.shutdownChecks = state.shutdownChecks.map((item) => {
+        if (body.role !== "ALL" && item.role !== body.role) return item;
+        return {
+          ...item,
+          checked: true,
+          checkedBy:
+            item.checkedBy ||
+            body.memberName ||
+            item.assignedToName ||
+            "Operator",
+          checkedAt: item.checkedAt || nowTime,
+        };
+      });
+    }
+
+    // 20. Reset Post-Live Shutdown Checklist for New Service
+    if (body.action === "RESET_SHUTDOWN_CHECKS") {
+      state.shutdownChecks = state.shutdownChecks.map((item) => ({
+        ...item,
+        checked: false,
+        checkedBy: null,
+        checkedAt: null,
+      }));
+    }
+
+    // 21. Add Custom Post-Live Shutdown Check Item
+    if (body.action === "ADD_SHUTDOWN_CHECK" && body.item) {
+      const i = body.item;
+      const role = (i.role as CrewRole) || "CAMERA";
+      const assignedUser =
+        state.users.find((u) => u.id === i.assignedToUserId) ||
+        state.users.find((u) => u.role === role) ||
+        state.users[0];
+      state.shutdownChecks = [
+        {
+          id: `shut-${Date.now()}`,
+          role,
+          stage: (i.stage as ShutdownStage) || "GEAR_STRIKE",
+          category: String(i.category || "Shutdown").trim(),
+          task: String(i.task || "Station Shutdown Check").trim(),
+          detail: String(
+            i.detail || "Standard post-live safe shutdown check"
+          ).trim(),
+          isCritical: i.isCritical !== undefined ? Boolean(i.isCritical) : true,
+          assignedToUserId: assignedUser ? assignedUser.id : "usr-director-1",
+          assignedToName:
+            i.assignedToName || (assignedUser ? assignedUser.name : "Team"),
+          checked: false,
+          checkedBy: null,
+          checkedAt: null,
+        },
+        ...state.shutdownChecks,
+      ];
+    }
+
+    // 22. Add Postmortem Corner Team Meeting Feedback
+    if (body.action === "ADD_POSTMORTEM_FEEDBACK" && body.feedback) {
+      const f = body.feedback;
+      const newFb: PostmortemFeedbackItem = {
+        id: `fb-${Date.now()}`,
+        serviceDate: new Date().toISOString().slice(0, 10),
+        authorName: String(f.authorName || "Crew Operator").trim(),
+        authorRole: (f.authorRole as CrewRole) || "CAMERA",
+        authorCallsign: String(f.authorCallsign || "CREW").trim(),
+        category: f.category || "ACTION_IDEA",
+        department: (f.department as CrewRole) || "CAMERA",
+        comment: String(f.comment || "").trim(),
+        actionItem: String(f.actionItem || "").trim(),
+        convertedToCheck: false,
+        createdAt: new Date().toISOString(),
+      };
+      state.postmortemFeedback = [newFb, ...state.postmortemFeedback];
+    }
+
+    // 23. Convert Postmortem Feedback Item Directly into Next-Week Pre-Flight Check
+    if (body.action === "CONVERT_FEEDBACK_TO_CHECK" && body.id) {
+      const targetFb = state.postmortemFeedback.find((f) => f.id === body.id);
+      if (targetFb && !targetFb.convertedToCheck) {
+        targetFb.convertedToCheck = true;
+        const assignedUser =
+          state.users.find((u) => u.role === targetFb.department) ||
+          state.users[0];
+        state.checklists = [
+          {
+            id: `chk-pm-${Date.now()}`,
+            role: targetFb.department,
+            phase: "T-30M",
+            category: "Postmortem Fix",
+            task: targetFb.actionItem || targetFb.comment,
+            detail: `Added from Postmortem Corner by ${targetFb.authorName} (${targetFb.authorCallsign})`,
+            isCritical: true,
+            assignedToUserId: assignedUser ? assignedUser.id : "usr-director-1",
+            assignedToName: assignedUser ? assignedUser.name : "Team",
+            checked: false,
+            checkedBy: null,
+            checkedAt: null,
+          },
+          ...state.checklists,
+        ];
+      }
+    }
+
+    // 24. Update Weekly Custody Report (QC Lead + Moderator Lead + Director)
+    if (body.action === "UPDATE_WEEKLY_CUSTODY" && body.patch) {
+      const p = body.patch;
+      const nowTime = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      state.weeklyCustody = {
+        ...state.weeklyCustody,
+        ...p,
+        ...(p.qcLeadSignedOff !== undefined
+          ? { qcLeadSignedAt: p.qcLeadSignedOff ? nowTime : null }
+          : {}),
+        ...(p.modLeadSignedOff !== undefined
+          ? { modLeadSignedAt: p.modLeadSignedOff ? nowTime : null }
+          : {}),
+        ...(p.directorApproved !== undefined
+          ? { directorApprovedAt: p.directorApproved ? nowTime : null }
+          : {}),
+      };
+    }
+
+    // 25. Lock & Archive Weekly Report Held by QC Lead & Moderator Lead
+    if (body.action === "ARCHIVE_WEEKLY_REPORT") {
+      const preTotal = state.checklists.length;
+      const preDone = state.checklists.filter((c) => c.checked).length;
+      const shutTotal = state.shutdownChecks.length;
+      const shutDone = state.shutdownChecks.filter((c) => c.checked).length;
+      const nowStamp = new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const nowTime = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const archived: ArchivedWeeklyReport = {
+        id: `wk-rep-${Date.now()}`,
+        weekLabel: state.weeklyCustody.weekLabel || `Week of ${nowStamp}`,
+        savedAt: `${nowStamp} · ${nowTime}`,
+        qcLeadName: state.weeklyCustody.qcLeadName,
+        qcLeadCallsign: state.weeklyCustody.qcLeadCallsign,
+        modLeadName: state.weeklyCustody.modLeadName,
+        modLeadCallsign: state.weeklyCustody.modLeadCallsign,
+        directorName: state.weeklyCustody.directorName,
+        streamHealthScore: state.weeklyCustody.streamHealthScore,
+        preFlightPct:
+          preTotal > 0 ? Math.round((preDone / preTotal) * 100) : 100,
+        shutdownPct:
+          shutTotal > 0 ? Math.round((shutDone / shutTotal) * 100) : 100,
+        totalIssues: state.qcLogs.filter((l) => l.type === "ISSUE").length,
+        totalWins: state.qcLogs.filter((l) => l.type === "ACHIEVEMENT").length,
+        qcSummaryNotes: state.weeklyCustody.qcSummaryNotes,
+        modSummaryNotes: state.weeklyCustody.modSummaryNotes,
+        prayerFollowUpNotes: state.weeklyCustody.prayerFollowUpNotes,
+        meetingTakeaways: state.weeklyCustody.meetingTakeaways,
+      };
+
+      state.weeklyReportsArchive = [archived, ...state.weeklyReportsArchive];
     }
 
     writeFallbackStore("crewQc", state);

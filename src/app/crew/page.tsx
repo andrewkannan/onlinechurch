@@ -3,6 +3,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import CrewTrainingAcademy from "@/components/CrewTrainingAcademy";
+import PostLiveAndPostmortemDesk, {
+  ShutdownCheckItem,
+  PostmortemFeedbackItem,
+  WeeklyCustodyState,
+  ArchivedWeeklyReport,
+} from "@/components/PostLiveAndPostmortemDesk";
 import { useAuth } from "@/components/AuthProvider";
 
 type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
@@ -314,6 +320,32 @@ export default function CrewAndQcPage() {
   const { user: authUser, openSwitchModal } = useAuth();
   const [users, setUsers] = useState<CrewUserAccount[]>([]);
   const [checklists, setChecklists] = useState<CrewChecklistItem[]>([]);
+  const [shutdownChecks, setShutdownChecks] = useState<ShutdownCheckItem[]>([]);
+  const [postmortemFeedback, setPostmortemFeedback] = useState<
+    PostmortemFeedbackItem[]
+  >([]);
+  const [weeklyCustody, setWeeklyCustody] = useState<WeeklyCustodyState>({
+    weekLabel: "Current Broadcast Week",
+    qcLeadName: "Daniel Wong",
+    qcLeadCallsign: "QC-01",
+    qcLeadSignedOff: true,
+    qcLeadSignedAt: "11:52 AM",
+    qcSummaryNotes: "",
+    streamHealthScore: 96,
+    modLeadName: "Hannah Lee",
+    modLeadCallsign: "MOD-01",
+    modLeadSignedOff: true,
+    modLeadSignedAt: "11:54 AM",
+    modSummaryNotes: "",
+    prayerFollowUpNotes: "",
+    directorApproved: false,
+    directorName: "Andrew",
+    directorApprovedAt: null,
+    meetingTakeaways: "",
+  });
+  const [weeklyReportsArchive, setWeeklyReportsArchive] = useState<
+    ArchivedWeeklyReport[]
+  >([]);
   const [qcLogs, setQcLogs] = useState<QcLogItem[]>([]);
   const [directorSignOff, setDirectorSignOff] = useState({
     clearedToGoLive: false,
@@ -324,7 +356,12 @@ export default function CrewAndQcPage() {
 
   // Active workspace tab
   const [activeTab, setActiveTab] = useState<
-    "PRE_LIVE" | "QC_PAD" | "TEAM_ACCOUNTS" | "TRAINING" | "MEETING_REPORT"
+    | "PRE_LIVE"
+    | "QC_PAD"
+    | "POST_LIVE_SHUTDOWN"
+    | "MEETING_REPORT"
+    | "TEAM_ACCOUNTS"
+    | "TRAINING"
   >("PRE_LIVE");
 
   // Active logged-in operator (synced with AuthProvider)
@@ -425,15 +462,25 @@ export default function CrewAndQcPage() {
     setTimeout(() => setToastMsg(null), 2800);
   };
 
+  const applyServerState = (data: any) => {
+    if (!data) return;
+    if (data.users) setUsers(data.users);
+    if (data.checklists) setChecklists(data.checklists);
+    if (data.shutdownChecks) setShutdownChecks(data.shutdownChecks);
+    if (data.postmortemFeedback) setPostmortemFeedback(data.postmortemFeedback);
+    if (data.weeklyCustody) setWeeklyCustody(data.weeklyCustody);
+    if (data.weeklyReportsArchive)
+      setWeeklyReportsArchive(data.weeklyReportsArchive);
+    if (data.qcLogs) setQcLogs(data.qcLogs);
+    if (data.directorSignOff) setDirectorSignOff(data.directorSignOff);
+  };
+
   const fetchCrewQcData = async () => {
     try {
       const res = await fetch("/api/crew-qc", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
-      if (data.users) setUsers(data.users);
-      if (data.checklists) setChecklists(data.checklists);
-      if (data.qcLogs) setQcLogs(data.qcLogs);
-      if (data.directorSignOff) setDirectorSignOff(data.directorSignOff);
+      applyServerState(data);
     } catch (e) {
       console.error("Failed to fetch crew-qc data:", e);
     }
@@ -991,6 +1038,15 @@ export default function CrewAndQcPage() {
     totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
   const is100PercentReady = totalChecks > 0 && completedChecks === totalChecks;
 
+  const totalShutdownChecks = shutdownChecks.length;
+  const completedShutdownChecks = shutdownChecks.filter((c) => c.checked).length;
+  const shutdownPct =
+    totalShutdownChecks > 0
+      ? Math.round((completedShutdownChecks / totalShutdownChecks) * 100)
+      : 0;
+  const is100PercentShutdown =
+    totalShutdownChecks > 0 && completedShutdownChecks === totalShutdownChecks;
+
   const waitingDirectorCount = qcLogs.filter(
     (l) => l.status === "WAITING_DIRECTOR"
   ).length;
@@ -1077,12 +1133,12 @@ export default function CrewAndQcPage() {
             </h1>
           </div>
 
-          {/* Apple Segmented Control (4 Core Views) */}
+          {/* Apple Segmented Control (6 Core Views) */}
           <div className="inline-flex items-center gap-1 bg-[#131316] p-1 rounded-full border border-white/[0.08] overflow-x-auto">
             <button
               type="button"
               onClick={() => setActiveTab("PRE_LIVE")}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                 activeTab === "PRE_LIVE"
                   ? "bg-white text-black font-semibold shadow-sm"
                   : "text-zinc-400 hover:text-white"
@@ -1105,13 +1161,13 @@ export default function CrewAndQcPage() {
             <button
               type="button"
               onClick={() => setActiveTab("QC_PAD")}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                 activeTab === "QC_PAD"
                   ? "bg-white text-black font-semibold shadow-sm"
                   : "text-zinc-400 hover:text-white"
               }`}
             >
-              <span>Live QC & Director Queue</span>
+              <span>Live QC & Queue</span>
               {waitingDirectorCount > 0 && (
                 <span
                   className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
@@ -1127,8 +1183,55 @@ export default function CrewAndQcPage() {
 
             <button
               type="button"
+              onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "POST_LIVE_SHUTDOWN"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <span>Post-Live Shutdown</span>
+              <span
+                className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                  activeTab === "POST_LIVE_SHUTDOWN"
+                    ? "bg-black/10 text-black font-bold"
+                    : is100PercentShutdown
+                    ? "bg-emerald-500/20 text-emerald-300"
+                    : "bg-white/[0.06] text-zinc-400"
+                }`}
+              >
+                {shutdownPct}%
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("MEETING_REPORT")}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                activeTab === "MEETING_REPORT"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <span>Postmortem Corner</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                  activeTab === "MEETING_REPORT"
+                    ? "bg-black/10 text-black"
+                    : weeklyCustody?.qcLeadSignedOff &&
+                      weeklyCustody?.modLeadSignedOff
+                    ? "bg-emerald-500/20 text-emerald-300"
+                    : "bg-amber-500/20 text-amber-300"
+                }`}
+              >
+                QC+MOD
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab("TEAM_ACCOUNTS")}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                 activeTab === "TEAM_ACCOUNTS"
                   ? "bg-white text-black font-semibold shadow-sm"
                   : "text-zinc-400 hover:text-white"
@@ -1149,7 +1252,7 @@ export default function CrewAndQcPage() {
             <button
               type="button"
               onClick={() => setActiveTab("TRAINING")}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
                 activeTab === "TRAINING"
                   ? "bg-white text-black font-semibold shadow-sm"
                   : "text-zinc-400 hover:text-white"
@@ -1165,18 +1268,6 @@ export default function CrewAndQcPage() {
               >
                 5 Roles
               </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("MEETING_REPORT")}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap ${
-                activeTab === "MEETING_REPORT"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Post-Show Log
             </button>
           </div>
         </div>
@@ -1206,7 +1297,7 @@ export default function CrewAndQcPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                   <button
                     type="button"
                     onClick={handleResetChecklists}
@@ -1226,6 +1317,13 @@ export default function CrewAndQcPage() {
                     {directorSignOff.clearedToGoLive
                       ? `On Air Confirmed (${directorSignOff.clearedAt})`
                       : "Director: Confirm On Air"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
+                    className="px-4 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-white text-xs font-semibold border border-white/[0.14] transition"
+                  >
+                    End Live & Start Shutdown →
                   </button>
                 </div>
               </div>
@@ -2654,187 +2752,38 @@ export default function CrewAndQcPage() {
         )}
 
         {/* ===================================================================
-            VIEW 5: POST-SHOW TECHNICAL LOG & MEETING REPORT
+            VIEW 5 & 6: POST-LIVE SAFE SHUTDOWN CHECKLIST & POSTMORTEM CORNER
+            (Weekly Report Co-Held by QC Lead & Moderator Lead)
            =================================================================== */}
-        {activeTab === "MEETING_REPORT" && (
-          <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                  Post-Show Engineering & Production Log
-                </div>
-                <h2 className="text-xl font-semibold text-white tracking-tight mt-0.5">
-                  Technical Director & QC Review —{" "}
-                  {new Date().toLocaleDateString()}
-                </h2>
-                <p className="text-xs text-zinc-400 mt-1 tabular-nums">
-                  Pre-Flight Readiness: {overallPct}% ({completedChecks}/
-                  {totalChecks} Verified) · Logged Events: {qcLogs.length} (
-                  {qcLogs.filter((l) => l.type === "ISSUE").length} Faults,{" "}
-                  {qcLogs.filter((l) => l.type === "IMPROVEMENT").length}{" "}
-                  Refinements,{" "}
-                  {qcLogs.filter((l) => l.type === "ACHIEVEMENT").length} Wins)
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleExportMeetingCsv}
-                  className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium border border-white/[0.08] transition"
-                >
-                  Export CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-5 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
-                >
-                  Print Report
-                </button>
-              </div>
-            </div>
-
-            {/* Department Sign-Off Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {ROLES_LIST.map((role) => {
-                const style = DEPT_STYLES[role];
-                const items = checklists.filter((c) => c.role === role);
-                const done = items.filter((c) => c.checked).length;
-                const leadUser = users.find((u) => u.role === role);
-                return (
-                  <div
-                    key={role}
-                    className={`rounded-2xl p-4 text-xs border ${style.verifiedCard}`}
-                  >
-                    <div className="font-semibold text-white">
-                      {style.label}
-                    </div>
-                    <div
-                      className={`${style.text} font-semibold mt-1 tabular-nums`}
-                    >
-                      {done} of {items.length} Verified
-                    </div>
-                    <div className="text-[11px] text-zinc-400 mt-0.5">
-                      Lead: {leadUser ? leadUser.name : "Team"}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Clean Tabular Technical Log */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/[0.08] text-[10px] text-zinc-500 uppercase tracking-wider">
-                    <th className="py-3 px-3">Timecode</th>
-                    <th className="py-3 px-3">Category</th>
-                    <th className="py-3 px-3">Department</th>
-                    <th className="py-3 px-3">Observation</th>
-                    <th className="py-3 px-3">Frame</th>
-                    <th className="py-3 px-3">Director Directive</th>
-                    <th className="py-3 px-3">Assigned Operator</th>
-                    <th className="py-3 px-3 text-right">Status / Roadmap</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.06]">
-                  {qcLogs.map((log) => {
-                    const stStyle =
-                      DEPT_STYLES[log.station] || DEPT_STYLES.CAMERA;
-                    return (
-                      <tr key={log.id} className="hover:bg-white/[0.02]">
-                        <td className="py-3.5 px-3 text-zinc-400 whitespace-nowrap tabular-nums">
-                          {log.streamTimestamp}
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                              log.type === "ISSUE"
-                                ? "bg-rose-500/15 text-rose-300"
-                                : log.type === "ACHIEVEMENT"
-                                ? "bg-emerald-500/15 text-emerald-300"
-                                : "bg-amber-500/15 text-amber-300"
-                            }`}
-                          >
-                            {log.type}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-semibold ${stStyle.pill}`}
-                          >
-                            {log.station} · {log.platform}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <div className="font-semibold text-white">
-                            {log.title}
-                          </div>
-                          {log.description && (
-                            <div className="text-[11px] text-zinc-400">
-                              {log.description}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-3">
-                          {log.screenshotUrl ? (
-                            <button
-                              type="button"
-                              onClick={() => setPreviewImageLog(log)}
-                              className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-[11px] font-medium"
-                            >
-                              View Frame
-                            </button>
-                          ) : (
-                            <span className="text-zinc-600">—</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-3 font-medium text-zinc-200">
-                          {log.actionToTake || (
-                            <span className="text-amber-400">
-                              Awaiting Director
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <div className="text-white font-medium">
-                            {log.assignedTo}
-                          </div>
-                          <div className="text-[11px] text-zinc-400">
-                            {log.timelineToSolve}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-3 text-right space-x-2 whitespace-nowrap">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
-                              log.status === "RESOLVED"
-                                ? "bg-emerald-500/15 text-emerald-300"
-                                : log.status === "WAITING_DIRECTOR"
-                                ? "bg-amber-500/15 text-amber-300"
-                                : "bg-white/[0.08] text-zinc-300"
-                            }`}
-                          >
-                            {log.status.replace("_", " ")}
-                          </span>
-                          {!log.pushedToRoadmap &&
-                            log.type !== "ACHIEVEMENT" && (
-                              <button
-                                type="button"
-                                onClick={() => handlePushToRoadmap(log.id)}
-                                className="px-2.5 py-0.5 rounded-full bg-white text-black hover:bg-zinc-200 text-[10px] font-semibold transition"
-                              >
-                                + Timeline
-                              </button>
-                            )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {(activeTab === "POST_LIVE_SHUTDOWN" ||
+          activeTab === "MEETING_REPORT") && (
+          <PostLiveAndPostmortemDesk
+            mode={activeTab === "POST_LIVE_SHUTDOWN" ? "SHUTDOWN" : "POSTMORTEM"}
+            onSwitchMode={(nextMode) =>
+              setActiveTab(
+                nextMode === "SHUTDOWN" ? "POST_LIVE_SHUTDOWN" : "MEETING_REPORT"
+              )
+            }
+            users={users}
+            myIdentity={myIdentity}
+            preFlightChecklists={checklists}
+            shutdownChecks={shutdownChecks}
+            postmortemFeedback={postmortemFeedback}
+            weeklyCustody={weeklyCustody}
+            weeklyReportsArchive={weeklyReportsArchive}
+            qcLogs={qcLogs}
+            onRefreshData={(updated) => {
+              if (updated) {
+                applyServerState(updated);
+              } else {
+                fetchCrewQcData();
+              }
+            }}
+            onTriggerToast={triggerToast}
+            onPreviewFrame={(log) => setPreviewImageLog(log)}
+            onPushToRoadmap={handlePushToRoadmap}
+            onExportCsv={handleExportMeetingCsv}
+          />
         )}
       </main>
 
