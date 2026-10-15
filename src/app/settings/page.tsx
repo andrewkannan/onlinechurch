@@ -16,6 +16,10 @@ import {
   resolveRobotAvatarUrl,
   generateCustomRobotAvatar,
 } from "@/lib/robotAvatars";
+import WeeklyServingRosterTable, {
+  WeeklyServiceRoster,
+  OperatorBlockoutDate,
+} from "@/components/WeeklyServingRosterTable";
 
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
 type DutyStatus = "ON_DUTY" | "STANDBY" | "OFF_DUTY";
@@ -142,7 +146,7 @@ export default function SettingsPage() {
 
   // Active Settings Section Tab (Defaults to USER_ACCOUNTS so User Account Management for All Roles is immediately visible)
   const [activeSection, setActiveSection] = useState<
-    "USER_ACCOUNTS" | "ROLE_MATRIX" | "BRANDING_APIS"
+    "USER_ACCOUNTS" | "WEEKLY_ROSTER" | "ROLE_MATRIX" | "BRANDING_APIS"
   >("USER_ACCOUNTS");
 
   // Toast notification
@@ -157,6 +161,10 @@ export default function SettingsPage() {
   // =========================================================================
   const [users, setUsers] = useState<CrewUserAccount[]>([]);
   const [checklists, setChecklists] = useState<CrewChecklistItem[]>([]);
+  const [weeklyRoster, setWeeklyRoster] = useState<WeeklyServiceRoster[]>([]);
+  const [rosterBlockouts, setRosterBlockouts] = useState<
+    OperatorBlockoutDate[]
+  >([]);
   const [roleFilter, setRoleFilter] = useState<"ALL" | CrewRole>("ALL");
   const [selectedMatrixRole, setSelectedMatrixRole] =
     useState<CrewRole>("DIRECTOR");
@@ -191,13 +199,20 @@ export default function SettingsPage() {
     Record<string, { task: string; phase: PreFlightPhase }>
   >({});
 
+  const applyCrewQcState = (data: any) => {
+    if (!data) return;
+    if (data.users) setUsers(data.users);
+    if (data.checklists) setChecklists(data.checklists);
+    if (data.weeklyRoster) setWeeklyRoster(data.weeklyRoster);
+    if (data.rosterBlockouts) setRosterBlockouts(data.rosterBlockouts);
+  };
+
   const fetchUsersAndChecks = async () => {
     try {
       const res = await fetch("/api/crew-qc", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
-      if (data.users) setUsers(data.users);
-      if (data.checklists) setChecklists(data.checklists);
+      applyCrewQcState(data);
     } catch (e) {
       console.error("Failed to load user accounts:", e);
     }
@@ -610,6 +625,27 @@ export default function SettingsPage() {
 
             <button
               type="button"
+              onClick={() => setActiveSection("WEEKLY_ROSTER")}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-2 ${
+                activeSection === "WEEKLY_ROSTER"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <span>Weekly Serving Roster</span>
+              <span
+                className={`tabular-nums text-[10px] px-1.5 py-0.2 rounded-full ${
+                  activeSection === "WEEKLY_ROSTER"
+                    ? "bg-black/10 text-black font-bold"
+                    : "bg-emerald-500/20 text-emerald-300"
+                }`}
+              >
+                {weeklyRoster.length || 4} Wks
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveSection("ROLE_MATRIX")}
               className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-2 ${
                 activeSection === "ROLE_MATRIX"
@@ -642,6 +678,26 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* ===================================================================
+            TAB 0: WEEKLY SERVING ROSTER TABLE & SMART ROTATION
+           =================================================================== */}
+        {activeSection === "WEEKLY_ROSTER" && (
+          <WeeklyServingRosterTable
+            weeklyRoster={weeklyRoster}
+            rosterBlockouts={rosterBlockouts}
+            users={users}
+            currentUser={{
+              id: authUser?.id || "usr-director-1",
+              name: authUser?.name || "Andrew",
+              role: authUser?.role || "DIRECTOR",
+              callsign: authUser?.callsign,
+              avatarUrl: authUser?.avatarUrl,
+            }}
+            onRefreshState={applyCrewQcState}
+            onTriggerToast={triggerToast}
+          />
+        )}
 
         {/* ===================================================================
             TAB 1: USER ACCOUNT MANAGEMENT FOR ALL ROLES (DEFAULT)

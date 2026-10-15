@@ -10,6 +10,10 @@ import PostLiveAndPostmortemDesk, {
   WeeklyCustodyState,
   ArchivedWeeklyReport,
 } from "@/components/PostLiveAndPostmortemDesk";
+import WeeklyServingRosterTable, {
+  WeeklyServiceRoster,
+  OperatorBlockoutDate,
+} from "@/components/WeeklyServingRosterTable";
 import { useAuth } from "@/components/AuthProvider";
 import {
   ROLE_ACCESS_MATRIX,
@@ -366,6 +370,10 @@ export default function CrewAndQcPage() {
   const [weeklyReportsArchive, setWeeklyReportsArchive] = useState<
     ArchivedWeeklyReport[]
   >([]);
+  const [weeklyRoster, setWeeklyRoster] = useState<WeeklyServiceRoster[]>([]);
+  const [rosterBlockouts, setRosterBlockouts] = useState<
+    OperatorBlockoutDate[]
+  >([]);
   const [qcLogs, setQcLogs] = useState<QcLogItem[]>([]);
   const [directorSignOff, setDirectorSignOff] = useState({
     clearedToGoLive: false,
@@ -377,6 +385,7 @@ export default function CrewAndQcPage() {
   // Active workspace tab
   const [activeTab, setActiveTab] = useState<
     | "PRE_LIVE"
+    | "WEEKLY_ROSTER"
     | "QC_PAD"
     | "POST_LIVE_SHUTDOWN"
     | "MEETING_REPORT"
@@ -517,6 +526,8 @@ export default function CrewAndQcPage() {
     if (data.weeklyCustody) setWeeklyCustody(data.weeklyCustody);
     if (data.weeklyReportsArchive)
       setWeeklyReportsArchive(data.weeklyReportsArchive);
+    if (data.weeklyRoster) setWeeklyRoster(data.weeklyRoster);
+    if (data.rosterBlockouts) setRosterBlockouts(data.rosterBlockouts);
     if (data.qcLogs) setQcLogs(data.qcLogs);
     if (data.directorSignOff) setDirectorSignOff(data.directorSignOff);
   };
@@ -1246,6 +1257,29 @@ export default function CrewAndQcPage() {
               </button>
             )}
 
+            {canAccessCrewTab(myIdentity.role, "WEEKLY_ROSTER") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("WEEKLY_ROSTER")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                  activeTab === "WEEKLY_ROSTER"
+                    ? "bg-white text-black font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <span>Weekly Roster</span>
+                <span
+                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                    activeTab === "WEEKLY_ROSTER"
+                      ? "bg-black/10 text-black font-bold"
+                      : "bg-emerald-500/20 text-emerald-300"
+                  }`}
+                >
+                  {weeklyRoster.length || 4} Wks
+                </span>
+              </button>
+            )}
+
             {canAccessCrewTab(myIdentity.role, "QC_PAD") && (
               <button
                 type="button"
@@ -1360,6 +1394,26 @@ export default function CrewAndQcPage() {
             )}
           </div>
         </div>
+
+        {/* ===================================================================
+            VIEW 0: WEEKLY SERVING ROSTER TABLE & SMART ROTATION
+           =================================================================== */}
+        {activeTab === "WEEKLY_ROSTER" && (
+          <WeeklyServingRosterTable
+            weeklyRoster={weeklyRoster}
+            rosterBlockouts={rosterBlockouts}
+            users={users}
+            currentUser={{
+              id: myIdentity.id,
+              name: myIdentity.name,
+              role: myIdentity.role,
+              callsign: authUser?.callsign,
+              avatarUrl: authUser?.avatarUrl,
+            }}
+            onRefreshState={applyServerState}
+            onTriggerToast={triggerToast}
+          />
+        )}
 
         {/* ===================================================================
             VIEW 1: PRE-FLIGHT VERIFICATION & GO / NO-GO POLL

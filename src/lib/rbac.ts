@@ -9,6 +9,7 @@ export type AppRoutePath =
 
 export type CrewWorkspaceTab =
   | "PRE_LIVE"
+  | "WEEKLY_ROSTER"
   | "QC_PAD"
   | "POST_LIVE_SHUTDOWN"
   | "MEETING_REPORT"
@@ -53,12 +54,13 @@ export const ROLE_ACCESS_MATRIX: Record<CrewRole, RolePermissionSpec> = {
     callsignPrefix: "TD-01",
     badgeColor: "bg-rose-500/15 text-rose-300 border-rose-500/30",
     summary:
-      "Unrestricted full-system command across all broadcast routes, all 5 department checklists, Director Triage Queue, Team & Account administration, Training certification, and final Weekly Report approval.",
+      "Unrestricted full-system command across all broadcast routes, all 5 department checklists, Weekly Serving Roster, Director Triage Queue, Team & Account administration, Training certification, and final Weekly Report approval.",
     defaultLandingRoute: "/crew",
     defaultCrewTab: "PRE_LIVE",
     allowedRoutes: ["/", "/crew", "/roadmap", "/reports", "/settings"],
     allowedCrewTabs: [
       "PRE_LIVE",
+      "WEEKLY_ROSTER",
       "QC_PAD",
       "POST_LIVE_SHUTDOWN",
       "MEETING_REPORT",
@@ -81,10 +83,10 @@ export const ROLE_ACCESS_MATRIX: Record<CrewRole, RolePermissionSpec> = {
     },
     moduleBreakdown: [
       {
-        module: "Pre-Flight & Safe Shutdown",
+        module: "Pre-Flight, Weekly Roster & Safe Shutdown",
         accessLevel: "FULL_CONTROL",
         detail:
-          "Inspects all 5 stations, assigns tasks, triggers 'Verify All', confirms 'On Air', and resets sessions.",
+          "Manages the multi-week Sunday Serving Roster, auto-rotates crew, syncs roster to Pre-Flight, inspects all 5 stations, and confirms 'On Air'.",
       },
       {
         module: "Live QC & Director Queue",
@@ -125,6 +127,7 @@ export const ROLE_ACCESS_MATRIX: Record<CrewRole, RolePermissionSpec> = {
     allowedRoutes: ["/", "/crew", "/roadmap", "/reports"],
     allowedCrewTabs: [
       "PRE_LIVE",
+      "WEEKLY_ROSTER",
       "QC_PAD",
       "POST_LIVE_SHUTDOWN",
       "MEETING_REPORT",
@@ -146,10 +149,10 @@ export const ROLE_ACCESS_MATRIX: Record<CrewRole, RolePermissionSpec> = {
     },
     moduleBreakdown: [
       {
-        module: "Pre-Flight & Safe Shutdown",
+        module: "Pre-Flight, Weekly Roster & Safe Shutdown",
         accessLevel: "STATION_ONLY",
         detail:
-          "Auto-filtered to QC station checks (stream health, loudness, test slates, timecoded log export).",
+          "Views Sunday serving schedule, confirms QC shift/swap requests, and verifies QC station checks.",
       },
       {
         module: "Live QC & Director Queue",
@@ -189,6 +192,7 @@ export const ROLE_ACCESS_MATRIX: Record<CrewRole, RolePermissionSpec> = {
     allowedRoutes: ["/", "/crew", "/reports"],
     allowedCrewTabs: [
       "PRE_LIVE",
+      "WEEKLY_ROSTER",
       "POST_LIVE_SHUTDOWN",
       "MEETING_REPORT",
       "TRAINING",
@@ -247,6 +251,7 @@ export const ROLE_ACCESS_MATRIX: Record<CrewRole, RolePermissionSpec> = {
     allowedRoutes: ["/crew"],
     allowedCrewTabs: [
       "PRE_LIVE",
+      "WEEKLY_ROSTER",
       "QC_PAD",
       "POST_LIVE_SHUTDOWN",
       "MEETING_REPORT",
@@ -268,10 +273,10 @@ export const ROLE_ACCESS_MATRIX: Record<CrewRole, RolePermissionSpec> = {
     },
     moduleBreakdown: [
       {
-        module: "Pre-Flight & Safe Shutdown",
+        module: "Pre-Flight, Weekly Roster & Safe Shutdown",
         accessLevel: "STATION_ONLY",
         detail:
-          "Auto-locked to CAMERA station tasks (5600K white balance, iris, Genlock, lens cap, battery dock) for 1-tap phone checkoff.",
+          "Views weekly Sunday serving roster, confirms CAMERA shifts, and checks off 5600K white balance, IG blur framing, and lens strike.",
       },
       {
         module: "Live QC & Queue",
@@ -305,6 +310,7 @@ export const ROLE_ACCESS_MATRIX: Record<CrewRole, RolePermissionSpec> = {
     allowedRoutes: ["/crew"],
     allowedCrewTabs: [
       "PRE_LIVE",
+      "WEEKLY_ROSTER",
       "QC_PAD",
       "POST_LIVE_SHUTDOWN",
       "MEETING_REPORT",

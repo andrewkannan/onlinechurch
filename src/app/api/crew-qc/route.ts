@@ -975,6 +975,359 @@ const DEFAULT_WEEKLY_ARCHIVE: ArchivedWeeklyReport[] = [
   },
 ];
 
+export type RosterSlotStatus =
+  | "CONFIRMED"
+  | "PENDING"
+  | "SWAP_REQUESTED"
+  | "DECLINED";
+
+export interface WeeklyRosterSlot {
+  role: CrewRole;
+  primaryUserId: string;
+  primaryUserName: string;
+  primaryCallsign: string;
+  backupUserId?: string | null;
+  backupUserName?: string | null;
+  status: RosterSlotStatus;
+  confirmedAt?: string | null;
+  callTimeMyt: string;
+  notes?: string;
+  swapRequestedBy?: string | null;
+  swapReason?: string | null;
+}
+
+export interface WeeklyServiceRoster {
+  id: string;
+  sundayDateIso: string;
+  weekLabel: string;
+  serviceTheme: string;
+  checkStartMyt: string;
+  earlyGoLiveMyt: string;
+  serviceStartMyt: string;
+  isPublished: boolean;
+  syncedToPreFlight?: boolean;
+  slots: Record<CrewRole, WeeklyRosterSlot>;
+}
+
+export interface OperatorBlockoutDate {
+  id: string;
+  userId: string;
+  userName: string;
+  role: CrewRole;
+  sundayDateIso: string;
+  reason: string;
+  createdAt: string;
+}
+
+const DEFAULT_WEEKLY_ROSTER: WeeklyServiceRoster[] = [
+  {
+    id: "wk-roster-1",
+    sundayDateIso: "2026-10-18",
+    weekLabel: "Sun, 18 Oct 2026",
+    serviceTheme: "Sunday Celebration · Faith & Miracles",
+    checkStartMyt: "06:00 AM MYT",
+    earlyGoLiveMyt: "08:25 AM MYT (-5m)",
+    serviceStartMyt: "08:30 AM MYT",
+    isPublished: true,
+    syncedToPreFlight: true,
+    slots: {
+      DIRECTOR: {
+        role: "DIRECTOR",
+        primaryUserId: "usr-director-1",
+        primaryUserName: "Andrew",
+        primaryCallsign: "TD-01",
+        backupUserId: "usr-qc-1",
+        backupUserName: "Daniel Wong",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Thu 10:15 AM MYT",
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Master Switcher & 8:25 AM Early Go-Live Sign-Off",
+      },
+      CAMERA: {
+        role: "CAMERA",
+        primaryUserId: "usr-camera-1",
+        primaryUserName: "Kevin Lim",
+        primaryCallsign: "CAM-01",
+        backupUserId: "usr-director-1",
+        backupUserName: "Andrew",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Thu 11:02 AM MYT",
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Cam 1 & 2 Sony FX3 · 5600K & IG Top/Bottom Blur",
+      },
+      AUDIO: {
+        role: "AUDIO",
+        primaryUserId: "usr-audio-1",
+        primaryUserName: "Jason Tan",
+        primaryCallsign: "A1-MIX",
+        backupUserId: "usr-camera-1",
+        backupUserName: "Kevin Lim",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Thu 02:30 PM MYT",
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Allen & Heath SQ · -14 LUFS Broadcast Bus",
+      },
+      MODERATOR: {
+        role: "MODERATOR",
+        primaryUserId: "usr-mod-1",
+        primaryUserName: "Hannah Lee",
+        primaryCallsign: "MOD-01",
+        backupUserId: "usr-qc-1",
+        backupUserName: "Daniel Wong",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Fri 09:20 AM MYT",
+        callTimeMyt: "07:00 AM MYT",
+        notes: "YouTube/IG Live Chat + Weekly Report Co-Custodian",
+      },
+      QC: {
+        role: "QC",
+        primaryUserId: "usr-qc-1",
+        primaryUserName: "Daniel Wong",
+        primaryCallsign: "QC-01",
+        backupUserId: "usr-director-1",
+        backupUserName: "Andrew",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Fri 09:45 AM MYT",
+        callTimeMyt: "06:30 AM MYT",
+        notes: "1080p60 & IG Blur QC + Weekly Report Co-Custodian",
+      },
+    },
+  },
+  {
+    id: "wk-roster-2",
+    sundayDateIso: "2026-10-25",
+    weekLabel: "Sun, 25 Oct 2026",
+    serviceTheme: "Holy Communion & Family Blessing Sunday",
+    checkStartMyt: "06:00 AM MYT",
+    earlyGoLiveMyt: "08:25 AM MYT (-5m)",
+    serviceStartMyt: "08:30 AM MYT",
+    isPublished: true,
+    syncedToPreFlight: false,
+    slots: {
+      DIRECTOR: {
+        role: "DIRECTOR",
+        primaryUserId: "usr-director-1",
+        primaryUserName: "Andrew",
+        primaryCallsign: "TD-01",
+        backupUserId: "usr-qc-1",
+        backupUserName: "Daniel Wong",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Fri 10:00 AM MYT",
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Communion Multi-Cam Cues & 8:25 AM Go-Live",
+      },
+      CAMERA: {
+        role: "CAMERA",
+        primaryUserId: "usr-camera-1",
+        primaryUserName: "Kevin Lim",
+        primaryCallsign: "CAM-01",
+        backupUserId: "usr-audio-1",
+        backupUserName: "Jason Tan",
+        status: "SWAP_REQUESTED",
+        confirmedAt: null,
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Pulpit Close-Up + Altar Wide Shot",
+        swapRequestedBy: "Kevin Lim",
+        swapReason: "Attending cousin wedding morning session",
+      },
+      AUDIO: {
+        role: "AUDIO",
+        primaryUserId: "usr-audio-1",
+        primaryUserName: "Jason Tan",
+        primaryCallsign: "A1-MIX",
+        backupUserId: "usr-director-1",
+        backupUserName: "Andrew",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Fri 01:15 PM MYT",
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Acoustic Choir Mics + -14 LUFS Bus",
+      },
+      MODERATOR: {
+        role: "MODERATOR",
+        primaryUserId: "usr-mod-1",
+        primaryUserName: "Hannah Lee",
+        primaryCallsign: "MOD-01",
+        backupUserId: "usr-qc-1",
+        backupUserName: "Daniel Wong",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Fri 03:00 PM MYT",
+        callTimeMyt: "07:00 AM MYT",
+        notes: "Online Communion Welcome + Weekly Report Custodian",
+      },
+      QC: {
+        role: "QC",
+        primaryUserId: "usr-qc-1",
+        primaryUserName: "Daniel Wong",
+        primaryCallsign: "QC-01",
+        backupUserId: "usr-director-1",
+        backupUserName: "Andrew",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Fri 04:10 PM MYT",
+        callTimeMyt: "06:30 AM MYT",
+        notes: "Dual-Platform RTMPS & Weekly Report Custodian",
+      },
+    },
+  },
+  {
+    id: "wk-roster-3",
+    sundayDateIso: "2026-11-01",
+    weekLabel: "Sun, 01 Nov 2026",
+    serviceTheme: "NextGen Youth & Worship Takeover",
+    checkStartMyt: "06:00 AM MYT",
+    earlyGoLiveMyt: "08:25 AM MYT (-5m)",
+    serviceStartMyt: "08:30 AM MYT",
+    isPublished: true,
+    syncedToPreFlight: false,
+    slots: {
+      DIRECTOR: {
+        role: "DIRECTOR",
+        primaryUserId: "usr-qc-1",
+        primaryUserName: "Daniel Wong",
+        primaryCallsign: "QC-01",
+        backupUserId: "usr-director-1",
+        backupUserName: "Andrew",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Sat 11:00 AM MYT",
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Daniel Certified TD Rotation (Andrew Mentoring)",
+      },
+      CAMERA: {
+        role: "CAMERA",
+        primaryUserId: "usr-camera-1",
+        primaryUserName: "Kevin Lim",
+        primaryCallsign: "CAM-01",
+        backupUserId: "usr-mod-1",
+        backupUserName: "Hannah Lee",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Sat 11:20 AM MYT",
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Dynamic Handheld + IG Blur Landscape Scene",
+      },
+      AUDIO: {
+        role: "AUDIO",
+        primaryUserId: "usr-audio-1",
+        primaryUserName: "Jason Tan",
+        primaryCallsign: "A1-MIX",
+        backupUserId: "usr-camera-1",
+        backupUserName: "Kevin Lim",
+        status: "PENDING",
+        confirmedAt: null,
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Full Youth Band IEMs + Broadcast Stem Mix",
+      },
+      MODERATOR: {
+        role: "MODERATOR",
+        primaryUserId: "usr-mod-1",
+        primaryUserName: "Hannah Lee",
+        primaryCallsign: "MOD-01",
+        backupUserId: "usr-director-1",
+        backupUserName: "Andrew",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Sat 12:05 PM MYT",
+        callTimeMyt: "07:00 AM MYT",
+        notes: "Youth Chat Polls + Weekly Report Custodian",
+      },
+      QC: {
+        role: "QC",
+        primaryUserId: "usr-director-1",
+        primaryUserName: "Andrew",
+        primaryCallsign: "TD-01",
+        backupUserId: "usr-qc-1",
+        backupUserName: "Daniel Wong",
+        status: "CONFIRMED",
+        confirmedAt: "Confirmed · Sat 12:10 PM MYT",
+        callTimeMyt: "06:30 AM MYT",
+        notes: "Stream QC Lead Rotation + Weekly Report Custodian",
+      },
+    },
+  },
+  {
+    id: "wk-roster-4",
+    sundayDateIso: "2026-11-08",
+    weekLabel: "Sun, 08 Nov 2026",
+    serviceTheme: "Missions & Global Outreach Sunday",
+    checkStartMyt: "06:00 AM MYT",
+    earlyGoLiveMyt: "08:25 AM MYT (-5m)",
+    serviceStartMyt: "08:30 AM MYT",
+    isPublished: false,
+    syncedToPreFlight: false,
+    slots: {
+      DIRECTOR: {
+        role: "DIRECTOR",
+        primaryUserId: "usr-director-1",
+        primaryUserName: "Andrew",
+        primaryCallsign: "TD-01",
+        backupUserId: "usr-qc-1",
+        backupUserName: "Daniel Wong",
+        status: "PENDING",
+        confirmedAt: null,
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Live Remote Missionary Video Feeds & Switcher",
+      },
+      CAMERA: {
+        role: "CAMERA",
+        primaryUserId: "usr-camera-1",
+        primaryUserName: "Kevin Lim",
+        primaryCallsign: "CAM-01",
+        backupUserId: "usr-director-1",
+        backupUserName: "Andrew",
+        status: "PENDING",
+        confirmedAt: null,
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Cam 1 & 2 + Picture-in-Picture Framing",
+      },
+      AUDIO: {
+        role: "AUDIO",
+        primaryUserId: "usr-audio-1",
+        primaryUserName: "Jason Tan",
+        primaryCallsign: "A1-MIX",
+        backupUserId: "usr-camera-1",
+        backupUserName: "Kevin Lim",
+        status: "PENDING",
+        confirmedAt: null,
+        callTimeMyt: "06:00 AM MYT",
+        notes: "Zoom/Remote Guest Mix-Minus + -14 LUFS Bus",
+      },
+      MODERATOR: {
+        role: "MODERATOR",
+        primaryUserId: "usr-mod-1",
+        primaryUserName: "Hannah Lee",
+        primaryCallsign: "MOD-01",
+        backupUserId: "usr-qc-1",
+        backupUserName: "Daniel Wong",
+        status: "PENDING",
+        confirmedAt: null,
+        callTimeMyt: "07:00 AM MYT",
+        notes: "Global Viewer Welcome + Weekly Report Custodian",
+      },
+      QC: {
+        role: "QC",
+        primaryUserId: "usr-qc-1",
+        primaryUserName: "Daniel Wong",
+        primaryCallsign: "QC-01",
+        backupUserId: "usr-director-1",
+        backupUserName: "Andrew",
+        status: "PENDING",
+        confirmedAt: null,
+        callTimeMyt: "06:30 AM MYT",
+        notes: "YouTube/IG Sync Check + Weekly Report Custodian",
+      },
+    },
+  },
+];
+
+const DEFAULT_ROSTER_BLOCKOUTS: OperatorBlockoutDate[] = [
+  {
+    id: "blk-1",
+    userId: "usr-camera-1",
+    userName: "Kevin Lim",
+    role: "CAMERA",
+    sundayDateIso: "2026-10-25",
+    reason: "Cousin wedding morning session (Swap requested)",
+    createdAt: "2026-10-14T08:00:00.000Z",
+  },
+];
+
 export function getCrewQcState() {
   const store = readFallbackStore();
   if (!store.crewQc || !store.crewQc.v3ApplePro) {
@@ -988,6 +1341,8 @@ export function getCrewQcState() {
       postmortemFeedback: DEFAULT_POSTMORTEM_FEEDBACK,
       weeklyCustody: DEFAULT_WEEKLY_CUSTODY,
       weeklyReportsArchive: DEFAULT_WEEKLY_ARCHIVE,
+      weeklyRoster: DEFAULT_WEEKLY_ROSTER,
+      rosterBlockouts: DEFAULT_ROSTER_BLOCKOUTS,
       activeCrew: DEFAULT_ACTIVE_CREW,
       qcLogs: DEFAULT_QC_LOGS,
       directorSignOff: {
@@ -1172,6 +1527,17 @@ export function getCrewQcState() {
     store.crewQc.weeklyReportsArchive = DEFAULT_WEEKLY_ARCHIVE;
     migrated = true;
   }
+  if (
+    !Array.isArray(store.crewQc.weeklyRoster) ||
+    store.crewQc.weeklyRoster.length === 0
+  ) {
+    store.crewQc.weeklyRoster = DEFAULT_WEEKLY_ROSTER;
+    migrated = true;
+  }
+  if (!Array.isArray(store.crewQc.rosterBlockouts)) {
+    store.crewQc.rosterBlockouts = DEFAULT_ROSTER_BLOCKOUTS;
+    migrated = true;
+  }
 
   // Ensure every user account has an AI Robotic Profile Pic
   if (Array.isArray(store.crewQc.users)) {
@@ -1206,6 +1572,8 @@ export function getCrewQcState() {
     postmortemFeedback: PostmortemFeedbackItem[];
     weeklyCustody: WeeklyCustodyState;
     weeklyReportsArchive: ArchivedWeeklyReport[];
+    weeklyRoster: WeeklyServiceRoster[];
+    rosterBlockouts: OperatorBlockoutDate[];
     activeCrew: ActiveCrewMember[];
     qcLogs: QcLogItem[];
     directorSignOff: {
@@ -1811,6 +2179,461 @@ export async function POST(req: NextRequest) {
       };
 
       state.weeklyReportsArchive = [archived, ...state.weeklyReportsArchive];
+    }
+
+    // =========================================================================
+    // 26. Weekly Serving Roster: Update Slot Assignment (Primary, Backup, Status, Notes)
+    // =========================================================================
+    if (body.action === "UPDATE_ROSTER_SLOT" && body.weekId && body.role) {
+      const targetRole = body.role as CrewRole;
+      const nowTime = formatMYTTime();
+      state.weeklyRoster = state.weeklyRoster.map((week) => {
+        if (week.id !== body.weekId) return week;
+        const currentSlot = week.slots[targetRole];
+        if (!currentSlot) return week;
+
+        const nextPrimaryUser = body.primaryUserId
+          ? state.users.find((u) => u.id === body.primaryUserId)
+          : undefined;
+        const nextBackupUser =
+          body.backupUserId !== undefined
+            ? state.users.find((u) => u.id === body.backupUserId) || null
+            : undefined;
+
+        const nextStatus: RosterSlotStatus =
+          (body.status as RosterSlotStatus) || currentSlot.status;
+
+        const updatedSlot: WeeklyRosterSlot = {
+          ...currentSlot,
+          ...(nextPrimaryUser
+            ? {
+                primaryUserId: nextPrimaryUser.id,
+                primaryUserName: nextPrimaryUser.name,
+                primaryCallsign: nextPrimaryUser.callsign,
+              }
+            : {}),
+          ...(nextBackupUser !== undefined
+            ? {
+                backupUserId: nextBackupUser ? nextBackupUser.id : null,
+                backupUserName: nextBackupUser ? nextBackupUser.name : null,
+              }
+            : {}),
+          status: nextStatus,
+          confirmedAt:
+            nextStatus === "CONFIRMED"
+              ? currentSlot.confirmedAt || `Confirmed · ${nowTime}`
+              : null,
+          ...(body.callTimeMyt !== undefined
+            ? { callTimeMyt: String(body.callTimeMyt).trim() }
+            : {}),
+          ...(body.notes !== undefined
+            ? { notes: String(body.notes).trim() }
+            : {}),
+          ...(nextStatus !== "SWAP_REQUESTED"
+            ? { swapRequestedBy: null, swapReason: null }
+            : {}),
+        };
+
+        return {
+          ...week,
+          slots: {
+            ...week.slots,
+            [targetRole]: updatedSlot,
+          },
+        };
+      });
+    }
+
+    // 27. Weekly Serving Roster: 1-Click Confirm / Toggle Operator Shift
+    if (body.action === "CONFIRM_ROSTER_SLOT" && body.weekId && body.role) {
+      const targetRole = body.role as CrewRole;
+      const nowTime = formatMYTTime();
+      state.weeklyRoster = state.weeklyRoster.map((week) => {
+        if (week.id !== body.weekId) return week;
+        const slot = week.slots[targetRole];
+        if (!slot) return week;
+        const nextStatus: RosterSlotStatus =
+          body.status ||
+          (slot.status === "CONFIRMED" ? "PENDING" : "CONFIRMED");
+        return {
+          ...week,
+          slots: {
+            ...week.slots,
+            [targetRole]: {
+              ...slot,
+              status: nextStatus,
+              confirmedAt:
+                nextStatus === "CONFIRMED" ? `Confirmed · ${nowTime}` : null,
+              swapRequestedBy: null,
+              swapReason: null,
+            },
+          },
+        };
+      });
+    }
+
+    // 28. Weekly Serving Roster: Request Shift Swap
+    if (body.action === "REQUEST_ROSTER_SWAP" && body.weekId && body.role) {
+      const targetRole = body.role as CrewRole;
+      state.weeklyRoster = state.weeklyRoster.map((week) => {
+        if (week.id !== body.weekId) return week;
+        const slot = week.slots[targetRole];
+        if (!slot) return week;
+        return {
+          ...week,
+          slots: {
+            ...week.slots,
+            [targetRole]: {
+              ...slot,
+              status: "SWAP_REQUESTED",
+              confirmedAt: null,
+              swapRequestedBy:
+                String(body.requestedBy || slot.primaryUserName).trim(),
+              swapReason:
+                String(
+                  body.reason || "Schedule conflict — requesting station cover"
+                ).trim(),
+            },
+          },
+        };
+      });
+    }
+
+    // 29. Weekly Serving Roster: Claim / Approve Shift Swap
+    if (
+      body.action === "CLAIM_ROSTER_SWAP" &&
+      body.weekId &&
+      body.role &&
+      body.claimingUserId
+    ) {
+      const targetRole = body.role as CrewRole;
+      const claimingUser = state.users.find(
+        (u) => u.id === body.claimingUserId
+      );
+      const nowTime = formatMYTTime();
+      if (claimingUser) {
+        state.weeklyRoster = state.weeklyRoster.map((week) => {
+          if (week.id !== body.weekId) return week;
+          const slot = week.slots[targetRole];
+          if (!slot) return week;
+          return {
+            ...week,
+            slots: {
+              ...week.slots,
+              [targetRole]: {
+                ...slot,
+                backupUserId: slot.primaryUserId,
+                backupUserName: slot.primaryUserName,
+                primaryUserId: claimingUser.id,
+                primaryUserName: claimingUser.name,
+                primaryCallsign: claimingUser.callsign,
+                status: "CONFIRMED",
+                confirmedAt: `Swap Covered by ${claimingUser.name} · ${nowTime}`,
+                swapRequestedBy: null,
+                swapReason: null,
+              },
+            },
+          };
+        });
+      }
+    }
+
+    // 30. Weekly Serving Roster: Smart Auto-Rotate & Fair-Load Scheduler across All Weeks
+    if (body.action === "AUTO_ROTATE_ROSTER") {
+      const rolesOrder: CrewRole[] = [
+        "DIRECTOR",
+        "CAMERA",
+        "AUDIO",
+        "MODERATOR",
+        "QC",
+      ];
+      state.weeklyRoster = state.weeklyRoster.map((week, weekIdx) => {
+        const usedPrimaryIdsThisSunday = new Set<string>();
+        const nextSlots = { ...week.slots };
+
+        rolesOrder.forEach((role, roleIdx) => {
+          const currentSlot = week.slots[role];
+          // Find users not blocked out on this Sunday
+          const blockedUserIds = new Set(
+            state.rosterBlockouts
+              .filter((b) => b.sundayDateIso === week.sundayDateIso)
+              .map((b) => b.userId)
+          );
+
+          // Candidate pool: prefer role-matched or certified operators first, then any available operator
+          const roleMatchedPool = state.users.filter(
+            (u) =>
+              (u.role === role ||
+                (Array.isArray(u.certifiedRoles) &&
+                  u.certifiedRoles.includes(role))) &&
+              !blockedUserIds.has(u.id)
+          );
+          const fallbackPool = state.users.filter(
+            (u) => !blockedUserIds.has(u.id)
+          );
+
+          const pool =
+            roleMatchedPool.length > 0
+              ? roleMatchedPool
+              : fallbackPool.length > 0
+              ? fallbackPool
+              : state.users;
+
+          // Pick a primary user not yet used on this Sunday if possible, rotating by weekIdx
+          const unbookedPool = pool.filter(
+            (u) => !usedPrimaryIdsThisSunday.has(u.id)
+          );
+          const effectivePool =
+            unbookedPool.length > 0 ? unbookedPool : pool;
+          const chosenPrimary =
+            effectivePool[(weekIdx + roleIdx) % effectivePool.length] ||
+            state.users[0];
+
+          usedPrimaryIdsThisSunday.add(chosenPrimary.id);
+
+          // Pick a backup operator distinct from primary
+          const backupCandidates = state.users.filter(
+            (u) =>
+              u.id !== chosenPrimary.id && !blockedUserIds.has(u.id)
+          );
+          const chosenBackup =
+            backupCandidates.length > 0
+              ? backupCandidates[(weekIdx + roleIdx + 1) % backupCandidates.length]
+              : null;
+
+          nextSlots[role] = {
+            ...currentSlot,
+            role,
+            primaryUserId: chosenPrimary.id,
+            primaryUserName: chosenPrimary.name,
+            primaryCallsign: chosenPrimary.callsign,
+            backupUserId: chosenBackup ? chosenBackup.id : null,
+            backupUserName: chosenBackup ? chosenBackup.name : null,
+            status: weekIdx === 0 ? "CONFIRMED" : currentSlot.status === "CONFIRMED" ? "CONFIRMED" : "PENDING",
+            confirmedAt:
+              weekIdx === 0
+                ? currentSlot.confirmedAt || `Auto-Verified · ${formatMYTTime()}`
+                : currentSlot.confirmedAt,
+            swapRequestedBy: null,
+            swapReason: null,
+          };
+        });
+
+        return {
+          ...week,
+          slots: nextSlots,
+        };
+      });
+    }
+
+    // 31. Weekly Serving Roster: Sync Selected Week Roster -> Live Pre-Flight Checklists, Shutdown & Weekly Custodians
+    if (body.action === "SYNC_ROSTER_WEEK_TO_LIVE" && body.weekId) {
+      const targetWeek = state.weeklyRoster.find((w) => w.id === body.weekId);
+      if (targetWeek) {
+        // Mark only this week as syncedToPreFlight
+        state.weeklyRoster = state.weeklyRoster.map((w) => ({
+          ...w,
+          syncedToPreFlight: w.id === body.weekId,
+        }));
+
+        // Update Pre-Flight Checklists to match the rostered primary operators for each station
+        state.checklists = state.checklists.map((chk) => {
+          const slot = targetWeek.slots[chk.role];
+          if (!slot) return chk;
+          return {
+            ...chk,
+            assignedToUserId: slot.primaryUserId,
+            assignedToName: slot.primaryUserName,
+          };
+        });
+
+        // Update Post-Live Shutdown Checklists to match the rostered primary operators
+        state.shutdownChecks = state.shutdownChecks.map((chk) => {
+          const slot = targetWeek.slots[chk.role];
+          if (!slot) return chk;
+          return {
+            ...chk,
+            assignedToUserId: slot.primaryUserId,
+            assignedToName: slot.primaryUserName,
+          };
+        });
+
+        // Update Weekly Report Custodians (QC Lead, Moderator Lead, Director)
+        const qcSlot = targetWeek.slots.QC;
+        const modSlot = targetWeek.slots.MODERATOR;
+        const dirSlot = targetWeek.slots.DIRECTOR;
+        state.weeklyCustody = {
+          ...state.weeklyCustody,
+          weekLabel: `${targetWeek.weekLabel} · ${targetWeek.serviceTheme}`,
+          ...(qcSlot
+            ? {
+                qcLeadName: qcSlot.primaryUserName,
+                qcLeadCallsign: qcSlot.primaryCallsign,
+              }
+            : {}),
+          ...(modSlot
+            ? {
+                modLeadName: modSlot.primaryUserName,
+                modLeadCallsign: modSlot.primaryCallsign,
+              }
+            : {}),
+          ...(dirSlot
+            ? {
+                directorName: dirSlot.primaryUserName,
+              }
+            : {}),
+        };
+      }
+    }
+
+    // 32. Weekly Serving Roster: Add New Upcoming Sunday Week Column (+7 Days)
+    if (body.action === "ADD_ROSTER_WEEK") {
+      const lastWeek = state.weeklyRoster[state.weeklyRoster.length - 1];
+      const baseDate = lastWeek?.sundayDateIso
+        ? new Date(`${lastWeek.sundayDateIso}T08:30:00+08:00`)
+        : new Date();
+      const nextSunday = new Date(baseDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const yyyy = nextSunday.getFullYear();
+      const mm = String(nextSunday.getMonth() + 1).padStart(2, "0");
+      const dd = String(nextSunday.getDate()).padStart(2, "0");
+      const nextIso = `${yyyy}-${mm}-${dd}`;
+      const nextLabel = nextSunday.toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+
+      const dirUser =
+        state.users.find((u) => u.role === "DIRECTOR") || state.users[0];
+      const camUser =
+        state.users.find((u) => u.role === "CAMERA") || state.users[0];
+      const audUser =
+        state.users.find((u) => u.role === "AUDIO") || state.users[0];
+      const modUser =
+        state.users.find((u) => u.role === "MODERATOR") || state.users[0];
+      const qcUser =
+        state.users.find((u) => u.role === "QC") || state.users[0];
+
+      const newWeek: WeeklyServiceRoster = {
+        id: `wk-roster-${Date.now()}`,
+        sundayDateIso: nextIso,
+        weekLabel: body.weekLabel ? String(body.weekLabel).trim() : nextLabel,
+        serviceTheme: body.serviceTheme
+          ? String(body.serviceTheme).trim()
+          : `Sunday Celebration Service · Week ${state.weeklyRoster.length + 1}`,
+        checkStartMyt: "06:00 AM MYT",
+        earlyGoLiveMyt: "08:25 AM MYT (-5m)",
+        serviceStartMyt: "08:30 AM MYT",
+        isPublished: true,
+        syncedToPreFlight: false,
+        slots: {
+          DIRECTOR: {
+            role: "DIRECTOR",
+            primaryUserId: dirUser.id,
+            primaryUserName: dirUser.name,
+            primaryCallsign: dirUser.callsign,
+            backupUserId: qcUser.id,
+            backupUserName: qcUser.name,
+            status: "PENDING",
+            confirmedAt: null,
+            callTimeMyt: "06:00 AM MYT",
+            notes: "Master Switcher & 8:25 AM Early Go-Live Sign-Off",
+          },
+          CAMERA: {
+            role: "CAMERA",
+            primaryUserId: camUser.id,
+            primaryUserName: camUser.name,
+            primaryCallsign: camUser.callsign,
+            backupUserId: dirUser.id,
+            backupUserName: dirUser.name,
+            status: "PENDING",
+            confirmedAt: null,
+            callTimeMyt: "06:00 AM MYT",
+            notes: "Cam 1 & 2 Sony FX3 · 5600K & IG Top/Bottom Blur",
+          },
+          AUDIO: {
+            role: "AUDIO",
+            primaryUserId: audUser.id,
+            primaryUserName: audUser.name,
+            primaryCallsign: audUser.callsign,
+            backupUserId: camUser.id,
+            backupUserName: camUser.name,
+            status: "PENDING",
+            confirmedAt: null,
+            callTimeMyt: "06:00 AM MYT",
+            notes: "Allen & Heath SQ · -14 LUFS Broadcast Bus",
+          },
+          MODERATOR: {
+            role: "MODERATOR",
+            primaryUserId: modUser.id,
+            primaryUserName: modUser.name,
+            primaryCallsign: modUser.callsign,
+            backupUserId: qcUser.id,
+            backupUserName: qcUser.name,
+            status: "PENDING",
+            confirmedAt: null,
+            callTimeMyt: "07:00 AM MYT",
+            notes: "YouTube/IG Live Chat + Weekly Report Custodian",
+          },
+          QC: {
+            role: "QC",
+            primaryUserId: qcUser.id,
+            primaryUserName: qcUser.name,
+            primaryCallsign: qcUser.callsign,
+            backupUserId: dirUser.id,
+            backupUserName: dirUser.name,
+            status: "PENDING",
+            confirmedAt: null,
+            callTimeMyt: "06:30 AM MYT",
+            notes: "1080p60 & IG Blur QC + Weekly Report Custodian",
+          },
+        },
+      };
+
+      state.weeklyRoster = [...state.weeklyRoster, newWeek];
+    }
+
+    // 33. Weekly Serving Roster: Update Week Metadata (Service Theme, Published Flag)
+    if (body.action === "UPDATE_ROSTER_WEEK_META" && body.weekId) {
+      state.weeklyRoster = state.weeklyRoster.map((w) => {
+        if (w.id !== body.weekId) return w;
+        return {
+          ...w,
+          ...(body.serviceTheme !== undefined
+            ? { serviceTheme: String(body.serviceTheme).trim() }
+            : {}),
+          ...(body.weekLabel !== undefined
+            ? { weekLabel: String(body.weekLabel).trim() }
+            : {}),
+          ...(body.isPublished !== undefined
+            ? { isPublished: Boolean(body.isPublished) }
+            : {}),
+        };
+      });
+    }
+
+    // 34. Weekly Serving Roster: Add or Remove Operator Blockout / Leave Date
+    if (body.action === "ADD_ROSTER_BLOCKOUT" && body.userId && body.sundayDateIso) {
+      const targetUser = state.users.find((u) => u.id === body.userId);
+      if (targetUser) {
+        const newBlk: OperatorBlockoutDate = {
+          id: `blk-${Date.now()}`,
+          userId: targetUser.id,
+          userName: targetUser.name,
+          role: targetUser.role,
+          sundayDateIso: String(body.sundayDateIso).trim(),
+          reason: String(body.reason || "Personal / Family Leave").trim(),
+          createdAt: new Date().toISOString(),
+        };
+        state.rosterBlockouts = [newBlk, ...state.rosterBlockouts];
+      }
+    }
+
+    if (body.action === "REMOVE_ROSTER_BLOCKOUT" && body.id) {
+      state.rosterBlockouts = state.rosterBlockouts.filter(
+        (b) => b.id !== body.id
+      );
     }
 
     writeFallbackStore("crewQc", state);
