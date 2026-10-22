@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 
-const STORAGE_KEY = "online_church_pastor_meeting_notes_v2";
+const STORAGE_KEY = "online_church_pastor_meeting_notes_v3";
 
 interface MeetingNotesState {
   meetingDate: string;
@@ -13,18 +13,21 @@ interface MeetingNotesState {
   plan2BudgetRemarks: string;
   approvedBudgetOption: string;
   plan3TrainingRemarks: string;
+  plan4SocialRemarks: string;
   generalPastorRemarks: string;
 }
 
 const DEFAULT_NOTES: MeetingNotesState = {
   meetingDate: new Date().toISOString().slice(0, 10),
-  attendees: "Senior Pastor, Online Service Director, Gaby (Media Director) & Leadership Team",
+  attendees:
+    "Senior Pastor, Online Service Director, Gaby (Media Director), Social Media Director & Leadership Team",
   analyticsRemarks: "",
   completedRemarks: "",
   plan1SystemRemarks: "",
   plan2BudgetRemarks: "",
   approvedBudgetOption: "Pending Discussion",
   plan3TrainingRemarks: "",
+  plan4SocialRemarks: "",
   generalPastorRemarks: "",
 };
 
@@ -172,7 +175,7 @@ export default function ExecutivePastorReport() {
                   value={notes.attendees}
                   onChange={(e) => updateNote("attendees", e.target.value)}
                   placeholder="Senior Pastor, Leaders..."
-                  className="mt-0.5 w-full sm:w-72 bg-white border border-[#d2d2d7] rounded-lg px-2.5 py-1 text-xs font-semibold text-[#1d1d1f] focus:outline-none focus:border-[#0066cc]"
+                  className="mt-0.5 w-full sm:w-80 bg-white border border-[#d2d2d7] rounded-lg px-2.5 py-1 text-xs font-semibold text-[#1d1d1f] focus:outline-none focus:border-[#0066cc]"
                 />
               </div>
             </div>
@@ -406,11 +409,11 @@ export default function ExecutivePastorReport() {
             </div>
           </div>
 
-          {/* ==================== 3. UPCOMING PLANS, TIMELINE & BUDGET ==================== */}
+          {/* ==================== 3. UPCOMING PLANS (1 - 4), TIMELINE & BUDGET ==================== */}
           <div className="space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
               <h3 className="text-lg sm:text-xl font-bold tracking-[-0.02em] text-[#1d1d1f]">
-                3. Upcoming Plans, Timeline &amp; Rough Budget
+                3. Upcoming Plans (1 – 4), Timeline &amp; Rough Budget
               </h3>
               <span className="text-xs font-medium text-[#6e6e73]">
                 Action plan to reach 50+ weekly viewers smoothly
@@ -583,87 +586,143 @@ export default function ExecutivePastorReport() {
               </div>
             </div>
 
-            {/* UPCOMING PLAN 3 */}
-            <div className="bg-[#f5f5f7] rounded-2xl p-5 border border-[#e5e5ea] space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#e5e5ea]">
-                <span className="text-base font-bold text-[#1d1d1f]">
-                  Plan 3 · Training for Videographers, Cameramen &amp; Media Team
-                </span>
-                <span className="px-3 py-1 rounded-full bg-[#e8f2ff] text-[#0066cc] text-xs font-bold">
-                  Starting This Week · Led by Gaby (Media Director)
-                </span>
-              </div>
+            {/* UPCOMING PLAN 3 & PLAN 4 SIDE BY SIDE */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* UPCOMING PLAN 3 */}
+              <div className="bg-[#f5f5f7] rounded-2xl p-5 border border-[#e5e5ea] flex flex-col justify-between space-y-3">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#e5e5ea]">
+                    <span className="text-base font-bold text-[#1d1d1f]">
+                      Plan 3 · Media Team Training
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-[#e8f2ff] text-[#0066cc] text-xs font-bold">
+                      Starting This Week
+                    </span>
+                  </div>
 
-              <ul className="space-y-1.5 text-xs text-[#424245]">
-                <li>
-                  • <strong>Training Kickoff:</strong> Starting <strong>this week</strong>, led by <strong>Gaby (Media Director)</strong>.
-                </li>
-                <li>
-                  • <strong>Focus Areas:</strong> Hands-on training for Videographers, Cameramen (Camera 1 &amp; 2nd Crowd/Worship View), and more of the Media Team.
-                </li>
-                <li>
-                  • <strong>Training Plan Chart:</strong> <em>Plan chart still pending for training</em> — will be updated once finalised by Gaby.
-                </li>
-              </ul>
+                  <div className="text-xs font-bold text-[#0066cc]">
+                    Led by Gaby (Media Director)
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
-                <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
-                  <div className="text-[10px] font-bold uppercase text-[#0066cc]">
-                    Starting This Week
-                  </div>
-                  <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
-                    Media Team Training
-                  </div>
-                  <div className="text-[11px] text-[#6e6e73] mt-0.5">
-                    Led by Gaby (Media Director). Plan chart still pending.
-                  </div>
+                  <ul className="space-y-1.5 text-xs text-[#424245]">
+                    <li>
+                      • <strong>Training Kickoff:</strong> Starting <strong>this week</strong> for Videographers, Cameramen, and more of the Media Team.
+                    </li>
+                    <li>
+                      • <strong>Focus Areas:</strong> Hands-on camera framing, smooth movement &amp; operating Camera 1 + 2nd Crowd/Worship View.
+                    </li>
+                    <li>
+                      • <strong>Training Plan Chart:</strong> <em>Plan chart still pending for training</em> — to be updated once finalised by Gaby.
+                    </li>
+                  </ul>
                 </div>
-                <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
-                  <div className="text-[10px] font-bold uppercase text-[#0066cc]">
-                    Week 1 – 2
-                  </div>
-                  <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
-                    Centralised System
-                  </div>
-                  <div className="text-[11px] text-[#6e6e73] mt-0.5">
-                    Roll out checklists, monthly roster &amp; 6:00 AM check.
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
-                  <div className="text-[10px] font-bold uppercase text-[#0066cc]">
-                    Targeted Nov 2026
-                  </div>
-                  <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
-                    Camera (2nd View)
-                  </div>
-                  <div className="text-[11px] text-[#6e6e73] mt-0.5">
-                    RM 3,000–4,500 · Second angle for worship &amp; crowd.
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
-                  <div className="text-[10px] font-bold uppercase text-[#0066cc]">
-                    Targeted Dec 2026
-                  </div>
-                  <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
-                    Live Crowd Mic
-                  </div>
-                  <div className="text-[11px] text-[#6e6e73] mt-0.5">
-                    RM 800–1,800 (Sam's quote) · Congregation worship audio.
-                  </div>
+
+                <div className="bg-white rounded-xl p-3 border border-dashed border-[#c7c7cc]">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#0066cc] mb-1">
+                    ✎ Notes &amp; Remarks — Plan 3 (Training)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={notes.plan3TrainingRemarks}
+                    onChange={(e) => updateNote("plan3TrainingRemarks", e.target.value)}
+                    placeholder="Add Gaby's training schedule notes or trainee names..."
+                    className="w-full text-xs text-[#1d1d1f] placeholder-[#86868b] bg-transparent focus:outline-none resize-y"
+                  />
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl p-3 border border-dashed border-[#c7c7cc]">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#0066cc] mb-1">
-                  ✎ Notes &amp; Remarks — Plan 3 (Training Led by Gaby)
-                </label>
-                <textarea
-                  rows={2}
-                  value={notes.plan3TrainingRemarks}
-                  onChange={(e) => updateNote("plan3TrainingRemarks", e.target.value)}
-                  placeholder="Add Gaby's training schedule notes, trainee names, or Pastor's suggestions..."
-                  className="w-full text-xs text-[#1d1d1f] placeholder-[#86868b] bg-transparent focus:outline-none resize-y"
-                />
+              {/* UPCOMING PLAN 4 */}
+              <div className="bg-[#f5f5f7] rounded-2xl p-5 border border-[#e5e5ea] flex flex-col justify-between space-y-3">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#e5e5ea]">
+                    <span className="text-base font-bold text-[#1d1d1f]">
+                      Plan 4 · Social Media Awareness
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-[#f3e8ff] text-[#6b21a8] text-xs font-bold">
+                      Weekly Routine · RM 0
+                    </span>
+                  </div>
+
+                  <div className="text-xs font-bold text-[#6b21a8]">
+                    Led by Gaby (Media Director) &amp; Social Media Director
+                  </div>
+
+                  <ul className="space-y-1.5 text-xs text-[#424245]">
+                    <li>
+                      • <strong>Mid-Week Sermon Highlight Reel:</strong> Short sermon/worship clip posted mid-week to grow page reach.
+                    </li>
+                    <li>
+                      • <strong>Saturday Reel + Story with Countdown (1 Day Earlier):</strong> Announcing we go <strong>LIVE Sunday at 8:30 AM</strong> with IG Countdown reminder.
+                    </li>
+                    <li>
+                      • <strong>Member &amp; Team Re-Share:</strong> Media team &amp; members re-share Saturday's Story/Reel to personal IG &amp; WhatsApp Status.
+                    </li>
+                    <li>
+                      • <strong>Sunday Morning 8:00 AM Reminder Story:</strong> Quick morning alert before the 8:25 AM Go-Live.
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="bg-white rounded-xl p-3 border border-dashed border-[#c7c7cc]">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6b21a8] mb-1">
+                    ✎ Notes &amp; Remarks — Plan 4 (Social Media Awareness)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={notes.plan4SocialRemarks}
+                    onChange={(e) => updateNote("plan4SocialRemarks", e.target.value)}
+                    placeholder="Add notes on Saturday Reels/Stories, countdown timing, or Social Media Director remarks..."
+                    className="w-full text-xs text-[#1d1d1f] placeholder-[#86868b] bg-transparent focus:outline-none resize-y"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 4-STEP MASTER TIMELINE STRIP */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
+              <div className="bg-[#f5f5f7] rounded-xl p-3.5 border border-[#e5e5ea]">
+                <div className="text-[10px] font-bold uppercase text-[#0066cc]">
+                  Starting This Week
+                </div>
+                <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
+                  Training &amp; Social Promo
+                </div>
+                <div className="text-[11px] text-[#6e6e73] mt-0.5">
+                  Media training (Gaby) + Saturday Reel/Story &amp; Sunday 8:00 AM reminder.
+                </div>
+              </div>
+              <div className="bg-[#f5f5f7] rounded-xl p-3.5 border border-[#e5e5ea]">
+                <div className="text-[10px] font-bold uppercase text-[#0066cc]">
+                  Week 1 – 2
+                </div>
+                <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
+                  Centralised System
+                </div>
+                <div className="text-[11px] text-[#6e6e73] mt-0.5">
+                  Roll out checklists, monthly roster &amp; Sunday 6:00 AM check.
+                </div>
+              </div>
+              <div className="bg-[#f5f5f7] rounded-xl p-3.5 border border-[#e5e5ea]">
+                <div className="text-[10px] font-bold uppercase text-[#0066cc]">
+                  Targeted Nov 2026
+                </div>
+                <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
+                  Camera (2nd View)
+                </div>
+                <div className="text-[11px] text-[#6e6e73] mt-0.5">
+                  RM 3,000–4,500 · Second angle for worship &amp; wide crowd shots.
+                </div>
+              </div>
+              <div className="bg-[#f5f5f7] rounded-xl p-3.5 border border-[#e5e5ea]">
+                <div className="text-[10px] font-bold uppercase text-[#0066cc]">
+                  Targeted Dec 2026
+                </div>
+                <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
+                  Live Crowd Mic
+                </div>
+                <div className="text-[11px] text-[#6e6e73] mt-0.5">
+                  RM 800–1,800 (Sam's quote) · Congregation worship audio.
+                </div>
               </div>
             </div>
           </div>
