@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 
-const STORAGE_KEY = "online_church_pastor_meeting_notes_v1";
+const STORAGE_KEY = "online_church_pastor_meeting_notes_v2";
 
 interface MeetingNotesState {
   meetingDate: string;
@@ -18,7 +18,7 @@ interface MeetingNotesState {
 
 const DEFAULT_NOTES: MeetingNotesState = {
   meetingDate: new Date().toISOString().slice(0, 10),
-  attendees: "Senior Pastor, Online Service Director, Media & Leadership Team",
+  attendees: "Senior Pastor, Online Service Director, Gaby (Media Director) & Leadership Team",
   analyticsRemarks: "",
   completedRemarks: "",
   plan1SystemRemarks: "",
@@ -172,7 +172,7 @@ export default function ExecutivePastorReport() {
                   value={notes.attendees}
                   onChange={(e) => updateNote("attendees", e.target.value)}
                   placeholder="Senior Pastor, Leaders..."
-                  className="mt-0.5 w-full sm:w-64 bg-white border border-[#d2d2d7] rounded-lg px-2.5 py-1 text-xs font-semibold text-[#1d1d1f] focus:outline-none focus:border-[#0066cc]"
+                  className="mt-0.5 w-full sm:w-72 bg-white border border-[#d2d2d7] rounded-lg px-2.5 py-1 text-xs font-semibold text-[#1d1d1f] focus:outline-none focus:border-[#0066cc]"
                 />
               </div>
             </div>
@@ -218,13 +218,13 @@ export default function ExecutivePastorReport() {
 
                 <div className="bg-[#1d1d1f] text-white rounded-2xl p-5 border border-[#1d1d1f]">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-[#30d158]">
-                    Target Goal (Double Viewers)
+                    Next Target Goal (Double Viewership · 2x)
                   </div>
                   <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white my-1.5">
-                    40+ / wk
+                    50+ / wk
                   </div>
                   <div className="text-xs text-[#a1a1a6]">
-                    Combined YouTube + IG weekly viewers (2x growth with stable increase)
+                    Combined YouTube &amp; Instagram with a stable weekly increase
                   </div>
                 </div>
               </div>
@@ -232,17 +232,19 @@ export default function ExecutivePastorReport() {
               {/* Clean Visual Comparison Bars */}
               <div className="bg-white rounded-2xl p-5 border border-[#e5e5ea] space-y-3.5">
                 <div className="flex items-center justify-between text-xs font-bold text-[#1d1d1f]">
-                  <span>Weekly Viewer Growth Comparison</span>
-                  <span className="text-[#15732b]">Aiming to Double Viewership (40+ Weekly)</span>
+                  <span>
+                    Weekly Viewer Growth Comparison (Previous YT Only vs. Now YT + IG vs. Target Goal)
+                  </span>
+                  <span className="text-[#15732b]">Target Goal: 50+ / wk (2x)</span>
                 </div>
 
                 <div className="space-y-2.5 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
                     <div className="sm:col-span-3 font-semibold text-[#1d1d1f]">
-                      Previous (YouTube Only)
+                      Previous (YT Only)
                     </div>
                     <div className="sm:col-span-7 h-4 bg-[#f0f0f5] rounded-full overflow-hidden flex">
-                      <div className="bg-[#8e8e93] h-full" style={{ width: "38%" }} />
+                      <div className="bg-[#8e8e93] h-full" style={{ width: "34%" }} />
                     </div>
                     <div className="sm:col-span-2 sm:text-right font-bold text-[#1d1d1f]">
                       10 – 20 / wk
@@ -251,11 +253,11 @@ export default function ExecutivePastorReport() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
                     <div className="sm:col-span-3 font-semibold text-[#1d1d1f]">
-                      Now (YouTube + IG Live)
+                      Now (YT + IG Live)
                     </div>
                     <div className="sm:col-span-7 h-4 bg-[#f0f0f5] rounded-full overflow-hidden flex">
-                      <div className="bg-[#0066cc] h-full" style={{ width: "38%" }} />
-                      <div className="bg-[#e1306c] h-full" style={{ width: "24%" }} />
+                      <div className="bg-[#0066cc] h-full" style={{ width: "34%" }} />
+                      <div className="bg-[#e1306c] h-full" style={{ width: "22%" }} />
                     </div>
                     <div className="sm:col-span-2 sm:text-right font-bold text-[#1d1d1f]">
                       15 – 30 / wk
@@ -264,7 +266,7 @@ export default function ExecutivePastorReport() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
                     <div className="sm:col-span-3 font-semibold text-[#1d1d1f]">
-                      Target Goal (Next 8 Wks)
+                      Target Goal (2x Viewers)
                     </div>
                     <div className="sm:col-span-7 h-4 bg-[#f0f0f5] rounded-full overflow-hidden flex">
                       <div
@@ -276,7 +278,7 @@ export default function ExecutivePastorReport() {
                       />
                     </div>
                     <div className="sm:col-span-2 sm:text-right font-bold text-[#15732b]">
-                      40+ / wk (2x)
+                      50+ / wk (2x)
                     </div>
                   </div>
                 </div>
@@ -286,10 +288,10 @@ export default function ExecutivePastorReport() {
                     • <strong>YouTube:</strong> 10–20 weekly viewers
                   </span>
                   <span>
-                    • <strong>Instagram Live (Past 3 Wks):</strong> Added +5–10 weekly viewers (more non-believers, sharper video quality than YouTube)
+                    • <strong>Instagram Live (Past 3 Wks):</strong> Added +5–10 weekly viewers (more non-believers joining; clearer video quality than YouTube)
                   </span>
                   <span>
-                    • <strong>Goal:</strong> At least 40 weekly viewers in total (stable weekly increase)
+                    • <strong>Target Goal:</strong> 50+ combined weekly viewers with a stable weekly increase
                   </span>
                 </div>
               </div>
@@ -303,7 +305,7 @@ export default function ExecutivePastorReport() {
                   rows={2}
                   value={notes.analyticsRemarks}
                   onChange={(e) => updateNote("analyticsRemarks", e.target.value)}
-                  placeholder="Click to add meeting notes or Pastor's feedback on viewer growth..."
+                  placeholder="Click to add meeting notes or Pastor's feedback on the 50+/wk viewer target..."
                   className="w-full text-xs text-[#1d1d1f] placeholder-[#86868b] bg-transparent focus:outline-none resize-y"
                 />
               </div>
@@ -333,10 +335,9 @@ export default function ExecutivePastorReport() {
                   </span>
                 </div>
                 <ul className="space-y-1.5 text-xs text-[#424245]">
-                  <li>• Added a dedicated Quality Checker for every Sunday service.</li>
-                  <li>• Checks audio and video quality live throughout the service.</li>
+                  <li>• Dedicated Quality Checker checks audio &amp; video live on every service.</li>
                   <li>
-                    • Reports immediately to the Online Service Director to fix any issue right away.
+                    • Reports immediately to the Online Service Director to fix on the spot.
                   </li>
                 </ul>
               </div>
@@ -352,9 +353,8 @@ export default function ExecutivePastorReport() {
                   </span>
                 </div>
                 <ul className="space-y-1.5 text-xs text-[#424245]">
-                  <li>• Increased weekly viewers by 5–10 extra viewers per week.</li>
-                  <li>• More non-believers have joined our service via Instagram.</li>
-                  <li>• Video quality on IG is clearer and better than YouTube.</li>
+                  <li>• Added +5 to 10 weekly viewers over the past 3 weeks.</li>
+                  <li>• More non-believers joining; clearer video quality than YouTube.</li>
                 </ul>
               </div>
 
@@ -362,16 +362,15 @@ export default function ExecutivePastorReport() {
               <div className="bg-[#f5f5f7] rounded-2xl p-5 border border-[#e5e5ea]">
                 <div className="flex items-center justify-between mb-2.5">
                   <span className="text-sm font-bold text-[#1d1d1f]">
-                    3. Cables Replaced — No More Lagging
+                    3. Replaced Video Cables
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full bg-[#e3f9e8] text-[#15732b] text-[11px] font-bold">
                     ✓ Fixed Within Week 1
                   </span>
                 </div>
                 <ul className="space-y-1.5 text-xs text-[#424245]">
-                  <li>• Replaced faulty video cables within the first week after last meeting.</li>
-                  <li>• Completely solved the video lagging and freezing issue.</li>
-                  <li>• Smooth, stable video across the past 3 Sunday services.</li>
+                  <li>• Fixed within Week 1 after the last meeting.</li>
+                  <li>• Zero video lagging or freezing since replacement.</li>
                 </ul>
               </div>
 
@@ -379,16 +378,15 @@ export default function ExecutivePastorReport() {
               <div className="bg-[#f5f5f7] rounded-2xl p-5 border border-[#e5e5ea]">
                 <div className="flex items-center justify-between mb-2.5">
                   <span className="text-sm font-bold text-[#1d1d1f]">
-                    4. More Interactions from Media Team
+                    4. More Media Team Interaction
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full bg-[#e3f9e8] text-[#15732b] text-[11px] font-bold">
                     ✓ Active on Live Chat
                   </span>
                 </div>
                 <ul className="space-y-1.5 text-xs text-[#424245]">
-                  <li>• Media team actively welcomes viewers and interacts in live chat.</li>
-                  <li>• Posts key sermon points, scriptures, and prayer responses.</li>
-                  <li>• Keeps online viewers engaged throughout the service.</li>
+                  <li>• Active welcome messages, sermon points, and prayer responses in live chat.</li>
+                  <li>• Keeps online viewers engaged across YouTube and Instagram.</li>
                 </ul>
               </div>
             </div>
@@ -412,10 +410,10 @@ export default function ExecutivePastorReport() {
           <div className="space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
               <h3 className="text-lg sm:text-xl font-bold tracking-[-0.02em] text-[#1d1d1f]">
-                3. Upcoming Plans, Action Timeline &amp; Rough Budget
+                3. Upcoming Plans, Timeline &amp; Rough Budget
               </h3>
               <span className="text-xs font-medium text-[#6e6e73]">
-                3 focused priorities to reach 40+ weekly viewers
+                Action plan to reach 50+ weekly viewers smoothly
               </span>
             </div>
 
@@ -426,22 +424,22 @@ export default function ExecutivePastorReport() {
                   Plan 1 · Centralised System for Online Service Team
                 </span>
                 <span className="px-3 py-1 rounded-full bg-[#e8f2ff] text-[#0066cc] text-xs font-bold">
-                  Timeline: Week 1 – 2 · Cost: RM 0 (Built In-House)
+                  Week 1 – 2 · RM 0 (In-House)
                 </span>
               </div>
 
               <ul className="space-y-1.5 text-xs text-[#424245]">
                 <li>
-                  • <strong>Role-Based Checklist:</strong> One system where Director, Camera, Audio, Moderator, and Quality Checker log in for their Sunday tasks.
+                  • <strong>Role-Based Checklists:</strong> Dedicated access for Director, Camera, Audio, Moderator &amp; Quality Checker.
                 </li>
                 <li>
-                  • <strong>Weekly Serving Roster:</strong> Clear monthly schedule so every volunteer knows their duty week.
+                  • <strong>Clean Monthly Serving Roster:</strong> Easy weekly duty schedule so every volunteer knows their serving week.
                 </li>
                 <li>
-                  • <strong>Sunday Morning Countdown &amp; Go-Live Gate:</strong> 6:00 AM check start → 8:25 AM Go-Live (5 mins early) → 8:30 AM Service. Only Director confirms Go-Live when all checks are ready.
+                  • <strong>Sunday 6:00 AM Check → 8:25 AM Go-Live Gate:</strong> Countdown to 8:30 AM service; only Director confirms Go-Live once all checks are green.
                 </li>
                 <li>
-                  • <strong>Meeting Report Log:</strong> Quality Checker reviews solved/unsolved issues; Moderator records weekly views, comments &amp; feedback.
+                  • <strong>Post-Service Meeting Report:</strong> Quality Checker views solved/unsolved logs; Moderator records weekly views, comments &amp; feedbacks.
                 </li>
               </ul>
 
@@ -463,10 +461,10 @@ export default function ExecutivePastorReport() {
             <div className="bg-[#f5f5f7] rounded-2xl p-5 border border-[#e5e5ea] space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#e5e5ea]">
                 <span className="text-base font-bold text-[#1d1d1f]">
-                  Plan 2 · Upgrade Equipment &amp; Rough Budget
+                  Plan 2 · Equipment Upgrades &amp; Rough Budget
                 </span>
                 <span className="px-3 py-1 rounded-full bg-[#e8f2ff] text-[#0066cc] text-xs font-bold">
-                  Timeline: Week 2 – 5 (Purchase &amp; Setup)
+                  Targeted: Nov – Dec 2026
                 </span>
               </div>
 
@@ -475,9 +473,9 @@ export default function ExecutivePastorReport() {
                   <thead>
                     <tr className="bg-[#f0f0f5] text-[#6e6e73] text-[10px] font-bold uppercase tracking-wider border-b border-[#e5e5ea]">
                       <th className="py-3 px-4">Equipment Item</th>
-                      <th className="py-3 px-4">Purpose (Why We Need It)</th>
+                      <th className="py-3 px-4">Purpose &amp; Details</th>
                       <th className="py-3 px-4">Rough Budget (RM)</th>
-                      <th className="py-3 px-4">Timeline</th>
+                      <th className="py-3 px-4">Target Timeline</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f0f0f5] text-[#1d1d1f]">
@@ -485,53 +483,55 @@ export default function ExecutivePastorReport() {
                       <td className="py-3 px-4 font-bold">
                         1. Camera (Second View)
                         <div className="text-[11px] font-normal text-[#6e6e73]">
-                          + Tripod &amp; HDMI/SDI Cable
+                          + Tripod &amp; Cable
                         </div>
                       </td>
                       <td className="py-3 px-4 text-[#424245]">
-                        • Adds a 2nd angle for worship team, wide church view &amp; altar calls while Camera 1 stays on Pastor.
-                        <br />• Keeps viewers engaged much longer.
+                        • Second angle for worship &amp; wide church shots (<strong>more on crowd</strong>) while Camera 1 stays on Pastor.
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1d1d1f]">
-                        RM 4,500 – RM 7,500
+                        RM 3,000 – RM 4,500
                       </td>
                       <td className="py-3 px-4 font-semibold text-[#0066cc]">
-                        Week 3 – 5
+                        Targeted November 2026
                       </td>
                     </tr>
                     <tr>
                       <td className="py-3 px-4 font-bold">
                         2. Live Crowd Mic
                         <div className="text-[11px] font-normal text-[#6e6e73]">
-                          + Mic Stand &amp; XLR Cable
+                          + Stand &amp; Cable
                         </div>
                       </td>
                       <td className="py-3 px-4 text-[#424245]">
-                        • Captures congregation singing, clapping &amp; worship atmosphere.
-                        <br />• Helps online viewers feel present in church instead of hearing dry audio.
+                        • Captures congregation singing &amp; worship atmosphere.
+                        <br />• <span className="italic text-[#6e6e73]">(Sam provided quotation previously)</span>
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1d1d1f]">
                         RM 800 – RM 1,800
                       </td>
                       <td className="py-3 px-4 font-semibold text-[#0066cc]">
-                        Week 2 – 3
+                        Targeted December 2026
                       </td>
                     </tr>
                     <tr>
                       <td className="py-3 px-4 font-bold">
                         3. ATEM Switcher
                         <div className="text-[11px] font-normal text-[#6e6e73]">
-                          Blackmagic ATEM Mini Pro / Extreme
+                          Multi-Camera Live Switcher
                         </div>
                       </td>
                       <td className="py-3 px-4 text-[#424245]">
-                        • Smooth 1-button live switching between Camera 1, Camera 2, and scripture/lyric slides without lag.
+                        • Smooth switching between Camera 1, Camera 2 (Crowd/Worship) &amp; slides.
+                        <br />• <span className="italic text-[#6e6e73]">Status: Still in checking.</span>
                       </td>
-                      <td className="py-3 px-4 font-bold text-[#1d1d1f]">
-                        RM 1,800 – RM 3,200
+                      <td className="py-3 px-4">
+                        <span className="px-2.5 py-1 rounded-full bg-[#fff4e5] text-[#b25000] text-[11px] font-bold">
+                          Still in checking
+                        </span>
                       </td>
-                      <td className="py-3 px-4 font-semibold text-[#0066cc]">
-                        Week 2 – 4
+                      <td className="py-3 px-4 font-semibold text-[#6e6e73]">
+                        TBC
                       </td>
                     </tr>
                   </tbody>
@@ -540,10 +540,11 @@ export default function ExecutivePastorReport() {
 
               <div className="bg-[#1d1d1f] text-white rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <span>
-                  <strong>Total Estimated Budget Range:</strong> (Can be bought together or phased over 2 months)
+                  <strong>Estimated Total Budget (Camera 2 + Live Crowd Mic):</strong>{" "}
+                  <span className="text-[#a1a1a6]">(Excludes ATEM Switcher — still in checking)</span>
                 </span>
                 <span className="text-base font-extrabold text-[#30d158]">
-                  RM 7,100 – RM 12,500
+                  RM 3,800 – RM 6,300 + ATEM (TBC)
                 </span>
               </div>
 
@@ -554,7 +555,7 @@ export default function ExecutivePastorReport() {
                   </label>
                   <div className="flex items-center gap-1.5 text-[11px]">
                     <span className="text-[#6e6e73] font-medium">Decision Status:</span>
-                    {["Pending Discussion", "Approved Full Package", "Approved Phased (Stage 1 First)"].map(
+                    {["Pending Discussion", "Approved Nov Camera + Dec Mic", "Approved Phased"].map(
                       (opt) => (
                         <button
                           key={opt}
@@ -576,7 +577,7 @@ export default function ExecutivePastorReport() {
                   rows={2}
                   value={notes.plan2BudgetRemarks}
                   onChange={(e) => updateNote("plan2BudgetRemarks", e.target.value)}
-                  placeholder="Add Senior Pastor's remarks on camera, crowd mic, ATEM switcher or budget timing..."
+                  placeholder="Add Senior Pastor's remarks on Camera 2 (Nov 2026), Live Crowd Mic (Dec 2026), or ATEM Switcher..."
                   className="w-full text-xs text-[#1d1d1f] placeholder-[#86868b] bg-transparent focus:outline-none resize-y"
                 />
               </div>
@@ -589,78 +590,78 @@ export default function ExecutivePastorReport() {
                   Plan 3 · Training for Videographers, Cameramen &amp; Media Team
                 </span>
                 <span className="px-3 py-1 rounded-full bg-[#e8f2ff] text-[#0066cc] text-xs font-bold">
-                  Timeline: Week 4 – 8 (Hands-On Practice)
+                  Starting This Week · Led by Gaby (Media Director)
                 </span>
               </div>
 
               <ul className="space-y-1.5 text-xs text-[#424245]">
                 <li>
-                  • <strong>Videographers &amp; Cameramen (Week 4 – 6):</strong> Hands-on training for framing, smooth movement, and coordinating Camera 1 (Pastor) &amp; Camera 2 (Second View).
+                  • <strong>Training Kickoff:</strong> Starting <strong>this week</strong>, led by <strong>Gaby (Media Director)</strong>.
                 </li>
                 <li>
-                  • <strong>Switcher &amp; Sound Crew (Week 5 – 7):</strong> Train team members on using the ATEM switcher and balancing the Live Crowd Mic.
+                  • <strong>Focus Areas:</strong> Hands-on training for Videographers, Cameramen (Camera 1 &amp; 2nd Crowd/Worship View), and more of the Media Team.
                 </li>
                 <li>
-                  • <strong>Shadow Sundays &amp; Rotation (Week 6 – 8):</strong> New volunteers shadow for 2 Sundays before joining the weekly roster so we have enough trained people every week.
+                  • <strong>Training Plan Chart:</strong> <em>Plan chart still pending for training</em> — will be updated once finalised by Gaby.
                 </li>
               </ul>
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
                 <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
                   <div className="text-[10px] font-bold uppercase text-[#0066cc]">
+                    Starting This Week
+                  </div>
+                  <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
+                    Media Team Training
+                  </div>
+                  <div className="text-[11px] text-[#6e6e73] mt-0.5">
+                    Led by Gaby (Media Director). Plan chart still pending.
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
+                  <div className="text-[10px] font-bold uppercase text-[#0066cc]">
                     Week 1 – 2
                   </div>
                   <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
-                    System &amp; Budget
+                    Centralised System
                   </div>
                   <div className="text-[11px] text-[#6e6e73] mt-0.5">
-                    Launch team hub &amp; confirm equipment budget.
+                    Roll out checklists, monthly roster &amp; 6:00 AM check.
                   </div>
                 </div>
                 <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
                   <div className="text-[10px] font-bold uppercase text-[#0066cc]">
-                    Week 2 – 3
+                    Targeted Nov 2026
                   </div>
                   <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
-                    Crowd Mic &amp; ATEM
+                    Camera (2nd View)
                   </div>
                   <div className="text-[11px] text-[#6e6e73] mt-0.5">
-                    Set up Crowd Mic &amp; ATEM switcher.
+                    RM 3,000–4,500 · Second angle for worship &amp; crowd.
                   </div>
                 </div>
                 <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
                   <div className="text-[10px] font-bold uppercase text-[#0066cc]">
-                    Week 4 – 5
+                    Targeted Dec 2026
                   </div>
                   <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
-                    2nd Camera View
+                    Live Crowd Mic
                   </div>
                   <div className="text-[11px] text-[#6e6e73] mt-0.5">
-                    Install Camera 2 &amp; test 2-angle live cuts.
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl p-3 border border-[#e5e5ea]">
-                  <div className="text-[10px] font-bold uppercase text-[#0066cc]">
-                    Week 5 – 8
-                  </div>
-                  <div className="text-xs font-bold text-[#1d1d1f] mt-0.5">
-                    Team Training
-                  </div>
-                  <div className="text-[11px] text-[#6e6e73] mt-0.5">
-                    Train videographers, cameramen &amp; media crew.
+                    RM 800–1,800 (Sam's quote) · Congregation worship audio.
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-xl p-3 border border-dashed border-[#c7c7cc]">
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-[#0066cc] mb-1">
-                  ✎ Notes &amp; Remarks — Plan 3 (Training &amp; Volunteers)
+                  ✎ Notes &amp; Remarks — Plan 3 (Training Led by Gaby)
                 </label>
                 <textarea
                   rows={2}
                   value={notes.plan3TrainingRemarks}
                   onChange={(e) => updateNote("plan3TrainingRemarks", e.target.value)}
-                  placeholder="Add names of new trainees, training dates, or Pastor's suggestions..."
+                  placeholder="Add Gaby's training schedule notes, trainee names, or Pastor's suggestions..."
                   className="w-full text-xs text-[#1d1d1f] placeholder-[#86868b] bg-transparent focus:outline-none resize-y"
                 />
               </div>
