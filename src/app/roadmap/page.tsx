@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
+import ExecutivePastorReport from "@/components/ExecutivePastorReport";
 
 const LOCAL_ROADMAP_KEY = "church_live_hub_roadmap_v1";
 
@@ -66,22 +67,22 @@ const CATEGORY_STYLES: Record<
 
 export default function RoadmapPage() {
   const [goals, setGoals] = useState<any>({
-    currentWeeklyAttendance: 142,
-    currentYTViewers: 88,
-    currentIGViewers: 54,
-    phase1TargetAttendance: 200,
-    phase2TargetAttendance: 350,
-    phase3TargetAttendance: 500,
-    annualVisionAttendance: 1000,
-    targetYTViewers: 600,
-    targetIGViewers: 400,
-    currentRepeatingRate: 58,
-    targetRepeatingRate: 75,
+    currentWeeklyAttendance: 25,
+    currentYTViewers: 15,
+    currentIGViewers: 10,
+    phase1TargetAttendance: 40,
+    phase2TargetAttendance: 60,
+    phase3TargetAttendance: 80,
+    annualVisionAttendance: 100,
+    targetYTViewers: 25,
+    targetIGViewers: 15,
+    currentRepeatingRate: 65,
+    targetRepeatingRate: 80,
     currentWatchMinutes: 28,
     targetWatchMinutes: 45,
-    currentTeamSize: 4,
-    targetTeamSize: 12,
-    targetMonthlySalvations: 25,
+    currentTeamSize: 5,
+    targetTeamSize: 10,
+    targetMonthlySalvations: 10,
   });
   const [milestones, setMilestones] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
@@ -462,7 +463,24 @@ export default function RoadmapPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 no-print">
+            <a
+              href="/Senior_Pastor_Executive_Report.pdf"
+              download="Senior_Pastor_Executive_Report.pdf"
+              className="px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+            >
+              <span>📄 Download Executive Report (PDF)</span>
+            </a>
+
+            <a
+              href="/Senior_Pastor_Executive_Report.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition"
+            >
+              Preview PDF ↗
+            </a>
+
             <button
               type="button"
               onClick={() => setShowGoalEditor(true)}
@@ -480,6 +498,9 @@ export default function RoadmapPage() {
             </button>
           </div>
         </div>
+
+        {/* Interactive Apple-Style Executive Report & Meeting Notes Guideline */}
+        <ExecutivePastorReport />
 
         {/* 4 Apple Bento KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
