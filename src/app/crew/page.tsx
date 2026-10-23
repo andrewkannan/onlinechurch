@@ -2,30 +2,59 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
-import CrewTrainingAcademy from "@/components/CrewTrainingAcademy";
-import PostLiveAndPostmortemDesk, {
+import type {
   ShutdownCheckItem,
   PostmortemFeedbackItem,
   WeeklyCustodyState,
   ArchivedWeeklyReport,
 } from "@/components/PostLiveAndPostmortemDesk";
-import WeeklyServingRosterTable, {
+import type {
   WeeklyServiceRoster,
   OperatorBlockoutDate,
 } from "@/components/WeeklyServingRosterTable";
 import { useAuth } from "@/components/AuthProvider";
-import {
-  ROLE_ACCESS_MATRIX,
-  getRolePermissions,
-  canAccessCrewTab,
-} from "@/lib/rbac";
+import { getRolePermissions, canAccessCrewTab } from "@/lib/rbac";
 import {
   formatMYTTime,
   getMalaysiaBroadcastCountdown,
   MalaysiaBroadcastCountdown,
 } from "@/lib/malaysiaTime";
 import { resolveRobotAvatarUrl } from "@/lib/robotAvatars";
+
+const WeeklyServingRosterTable = dynamic(
+  () => import("@/components/WeeklyServingRosterTable"),
+  {
+    loading: () => (
+      <div className="rounded-2xl p-6 bg-[#111114] border border-white/[0.08] text-xs text-zinc-400">
+        Loading Weekly Roster...
+      </div>
+    ),
+  }
+);
+
+const CrewTrainingAcademy = dynamic(
+  () => import("@/components/CrewTrainingAcademy"),
+  {
+    loading: () => (
+      <div className="rounded-2xl p-6 bg-[#111114] border border-white/[0.08] text-xs text-zinc-400">
+        Loading Training SOPs...
+      </div>
+    ),
+  }
+);
+
+const PostLiveAndPostmortemDesk = dynamic(
+  () => import("@/components/PostLiveAndPostmortemDesk"),
+  {
+    loading: () => (
+      <div className="rounded-2xl p-6 bg-[#111114] border border-white/[0.08] text-xs text-zinc-400">
+        Loading Postmortem & Shutdown Desk...
+      </div>
+    ),
+  }
+);
 
 type CrewRole = "DIRECTOR" | "CAMERA" | "AUDIO" | "MODERATOR" | "QC";
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
@@ -34,10 +63,10 @@ type GoNoGoStatus = "GO" | "STANDBY" | "HOLD";
 type PreFlightPhase = "T-60M" | "T-30M" | "T-15M" | "T-5M";
 
 const MALAYSIA_PHASE_TIME_MAP: Record<PreFlightPhase, string> = {
-  "T-60M": "06:00 AM MYT · Check Start",
-  "T-30M": "07:00 AM MYT · Optics & Mix",
-  "T-15M": "08:00 AM MYT · Stream Preview",
-  "T-5M": "08:25 AM MYT · Early Go-Live (-5m)",
+  "T-60M": "06:00 AM · Check Start",
+  "T-30M": "07:00 AM · Optics & Mix",
+  "T-15M": "08:00 AM · Stream Preview",
+  "T-5M": "08:25 AM · Go-Live (-5m)",
 };
 
 interface CrewUserAccount {
@@ -103,7 +132,6 @@ interface QcLogItem {
   pushedToRoadmap?: boolean;
 }
 
-// Apple Pro Refined Department Color System (High contrast, non-neon, distinct per department)
 const DEPT_STYLES: Record<
   string,
   {
@@ -236,7 +264,6 @@ const ROLES_LIST: CrewRole[] = [
   "DIRECTOR",
 ];
 
-// Clean Broadcast QC Presets (Zero emojis, crisp broadcast terminology)
 const QUICK_QC_PRESETS: {
   label: string;
   type: "ISSUE" | "IMPROVEMENT" | "ACHIEVEMENT";
@@ -251,56 +278,56 @@ const QUICK_QC_PRESETS: {
   platform: "INSTAGRAM" | "YOUTUBE" | "BOTH";
 }[] = [
   {
-    label: "IG Top/Bottom Blur Fill Missing or Black Seam",
+    label: "IG Top/Bottom Blur Missing",
     type: "ISSUE",
     severity: "MAJOR",
     station: "CAMERA",
     platform: "INSTAGRAM",
   },
   {
-    label: "IG Centered 16:9 Landscape Frame Misaligned",
+    label: "IG 16:9 Frame Off-Center",
     type: "ISSUE",
     severity: "MAJOR",
     station: "CAMERA",
     platform: "INSTAGRAM",
   },
   {
-    label: "IG 'MAINSTREAM' RTMPS Key Disconnected",
+    label: "IG MAINSTREAM Key Disconnected",
     type: "ISSUE",
     severity: "CRITICAL",
     station: "NETWORK",
     platform: "INSTAGRAM",
   },
   {
-    label: "Camera White Balance / Exposure Drift",
+    label: "Camera Exposure / WB Drift",
     type: "ISSUE",
     severity: "MINOR",
     station: "CAMERA",
     platform: "BOTH",
   },
   {
-    label: "Broadcast Bus Audio Too Quiet on Mobile",
+    label: "Broadcast Audio Low on Mobile",
     type: "ISSUE",
     severity: "MAJOR",
     station: "AUDIO",
     platform: "BOTH",
   },
   {
-    label: "Audio-Video Lip-Sync Delay Detected",
+    label: "Lip-Sync Delay Detected",
     type: "ISSUE",
     severity: "CRITICAL",
     station: "AUDIO",
     platform: "YOUTUBE",
   },
   {
-    label: "Encoder Bitrate Drop / Frame Stutter",
+    label: "Encoder Bitrate Drop",
     type: "ISSUE",
     severity: "CRITICAL",
     station: "NETWORK",
     platform: "BOTH",
   },
   {
-    label: "IG Landscape + Top/Bottom Blur Clean & Synced",
+    label: "IG Blur + 16:9 Synced & Clean",
     type: "ACHIEVEMENT",
     severity: "WIN",
     station: "CAMERA",
@@ -309,11 +336,11 @@ const QUICK_QC_PRESETS: {
 ];
 
 const DIRECTOR_ACTION_PRESETS = [
-  "Lock 16:9 landscape center + top/bottom blur fill on IG scene",
-  "Verify IG Live Producer 'MAINSTREAM' RTMPS preview before Go Live",
-  "Lock 5600K Kelvin profile on all cameras",
-  "Boost broadcast bus +3 dB during spoken prayer",
-  "Adjust audio delay +40 ms on switcher input",
+  "Lock 16:9 center + top/bottom blur on IG scene",
+  "Verify IG MAINSTREAM RTMPS preview before Go Live",
+  "Lock 5600K WB on all cameras",
+  "Boost broadcast bus +3 dB",
+  "Adjust audio delay +40 ms",
 ];
 
 function compressScreenshotDataUrl(file: File): Promise<string> {
@@ -382,18 +409,15 @@ export default function CrewAndQcPage() {
     flashNotice: "",
   });
 
-  // Active workspace tab
   const [activeTab, setActiveTab] = useState<
     | "PRE_LIVE"
     | "WEEKLY_ROSTER"
     | "QC_PAD"
     | "POST_LIVE_SHUTDOWN"
     | "MEETING_REPORT"
-    | "TEAM_ACCOUNTS"
     | "TRAINING"
   >("PRE_LIVE");
 
-  // Active logged-in operator (synced with AuthProvider)
   const [myIdentity, setMyIdentity] = useState<{
     id: string;
     name: string;
@@ -404,14 +428,10 @@ export default function CrewAndQcPage() {
     role: authUser?.role || "DIRECTOR",
   });
 
-  // Pre-Flight Filters
   const [stationFilter, setStationFilter] = useState<"ALL" | CrewRole>("ALL");
   const [phaseFilter, setPhaseFilter] = useState<"ALL" | PreFlightPhase>("ALL");
   const [userFilter, setUserFilter] = useState<string>("ALL");
-  const [selectedMatrixRole, setSelectedMatrixRole] =
-    useState<CrewRole>("DIRECTOR");
 
-  // Malaysia Time (MYT, UTC+8) Broadcast Clock & Sunday 6:00 AM -> 8:25 AM Early Go-Live -> 8:30 AM Service Countdown
   const [simScheduleMode, setSimScheduleMode] = useState<
     "REAL" | "SIM_615AM_CHECK" | "SIM_820AM_FINAL5M" | "SIM_825AM_GOLIVE"
   >("REAL");
@@ -440,43 +460,19 @@ export default function CrewAndQcPage() {
       setActiveTab((prev) =>
         canAccessCrewTab(authUser.role, prev)
           ? prev
-          : getRolePermissions(authUser.role).defaultCrewTab
+          : (getRolePermissions(authUser.role).defaultCrewTab as any)
       );
     }
   }, [authUser]);
 
-  // Modals & notifications
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showAddCheckModal, setShowAddCheckModal] = useState(false);
   const [newCheckRole, setNewCheckRole] = useState<CrewRole>("CAMERA");
   const [newCheckPhase, setNewCheckPhase] = useState<PreFlightPhase>("T-30M");
-  const [newCheckCategory, setNewCheckCategory] = useState("Verification");
+  const [newCheckCategory] = useState("Verification");
   const [newCheckTask, setNewCheckTask] = useState("");
   const [newCheckDetail, setNewCheckDetail] = useState("");
   const [newCheckUserId, setNewCheckUserId] = useState("usr-camera-1");
-
-  // New User Account Form state (in Team & Accounts tab)
-  const [showNewUserForm, setShowNewUserForm] = useState(false);
-  const [newUserName, setNewUserName] = useState("");
-  const [newUserUsername, setNewUserUsername] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPhone, setNewUserPhone] = useState("");
-  const [newUserCallsign, setNewUserCallsign] = useState("");
-  const [newUserRole, setNewUserRole] = useState<CrewRole>("CAMERA");
-  const [newUserPermission, setNewUserPermission] =
-    useState<UserPermission>("OPERATOR");
-  const [newUserStation, setNewUserStation] = useState("");
-
-  // Inline credential edit drafts per user card in Team & Accounts tab
-  const [userCredDrafts, setUserCredDrafts] = useState<
-    Record<string, { username: string; password: string }>
-  >({});
-
-  // Inline quick-assign task per user card in Team & Accounts tab
-  const [userQuickTaskDrafts, setUserQuickTaskDrafts] = useState<
-    Record<string, { task: string; phase: PreFlightPhase }>
-  >({});
 
   // QC Pad state
   const [qcPlatform, setQcPlatform] = useState<
@@ -499,7 +495,6 @@ export default function CrewAndQcPage() {
   );
   const screenshotInputRef = useRef<HTMLInputElement>(null);
 
-  // Director Decision Drafts
   const [directorDrafts, setDirectorDrafts] = useState<
     Record<
       string,
@@ -507,7 +502,6 @@ export default function CrewAndQcPage() {
     >
   >({});
 
-  // Lightbox preview
   const [previewImageLog, setPreviewImageLog] = useState<QcLogItem | null>(
     null
   );
@@ -554,7 +548,6 @@ export default function CrewAndQcPage() {
     };
   }, []);
 
-  // Paste screenshot support on QC Pad
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       if (activeTab !== "QC_PAD") return;
@@ -574,10 +567,6 @@ export default function CrewAndQcPage() {
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
   }, [activeTab]);
-
-  const handleSwitchActiveUser = (user: CrewUserAccount) => {
-    openSwitchModal(user.username);
-  };
 
   const handleToggleCheck = async (id: string) => {
     setChecklists((prev) =>
@@ -657,7 +646,7 @@ export default function CrewAndQcPage() {
       if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
       triggerToast(
         role === "ALL"
-          ? "All pre-flight checks verified (100% Ready for Director Go-Live)"
+          ? "All pre-flight checks verified (100% Ready)"
           : `${role} station verified`
       );
     }
@@ -673,24 +662,20 @@ export default function CrewAndQcPage() {
       const updated = await res.json();
       if (updated.checklists) setChecklists(updated.checklists);
       if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
-      triggerToast("Pre-flight checklist reset for new service");
+      triggerToast("Pre-flight checklist reset");
     }
   };
 
   const handleToggleGoLive = async () => {
     if (myIdentity.role !== "DIRECTOR") {
-      triggerToast(
-        "Access Restricted: Only the Technical Director can confirm Go-Live"
-      );
+      triggerToast("Director Only: Only Technical Director can confirm Go-Live");
       return;
     }
     const nextState = !directorSignOff.clearedToGoLive;
     const allReady =
       checklists.length > 0 && checklists.every((c) => c.checked);
     if (nextState && !allReady) {
-      triggerToast(
-        "Cannot confirm Go-Live while pre-flight checks are still missing"
-      );
+      triggerToast("Complete all pre-flight checks before Go-Live");
       return;
     }
 
@@ -711,147 +696,10 @@ export default function CrewAndQcPage() {
     }
     if (updated.directorSignOff) setDirectorSignOff(updated.directorSignOff);
     triggerToast(
-      nextState
-        ? "Director Confirmed: Broadcast On Air (Target 8:25 AM MYT Early Go-Live)"
-        : "Broadcast returned to Standby"
+      nextState ? "Director Confirmed: Broadcast On Air" : "Returned to Standby"
     );
   };
 
-  // User Account Management Handlers
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUserName.trim()) return;
-    const res = await fetch("/api/crew-qc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "ADD_USER",
-        user: {
-          name: newUserName,
-          username:
-            newUserUsername.trim().toLowerCase() ||
-            newUserName.trim().split(/\s+/)[0].toLowerCase(),
-          password: newUserPassword.trim() || "church123",
-          email: newUserEmail,
-          phone: newUserPhone,
-          callsign: newUserCallsign,
-          role: newUserRole,
-          permission: newUserPermission,
-          stationAssignment: newUserStation,
-          status: "ON_DUTY",
-        },
-      }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      if (updated.users) setUsers(updated.users);
-      setNewUserName("");
-      setNewUserUsername("");
-      setNewUserPassword("");
-      setNewUserEmail("");
-      setNewUserPhone("");
-      setNewUserCallsign("");
-      setNewUserStation("");
-      setShowNewUserForm(false);
-      triggerToast(`Created account for ${newUserName}`);
-    }
-  };
-
-  const handleSaveUserCredentials = async (user: CrewUserAccount) => {
-    const draft = userCredDrafts[user.id];
-    const nextUsername = draft?.username?.trim().toLowerCase() || user.username;
-    const nextPassword = draft?.password?.trim();
-
-    const res = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "UPDATE_CREDENTIALS",
-        userId: user.id,
-        adminOverride: true,
-        newUsername: nextUsername,
-        newPassword: nextPassword || undefined,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      triggerToast(data.error || "Failed to update credentials");
-      return;
-    }
-    setUserCredDrafts((prev) => ({
-      ...prev,
-      [user.id]: { username: nextUsername, password: "" },
-    }));
-    fetchCrewQcData();
-    triggerToast(`Updated login credentials for ${user.name}`);
-  };
-
-  const handleUpdateUser = async (
-    id: string,
-    patch: Partial<CrewUserAccount>
-  ) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, ...patch } : u))
-    );
-    const res = await fetch("/api/crew-qc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "UPDATE_USER",
-        id,
-        ...patch,
-      }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      if (updated.users) setUsers(updated.users);
-    }
-  };
-
-  const handleDeleteUser = async (id: string, name: string) => {
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    await fetch("/api/crew-qc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "DELETE_USER", id }),
-    });
-    triggerToast(`Removed ${name}`);
-  };
-
-  const handleAssignQuickTaskToUser = async (user: CrewUserAccount) => {
-    const draft = userQuickTaskDrafts[user.id];
-    if (!draft || !draft.task.trim()) return;
-
-    const res = await fetch("/api/crew-qc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "ADD_CHECK_ITEM",
-        item: {
-          role: user.role,
-          phase: draft.phase || "T-30M",
-          category: "Assigned",
-          task: draft.task.trim(),
-          detail: `Assigned to ${user.name} (${user.callsign})`,
-          isCritical: true,
-          assignedToUserId: user.id,
-          assignedToName: user.name,
-        },
-      }),
-    });
-
-    if (res.ok) {
-      const updated = await res.json();
-      if (updated.checklists) setChecklists(updated.checklists);
-      setUserQuickTaskDrafts((prev) => ({
-        ...prev,
-        [user.id]: { task: "", phase: "T-30M" },
-      }));
-      triggerToast(`Task assigned to ${user.name}`);
-    }
-  };
-
-  // Training Academy Handlers
   const handleToggleTrainingLesson = async (
     userId: string,
     lessonId: string
@@ -882,7 +730,7 @@ export default function CrewAndQcPage() {
     if (res.ok) {
       const updated = await res.json();
       if (updated.users) setUsers(updated.users);
-      triggerToast(`Training module progress updated`);
+      triggerToast("Training progress updated");
     }
   };
 
@@ -909,11 +757,10 @@ export default function CrewAndQcPage() {
     if (res.ok) {
       const updated = await res.json();
       if (updated.users) setUsers(updated.users);
-      triggerToast(`Role Certification awarded for ${role}`);
+      triggerToast(`${role} role certified`);
     }
   };
 
-  // QC Pad Handlers
   const handleSelectQcPreset = (preset: (typeof QUICK_QC_PRESETS)[number]) => {
     setQcTitle(preset.label);
     setQcType(preset.type);
@@ -1005,7 +852,7 @@ export default function CrewAndQcPage() {
       setQcDescription("");
       setQcScreenshot(null);
       setQcMarker(null);
-      triggerToast("Added to Technical Director Queue");
+      triggerToast("Queued for Director");
     }
   };
 
@@ -1047,7 +894,7 @@ export default function CrewAndQcPage() {
     if (res.ok) {
       const updated = await res.json();
       if (updated.qcLogs) setQcLogs(updated.qcLogs);
-      triggerToast("Director decision saved");
+      triggerToast("Directive saved");
     }
   };
 
@@ -1060,7 +907,7 @@ export default function CrewAndQcPage() {
     if (res.ok) {
       const updated = await res.json();
       if (updated.qcLogs) setQcLogs(updated.qcLogs);
-      triggerToast("Added to Timeline & Goals");
+      triggerToast("Added to Action Plan");
     }
   };
 
@@ -1099,7 +946,7 @@ export default function CrewAndQcPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    triggerToast("Technical log CSV exported");
+    triggerToast("CSV exported");
   };
 
   // Computed Readiness Metrics
@@ -1143,7 +990,6 @@ export default function CrewAndQcPage() {
     [visibleChecklists]
   );
 
-  // Stations that still have unverified items
   const pendingStations = useMemo(() => {
     return ROLES_LIST.map((role) => {
       const items = checklists.filter((c) => c.role === role);
@@ -1169,7 +1015,6 @@ export default function CrewAndQcPage() {
     <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col w-full antialiased selection:bg-white selection:text-black">
       <Navbar />
 
-      {/* Minimalist Apple-Style Floating Notification Pill */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-white text-black px-4 py-2.5 rounded-full shadow-2xl text-xs font-semibold tracking-tight">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -1177,79 +1022,62 @@ export default function CrewAndQcPage() {
         </div>
       )}
 
-      <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-6">
+      <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-5 space-y-5">
         {/* ===================================================================
-            APPLE PRO HEADER BAR & SEGMENTED WORKSPACE SWITCHER
+            COMPACT COMMAND HEADER & SEGMENTED WORKSPACE SWITCHER
            =================================================================== */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-white/[0.08]">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Broadcast Operations
-              </span>
-              <span className="text-zinc-700">/</span>
-              <div className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-zinc-300">
-                <div className="w-5 h-5 rounded-full overflow-hidden border border-white/20 bg-black shrink-0">
-                  <img
-                    src={resolveRobotAvatarUrl(
-                      authUser?.avatarUrl,
-                      myIdentity.role,
-                      authUser?.callsign
-                    )}
-                    alt={`${myIdentity.name} AI Robot Profile`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <span className="font-medium">{myIdentity.name}</span>
-                <span className="text-zinc-500">·</span>
-                <span className="text-zinc-300 font-semibold">
-                  {myRoleSpec.title}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => openSwitchModal()}
-                  className="text-zinc-400 hover:text-white underline underline-offset-2 ml-1"
-                >
-                  Switch Account
-                </button>
-              </div>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${myRoleSpec.badgeColor}`}
-              >
-                {isDirector
-                  ? "Master Access · All Modules"
-                  : myIdentity.role === "QC" || myIdentity.role === "MODERATOR"
-                  ? `${myIdentity.role} Station + Weekly Report Custodian`
-                  : `${myIdentity.role} Station Scope`}
-              </span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-white">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-lg sm:text-xl font-semibold tracking-[-0.025em] text-white">
               {isDirector
-                ? "Pre-Flight Verification & Live Stream QC"
-                : `${DEPT_STYLES[myIdentity.role].label} Station Console — ${myIdentity.name}`}
+                ? "Crew & Live QC"
+                : `${DEPT_STYLES[myIdentity.role].label} Console`}
             </h1>
+            <span className="text-zinc-700">·</span>
+            <div className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-zinc-300">
+              <div className="w-4 h-4 rounded-full overflow-hidden border border-white/20 bg-black shrink-0">
+                <img
+                  src={resolveRobotAvatarUrl(
+                    authUser?.avatarUrl,
+                    myIdentity.role,
+                    authUser?.callsign
+                  )}
+                  alt={myIdentity.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="font-medium text-white">{myIdentity.name}</span>
+              <span className="text-zinc-500">({myIdentity.role})</span>
+              <button
+                type="button"
+                onClick={() => openSwitchModal()}
+                className="text-zinc-400 hover:text-white underline underline-offset-2 ml-0.5"
+              >
+                Switch
+              </button>
+            </div>
           </div>
 
-          {/* Apple Segmented Control (Role-Filtered Views) */}
+          {/* Segmented Workspace Control */}
           <div className="inline-flex items-center gap-1 bg-[#131316] p-1 rounded-full border border-white/[0.08] overflow-x-auto">
             {canAccessCrewTab(myIdentity.role, "PRE_LIVE") && (
               <button
                 type="button"
                 onClick={() => setActiveTab("PRE_LIVE")}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === "PRE_LIVE"
-                    ? "bg-white text-black font-semibold shadow-sm"
+                    ? "bg-white text-black font-semibold"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <span>Pre-Flight Check</span>
+                <span>Pre-Flight</span>
                 <span
-                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                  className={`tabular-nums text-[10px] px-1.5 py-0.2 rounded-full ${
                     activeTab === "PRE_LIVE"
                       ? "bg-black/10 text-black font-bold"
                       : is100PercentReady
                       ? "bg-emerald-500/20 text-emerald-300"
-                      : "bg-amber-500/20 text-amber-300"
+                      : "bg-rose-500/20 text-rose-300"
                   }`}
                 >
                   {overallPct}%
@@ -1261,21 +1089,21 @@ export default function CrewAndQcPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("WEEKLY_ROSTER")}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === "WEEKLY_ROSTER"
-                    ? "bg-white text-black font-semibold shadow-sm"
+                    ? "bg-white text-black font-semibold"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <span>Weekly Roster</span>
+                <span>Roster</span>
                 <span
-                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                  className={`tabular-nums text-[10px] px-1.5 py-0.2 rounded-full ${
                     activeTab === "WEEKLY_ROSTER"
                       ? "bg-black/10 text-black font-bold"
                       : "bg-emerald-500/20 text-emerald-300"
                   }`}
                 >
-                  {weeklyRoster.length || 4} Wks
+                  {weeklyRoster.length || 4}w
                 </span>
               </button>
             )}
@@ -1284,18 +1112,16 @@ export default function CrewAndQcPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("QC_PAD")}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === "QC_PAD"
-                    ? "bg-white text-black font-semibold shadow-sm"
+                    ? "bg-white text-black font-semibold"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <span>
-                  {canLogQc ? "Live QC & Queue" : "Assigned Directives"}
-                </span>
+                <span>{canLogQc ? "Live QC" : "Directives"}</span>
                 {waitingDirectorCount > 0 && (
                   <span
-                    className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                    className={`tabular-nums text-[10px] px-1.5 py-0.2 rounded-full ${
                       activeTab === "QC_PAD"
                         ? "bg-rose-500 text-white font-bold"
                         : "bg-rose-500/20 text-rose-300"
@@ -1311,15 +1137,15 @@ export default function CrewAndQcPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === "POST_LIVE_SHUTDOWN"
-                    ? "bg-white text-black font-semibold shadow-sm"
+                    ? "bg-white text-black font-semibold"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <span>Post-Live Shutdown</span>
+                <span>Shutdown</span>
                 <span
-                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
+                  className={`tabular-nums text-[10px] px-1.5 py-0.2 rounded-full ${
                     activeTab === "POST_LIVE_SHUTDOWN"
                       ? "bg-black/10 text-black font-bold"
                       : is100PercentShutdown
@@ -1336,25 +1162,13 @@ export default function CrewAndQcPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("MEETING_REPORT")}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === "MEETING_REPORT"
-                    ? "bg-white text-black font-semibold shadow-sm"
+                    ? "bg-white text-black font-semibold"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <span>Postmortem Corner</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
-                    activeTab === "MEETING_REPORT"
-                      ? "bg-black/10 text-black"
-                      : weeklyCustody?.qcLeadSignedOff &&
-                        weeklyCustody?.modLeadSignedOff
-                      ? "bg-emerald-500/20 text-emerald-300"
-                      : "bg-amber-500/20 text-amber-300"
-                  }`}
-                >
-                  QC+MOD
-                </span>
+                <span>Postmortem</span>
               </button>
             )}
 
@@ -1362,41 +1176,29 @@ export default function CrewAndQcPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("TRAINING")}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === "TRAINING"
-                    ? "bg-white text-black font-semibold shadow-sm"
+                    ? "bg-white text-black font-semibold"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <span>Training Academy</span>
-                <span
-                  className={`tabular-nums text-[11px] px-1.5 py-0.2 rounded-full ${
-                    activeTab === "TRAINING"
-                      ? "bg-black/10 text-black font-bold"
-                      : "bg-white/[0.06] text-zinc-400"
-                  }`}
-                >
-                  {isDirector ? "5 Roles" : myIdentity.role}
-                </span>
+                <span>Training</span>
               </button>
             )}
 
             {canAccessCrewTab(myIdentity.role, "TEAM_ACCOUNTS") && (
               <Link
                 href="/settings"
-                className="px-3.5 py-1.5 rounded-full text-xs font-medium tracking-[-0.01em] transition whitespace-nowrap flex items-center gap-2 text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.1]"
+                className="px-3.5 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap flex items-center gap-1.5 text-zinc-400 hover:text-white"
               >
-                <span>User Accounts (Settings)</span>
-                <span className="tabular-nums text-[11px] px-1.5 py-0.2 rounded-full bg-white/[0.08] text-zinc-300">
-                  {users.length}
-                </span>
+                <span>Users ({users.length})</span>
               </Link>
             )}
           </div>
         </div>
 
         {/* ===================================================================
-            VIEW 0: WEEKLY SERVING ROSTER TABLE & SMART ROTATION
+            VIEW 0: WEEKLY SERVING ROSTER TABLE
            =================================================================== */}
         {activeTab === "WEEKLY_ROSTER" && (
           <WeeklyServingRosterTable
@@ -1416,66 +1218,67 @@ export default function CrewAndQcPage() {
         )}
 
         {/* ===================================================================
-            VIEW 1: PRE-FLIGHT VERIFICATION & GO / NO-GO POLL
+            VIEW 1: PRE-FLIGHT VERIFICATION & GO / NO-GO GATE
            =================================================================== */}
         {activeTab === "PRE_LIVE" && (
-          <div className="space-y-5">
-            {/* ===============================================================
-                1. SUNDAY BROADCAST TIMELINE & LIVE MALAYSIA CLOCK (NO DUPLICATION)
-               =============================================================== */}
-            <div className="rounded-2xl p-4 sm:p-5 bg-[#111114] border border-white/[0.08] space-y-4">
-              {/* Top Bar: Malaysia Clock (Left) + Rehearsal Clock Mode Switcher (Right) */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-white/[0.06]">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-[#18181c] border border-white/[0.1]">
+          <div className="space-y-4">
+            {/* COMPACT MYT TIMELINE + BLINKING GO-LIVE GATE */}
+            <div className="rounded-2xl p-4 bg-[#111114] border border-white/[0.08] space-y-3.5">
+              {/* Top Row: MYT Clock + Milestones + Sim Mode */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-white/[0.06]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#18181c] border border-white/[0.1]">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-sm sm:text-base font-mono font-bold text-white tabular-nums tracking-tight">
+                    <span className="text-xs font-mono font-bold text-white tabular-nums">
                       {mytCountdown.mytClock}
                     </span>
-                    <span className="text-zinc-600">·</span>
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-[11px] text-zinc-400">
                       {mytCountdown.mytDateLabel}
                     </span>
                   </div>
 
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
-                      mytCountdown.windowState === "EARLY_GO_LIVE_825AM" ||
-                      mytCountdown.windowState === "SERVICE_LIVE_830AM"
-                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/35"
-                        : mytCountdown.windowState === "CHECKING_WINDOW_6AM" ||
-                          mytCountdown.windowState === "FINAL_10M_ALERT"
-                        ? "bg-amber-500/15 text-amber-300 border-amber-500/35"
-                        : "bg-white/[0.04] text-zinc-400 border-white/[0.08]"
-                    }`}
-                  >
-                    {mytCountdown.windowState === "EARLY_GO_LIVE_825AM"
-                      ? "8:25 AM Early Go-Live Window Active"
-                      : mytCountdown.windowState === "SERVICE_LIVE_830AM"
-                      ? "8:30 AM Sunday Service Live"
-                      : mytCountdown.windowState === "FINAL_10M_ALERT"
-                      ? "Final 10m to 8:25 AM Go-Live"
-                      : mytCountdown.windowState === "CHECKING_WINDOW_6AM"
-                      ? "6:00 AM Crew Check Window Open"
-                      : "Next Sunday Broadcast Schedule"}
+                  {/* 3 Inline Milestone Pills */}
+                  <span className="px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.07] text-[11px] text-zinc-300 font-mono">
+                    06:00 Check:{" "}
+                    <strong className="text-white">
+                      {mytCountdown.toCheckStart600.isReached
+                        ? "OPEN"
+                        : mytCountdown.toCheckStart600.formatted}
+                    </strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-300 font-mono">
+                    08:25 Go-Live (-5m):{" "}
+                    <strong className="text-white">
+                      {mytCountdown.toGoLive825.totalSeconds === 0
+                        ? "GO LIVE"
+                        : mytCountdown.toGoLive825.formatted}
+                    </strong>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.07] text-[11px] text-zinc-300 font-mono">
+                    08:30 Service:{" "}
+                    <strong className="text-white">
+                      {mytCountdown.toService830.isReached
+                        ? "LIVE"
+                        : mytCountdown.toService830.formatted}
+                    </strong>
                   </span>
                 </div>
 
-                {/* Compact Clock Simulation Segmented Control */}
-                <div className="inline-flex items-center gap-1 bg-[#17171b] p-1 rounded-full border border-white/[0.07]">
+                {/* Sim Clock Switcher */}
+                <div className="inline-flex items-center gap-1 bg-[#17171b] p-0.5 rounded-full border border-white/[0.07]">
                   {(
                     [
                       { id: "REAL", label: "Live MYT" },
-                      { id: "SIM_615AM_CHECK", label: "6:15 AM Check" },
-                      { id: "SIM_820AM_FINAL5M", label: "8:20 AM (-5m)" },
-                      { id: "SIM_825AM_GOLIVE", label: "8:25 AM Go-Live" },
+                      { id: "SIM_615AM_CHECK", label: "6:15 AM" },
+                      { id: "SIM_820AM_FINAL5M", label: "8:20 AM" },
+                      { id: "SIM_825AM_GOLIVE", label: "8:25 AM" },
                     ] as const
                   ).map((mode) => (
                     <button
                       key={mode.id}
                       type="button"
                       onClick={() => setSimScheduleMode(mode.id)}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition ${
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition ${
                         simScheduleMode === mode.id
                           ? "bg-white text-black font-semibold"
                           : "text-zinc-400 hover:text-white"
@@ -1487,354 +1290,164 @@ export default function CrewAndQcPage() {
                 </div>
               </div>
 
-              {/* 3 Structured Sunday Milestones (Each shown once with its live countdown) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {/* Milestone 1: 6:00 AM Check Start */}
-                <div
-                  className={`rounded-xl px-4 py-3 border flex items-center justify-between gap-3 ${
-                    mytCountdown.windowState === "CHECKING_WINDOW_6AM"
-                      ? "bg-amber-500/[0.08] border-amber-500/35"
-                      : "bg-white/[0.02] border-white/[0.07]"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                        01 · Check Start
+              {/* Readiness Gate Bar (Blinking Red if Missing, Blinking Green if 100%, Solid Emerald if On Air) */}
+              {is100PercentReady ? (
+                directorSignOff.clearedToGoLive ? (
+                  <div className="rounded-xl p-3.5 bg-[#0b1f16] border-2 border-emerald-400 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="px-3 py-1.5 rounded-lg bg-emerald-400 text-black font-extrabold text-sm tabular-nums">
+                        ON AIR
                       </span>
-                      <span className="text-xs font-mono font-bold text-white">
-                        06:00 AM MYT
-                      </span>
-                    </div>
-                    <div className="text-xs text-zinc-400 truncate mt-0.5">
-                      Rig power, optics, mix & encoder check
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    {mytCountdown.toCheckStart600.isReached ? (
-                      <span className="px-2.5 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono font-bold">
-                        OPEN
-                      </span>
-                    ) : (
-                      <div className="text-sm font-mono font-bold text-zinc-200 tabular-nums">
-                        {mytCountdown.toCheckStart600.formatted}
+                      <div>
+                        <div className="text-sm font-bold text-white">
+                          Broadcast Confirmed On Air · Signed by{" "}
+                          {directorSignOff.directorName} ({directorSignOff.clearedAt})
+                        </div>
+                        <div className="text-[11px] text-emerald-300 font-mono mt-0.5">
+                          {completedChecks}/{totalChecks} Verified · YT 1080p60 · IG Blur+16:9 · -14 LUFS
+                        </div>
                       </div>
-                    )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isDirector && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleResetChecklists}
+                            className="px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 text-xs font-medium"
+                          >
+                            Reset
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleToggleGoLive}
+                            className="px-3.5 py-1.5 rounded-full bg-white/[0.1] text-emerald-300 border border-emerald-400/40 text-xs font-semibold"
+                          >
+                            Standby
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
+                        className="px-3.5 py-1.5 rounded-full bg-emerald-400 text-black text-xs font-bold"
+                      >
+                        Shutdown →
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-xl p-3.5 bg-[#0a2217] border-2 border-emerald-400 animate-pulse flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="px-3 py-1.5 rounded-lg bg-emerald-400 text-black font-extrabold text-base tabular-nums">
+                        100% READY
+                      </span>
+                      <div>
+                        <div className="text-sm font-bold text-white">
+                          All {totalChecks} Checks Verified — Ready for 8:25 AM Go-Live
+                        </div>
+                        <div className="text-[11px] text-emerald-200 mt-0.5">
+                          CAM 5600K · AUD -14 LUFS · IG Blur+16:9 · YT 1080p60
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isDirector ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleResetChecklists}
+                            className="px-3 py-1.5 rounded-full bg-white/[0.08] text-zinc-200 text-xs font-medium"
+                          >
+                            Reset
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleToggleGoLive}
+                            className="px-4 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-extrabold ring-2 ring-white"
+                          >
+                            Director: Confirm Go Live
+                          </button>
+                        </>
+                      ) : (
+                        <span className="px-3.5 py-1.5 rounded-full bg-emerald-400/20 border border-emerald-400 text-emerald-200 text-xs font-bold">
+                          Awaiting Director Confirmation
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="rounded-xl p-3.5 bg-[#1c0d11] border-2 border-rose-500 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="px-3 py-1.5 rounded-lg bg-rose-500 text-white font-extrabold text-base tabular-nums animate-pulse">
+                      {overallPct}%
+                    </span>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-bold text-white">
+                          {pendingCount} Pre-Flight{" "}
+                          {pendingCount === 1 ? "Check" : "Checks"} Missing
+                        </span>
+                        <span className="text-[11px] font-mono text-rose-200">
+                          ({completedChecks}/{totalChecks} Verified)
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {pendingStations.map((ps) => {
+                          const st = DEPT_STYLES[ps.role];
+                          return (
+                            <button
+                              key={ps.role}
+                              type="button"
+                              onClick={() => setStationFilter(ps.role)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-medium ${st.pill}`}
+                            >
+                              {ps.label}: {ps.remaining}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
 
-                {/* Milestone 2: 8:25 AM Early Go-Live (-5 Mins) */}
-                <div
-                  className={`rounded-xl px-4 py-3 border flex items-center justify-between gap-3 ${
-                    mytCountdown.windowState === "EARLY_GO_LIVE_825AM" ||
-                    mytCountdown.windowState === "FINAL_10M_ALERT"
-                      ? "bg-emerald-500/[0.12] border-emerald-400/50"
-                      : "bg-emerald-500/[0.05] border-emerald-500/25"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
-                        02 · Early Go-Live (-5m)
-                      </span>
-                      <span className="text-xs font-mono font-bold text-emerald-300">
-                        08:25 AM MYT
-                      </span>
-                    </div>
-                    <div className="text-xs text-zinc-300 truncate mt-0.5">
-                      Streams live 5 mins before service
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    {mytCountdown.toGoLive825.totalSeconds === 0 ? (
-                      <span className="px-2.5 py-1 rounded-md bg-emerald-400 text-black text-[11px] font-mono font-extrabold">
-                        GO LIVE
-                      </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1.5 rounded-full bg-rose-500/20 border border-rose-500/45 text-rose-200 text-[11px] font-semibold animate-pulse">
+                      Go-Live Locked · Director Only
+                    </span>
+                    {isDirector ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleCheckAllStation("ALL")}
+                          className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold"
+                        >
+                          Verify All ({pendingCount})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetChecklists}
+                          className="px-3 py-1.5 rounded-full bg-white/[0.05] text-zinc-300 border border-white/[0.08] text-xs font-medium"
+                        >
+                          Reset
+                        </button>
+                      </>
                     ) : (
-                      <div className="text-base font-mono font-bold text-white tabular-nums">
-                        {mytCountdown.toGoLive825.formatted}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCheckAllStation(myIdentity.role)}
+                        className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold"
+                      >
+                        Verify {DEPT_STYLES[myIdentity.role].label}
+                      </button>
                     )}
                   </div>
                 </div>
-
-                {/* Milestone 3: 8:30 AM Sunday Service */}
-                <div
-                  className={`rounded-xl px-4 py-3 border flex items-center justify-between gap-3 ${
-                    mytCountdown.windowState === "SERVICE_LIVE_830AM"
-                      ? "bg-rose-500/[0.12] border-rose-500/40"
-                      : "bg-white/[0.02] border-white/[0.07]"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                        03 · Service Start
-                      </span>
-                      <span className="text-xs font-mono font-bold text-white">
-                        08:30 AM MYT
-                      </span>
-                    </div>
-                    <div className="text-xs text-zinc-400 truncate mt-0.5">
-                      Official Sunday service broadcast
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    {mytCountdown.toService830.isReached ? (
-                      <span className="px-2.5 py-1 rounded-md bg-rose-500 text-white text-[11px] font-mono font-bold">
-                        LIVE
-                      </span>
-                    ) : (
-                      <div className="text-sm font-mono font-bold text-zinc-200 tabular-nums">
-                        {mytCountdown.toService830.formatted}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* ===============================================================
-                2. BLINKING READINESS & DIRECTOR GO-LIVE PANEL (CLEAN & STRUCTURED)
-                - Blinking Red when checks are missing (!is100PercentReady)
-                - Blinking Green when 100% ready, awaiting Director confirmation
-                - Solid Emerald once Director confirms On Air
-               =============================================================== */}
-            {is100PercentReady ? (
-              directorSignOff.clearedToGoLive ? (
-                /* STATE C: CONFIRMED ON AIR */
-                <div className="rounded-2xl p-5 bg-[#0b1f16] border-2 border-emerald-400 shadow-[0_0_28px_rgba(16,185,129,0.2)] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="px-4 py-2.5 rounded-xl bg-emerald-400 text-black font-extrabold text-xl tabular-nums">
-                      ON AIR
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <span className="relative flex h-2.5 w-2.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
-                        </span>
-                        <span className="text-base font-bold text-white tracking-tight">
-                          Broadcast Confirmed On Air
-                        </span>
-                        <span className="text-xs font-mono text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                          Signed off by {directorSignOff.directorName} ·{" "}
-                          {directorSignOff.clearedAt}
-                        </span>
-                      </div>
-
-                      {/* Clean Structured Telemetry Pills */}
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                        <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-200 font-medium">
-                          {completedChecks}/{totalChecks} Checks Verified
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-200 font-medium">
-                          YouTube 16:9 · 1080p60
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-200 font-medium">
-                          IG MAINSTREAM · Blur + 16:9 Center
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] text-zinc-200 font-medium">
-                          Audio Bus · -14 LUFS
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                    {isDirector ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={handleResetChecklists}
-                          className="px-3.5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 text-xs font-medium border border-white/[0.1] transition"
-                        >
-                          Reset
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleToggleGoLive}
-                          className="px-4 py-2 rounded-full bg-white/[0.1] hover:bg-white/[0.16] text-emerald-300 border border-emerald-400/40 text-xs font-semibold transition"
-                        >
-                          Return to Standby
-                        </button>
-                      </>
-                    ) : (
-                      <span className="px-3.5 py-2 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-200 text-xs font-semibold">
-                        Director Confirmed ({directorSignOff.clearedAt})
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("POST_LIVE_SHUTDOWN")}
-                      className="px-4 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-bold transition"
-                    >
-                      Post-Live Shutdown →
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* STATE B: 100% READY — BLINKING GREEN PANEL FOR DIRECTOR CONFIRMATION */
-                <div className="rounded-2xl p-5 bg-[#0a2217] border-2 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.35)] animate-pulse flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="px-4 py-2.5 rounded-xl bg-emerald-400 text-black font-extrabold text-2xl tabular-nums shadow-[0_0_20px_rgba(52,211,153,0.5)]">
-                      100%
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <span className="relative flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-90" />
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
-                        </span>
-                        <span className="text-base sm:text-lg font-bold text-white tracking-tight">
-                          All Stations Verified — Ready for 8:25 AM MYT Go-Live
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-400/40 text-emerald-200 text-[11px] font-mono font-semibold">
-                          {completedChecks}/{totalChecks} Complete
-                        </span>
-                      </div>
-
-                      {/* Clean Structured Technical Readiness Summary */}
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-200 font-medium">
-                          CAM · 5600K & Framing Locked
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-200 font-medium">
-                          AUD · -14 LUFS & Aux Clean
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-200 font-medium">
-                          IG · Top/Bottom Blur + 16:9 Center
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-200 font-medium">
-                          YT · 1080p60 Stream Ready
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                    {isDirector ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={handleResetChecklists}
-                          className="px-3.5 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-zinc-200 text-xs font-medium border border-white/[0.12] transition"
-                        >
-                          Reset
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleToggleGoLive}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs sm:text-sm font-extrabold tracking-tight transition shadow-[0_0_25px_rgba(52,211,153,0.75)] ring-2 ring-white"
-                        >
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-black" />
-                          </span>
-                          <span>Director: Confirm Go Live</span>
-                        </button>
-                      </>
-                    ) : (
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-400/20 border border-emerald-400 text-emerald-200 text-xs font-bold">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                        <span>Awaiting Director Go-Live Confirmation</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )
-            ) : (
-              /* STATE A: MISSING CHECKS — BLINKING RED PANEL */
-              <div className="rounded-2xl p-5 bg-[#1c0d11] border-2 border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.28)] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="px-4 py-2.5 rounded-xl bg-rose-500 text-white font-extrabold text-2xl tabular-nums animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.55)]">
-                    {overallPct}%
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-90" />
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
-                      </span>
-                      <span className="text-base sm:text-lg font-bold text-white tracking-tight">
-                        {pendingCount}{" "}
-                        {pendingCount === 1
-                          ? "Pre-Flight Check Missing"
-                          : "Pre-Flight Checks Missing"}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-200 text-[11px] font-mono font-semibold tabular-nums">
-                        {completedChecks}/{totalChecks} Verified
-                      </span>
-                    </div>
-
-                    {/* Clean Station Callouts (Click to filter) */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {pendingStations.map((ps) => {
-                        const st = DEPT_STYLES[ps.role];
-                        return (
-                          <button
-                            key={ps.role}
-                            type="button"
-                            onClick={() => setStationFilter(ps.role)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium transition ${st.pill}`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${st.dot}`}
-                            />
-                            <span>
-                              {ps.label} · {ps.operatorName}
-                            </span>
-                            <span className="font-mono font-bold tabular-nums">
-                              ({ps.remaining})
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                  <span
-                    title="Only the Director can confirm Go-Live once 100% of checks are completed"
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-rose-500/20 border border-rose-500/45 text-rose-200 text-xs font-semibold animate-pulse"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                    <span>Go-Live Locked · Director Only</span>
-                  </span>
-
-                  {isDirector ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleCheckAllStation("ALL")}
-                        className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
-                      >
-                        Verify Remaining ({pendingCount})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleResetChecklists}
-                        className="px-3.5 py-2 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/[0.08] text-xs font-medium transition"
-                      >
-                        Reset
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleCheckAllStation(myIdentity.role)}
-                      className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
-                    >
-                      Verify {DEPT_STYLES[myIdentity.role].label} Station
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 5 DEPARTMENT GO / NO-GO STATION CARDS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+            {/* 5 DEPARTMENT STATION CARDS */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {ROLES_LIST.map((role) => {
                 const style = DEPT_STYLES[role];
                 const items = checklists.filter((c) => c.role === role);
@@ -1853,7 +1466,7 @@ export default function CrewAndQcPage() {
                     onClick={() =>
                       setStationFilter(stationFilter === role ? "ALL" : role)
                     }
-                    className={`cursor-pointer rounded-2xl p-4 transition flex flex-col justify-between ${
+                    className={`cursor-pointer rounded-2xl p-3.5 transition flex flex-col justify-between ${
                       style.topBorder
                     } ${
                       isSelected
@@ -1864,38 +1477,33 @@ export default function CrewAndQcPage() {
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-2 h-2 rounded-full ${style.dot}`}
-                          />
-                          <span className="text-xs font-semibold text-white tracking-tight">
-                            {style.label}
-                          </span>
-                        </div>
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className="text-xs font-semibold text-white">
+                          {style.label}
+                        </span>
                         {remaining > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-semibold tabular-nums animate-pulse">
-                            {remaining} Pending
+                          <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-semibold tabular-nums">
+                            {remaining} left
                           </span>
                         ) : (
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${style.pill}`}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${style.pill}`}
                           >
                             GO
                           </span>
                         )}
                       </div>
 
-                      <div className="mt-3 flex items-baseline justify-between">
-                        <span className="text-2xl font-semibold text-white tabular-nums tracking-tight">
+                      <div className="mt-2 flex items-baseline justify-between">
+                        <span className="text-xl font-semibold text-white tabular-nums">
                           {pct}%
                         </span>
                         <span className="text-[11px] text-zinc-400 tabular-nums">
-                          {done} of {items.length}
+                          {done}/{items.length}
                         </span>
                       </div>
 
-                      <div className="w-full h-1 bg-white/[0.07] rounded-full my-2.5 overflow-hidden">
+                      <div className="w-full h-1 bg-white/[0.07] rounded-full my-2 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-300 ${style.bar}`}
                           style={{ width: `${pct}%` }}
@@ -1904,22 +1512,9 @@ export default function CrewAndQcPage() {
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-white/[0.05] text-zinc-400">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-5 h-5 rounded-md overflow-hidden border border-white/15 bg-black shrink-0">
-                          <img
-                            src={resolveRobotAvatarUrl(
-                              leadUser?.avatarUrl,
-                              role,
-                              leadUser?.callsign
-                            )}
-                            alt={`${leadUser?.name || style.label} AI Robot`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <span className="truncate font-medium text-zinc-300">
-                          {leadUser ? leadUser.name : "Unassigned"}
-                        </span>
-                      </div>
+                      <span className="truncate font-medium text-zinc-300">
+                        {leadUser ? leadUser.name : "Unassigned"}
+                      </span>
                       <span className="text-[10px] font-mono text-zinc-500">
                         {leadUser ? leadUser.callsign : style.code}
                       </span>
@@ -1929,19 +1524,19 @@ export default function CrewAndQcPage() {
               })}
             </div>
 
-            {/* FILTER BAR: DEPARTMENT, MALAYSIA SUNDAY PHASE, AND OPERATOR */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[#121215] border border-white/[0.08] rounded-2xl p-3">
+            {/* FILTER BAR */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-[#121215] border border-white/[0.08] rounded-2xl p-2.5">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setStationFilter("ALL")}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
                     stationFilter === "ALL"
                       ? "bg-white text-black font-semibold"
                       : "text-zinc-400 hover:text-white bg-white/[0.03]"
                   }`}
                 >
-                  All Stations ({totalChecks})
+                  All ({totalChecks})
                 </button>
                 {ROLES_LIST.map((role) => {
                   const style = DEPT_STYLES[role];
@@ -1954,7 +1549,7 @@ export default function CrewAndQcPage() {
                       key={role}
                       type="button"
                       onClick={() => setStationFilter(role)}
-                      className={`px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1.5 ${
+                      className={`px-3 py-1 rounded-full text-xs transition flex items-center gap-1.5 ${
                         isSelected ? style.filterActive : style.pill
                       }`}
                     >
@@ -1970,41 +1565,29 @@ export default function CrewAndQcPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {/* Malaysia Sunday Schedule Phase Filter */}
                 <select
                   value={phaseFilter}
                   onChange={(e) => setPhaseFilter(e.target.value as any)}
-                  aria-label="Filter by Sunday Malaysia Time Phase"
-                  className="bg-[#18181c] border border-white/[0.1] rounded-full px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/30"
+                  aria-label="Filter by Phase"
+                  className="bg-[#18181c] border border-white/[0.1] rounded-full px-3 py-1 text-xs text-zinc-200 focus:outline-none"
                 >
-                  <option value="ALL">
-                    All Sunday Phases (06:00 AM Check → 08:25 AM Early Go-Live)
-                  </option>
-                  <option value="T-60M">
-                    06:00 AM MYT (T-60M) · Check Start & Rig Power
-                  </option>
-                  <option value="T-30M">
-                    07:00 AM MYT (T-30M) · Optics, IG Blur & Soundcheck
-                  </option>
-                  <option value="T-15M">
-                    08:00 AM MYT (T-15M) · RTMPS Preview & Stream QC
-                  </option>
-                  <option value="T-5M">
-                    08:25 AM MYT (T-5M) · Early Go-Live (5m Before 8:30 AM)
-                  </option>
+                  <option value="ALL">All Phases (06:00–08:25 AM)</option>
+                  <option value="T-60M">06:00 AM · Check Start</option>
+                  <option value="T-30M">07:00 AM · Optics & Mix</option>
+                  <option value="T-15M">08:00 AM · Stream Preview</option>
+                  <option value="T-5M">08:25 AM · Early Go-Live</option>
                 </select>
 
-                {/* Operator Filter */}
                 <select
                   value={userFilter}
                   onChange={(e) => setUserFilter(e.target.value)}
-                  aria-label="Filter by Assigned Operator"
-                  className="bg-[#18181c] border border-white/[0.1] rounded-full px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-white/30"
+                  aria-label="Filter by Operator"
+                  className="bg-[#18181c] border border-white/[0.1] rounded-full px-3 py-1 text-xs text-zinc-200 focus:outline-none"
                 >
                   <option value="ALL">All Operators</option>
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>
-                      Assigned: {u.name} ({u.role})
+                      {u.name} ({u.role})
                     </option>
                   ))}
                 </select>
@@ -2013,76 +1596,66 @@ export default function CrewAndQcPage() {
                   <button
                     type="button"
                     onClick={() => setShowAddCheckModal(true)}
-                    className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                    className="px-3 py-1 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                   >
-                    + Assign Check
+                    + Add Check
                   </button>
                 )}
               </div>
             </div>
 
-            {/* ===============================================================
-                SECTION 1 (TOP PRIORITY): PENDING VERIFICATION — NEEDS ACTION
-               =============================================================== */}
+            {/* PENDING CHECKS */}
             {uncheckedVisible.length > 0 && (
-              <section className="rounded-3xl p-6 bg-[#151113] border border-rose-500/35 space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-500/20 pb-4">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-400">
-                        Pending Verification · {uncheckedVisible.length}{" "}
-                        Remaining Before 8:25 AM MYT Early Go-Live
-                      </span>
-                    </div>
-                    <h2 className="text-base font-semibold text-white tracking-tight">
-                      Incomplete Pre-Flight Checks Blocking 8:25 AM MYT Go-Live
+              <section className="rounded-2xl p-5 bg-[#151113] border border-rose-500/35 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-500/20 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                    <h2 className="text-sm font-semibold text-white">
+                      Pending Checks ({uncheckedVisible.length} Remaining)
                     </h2>
                   </div>
-
                   <button
                     type="button"
                     onClick={() => handleCheckAllStation(stationFilter)}
-                    className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                    className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
                   >
-                    Verify All {uncheckedVisible.length} Now
+                    Verify All {uncheckedVisible.length}
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                   {uncheckedVisible.map((item) => {
                     const style =
                       DEPT_STYLES[item.role] || DEPT_STYLES.CAMERA;
                     return (
                       <div
                         key={item.id}
-                        className={`rounded-2xl p-4 bg-[#0c0c0e] border border-rose-500/40 ${style.leftBorder} flex flex-col justify-between gap-4 transition hover:border-rose-400`}
+                        className={`rounded-xl p-3.5 bg-[#0c0c0e] border border-rose-500/40 ${style.leftBorder} flex flex-col justify-between gap-3 transition hover:border-rose-400`}
                       >
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${style.pill}`}
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${style.pill}`}
                               >
                                 {item.role}
                               </span>
-                              <span className="text-[10px] font-mono text-zinc-300 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
+                              <span className="text-[10px] font-mono text-zinc-400">
                                 {MALAYSIA_PHASE_TIME_MAP[
                                   item.phase || "T-30M"
                                 ] || item.phase}
                               </span>
                             </div>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-rose-400 animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                              Missing
+                            <span className="text-[10px] font-semibold uppercase text-rose-400">
+                              Pending
                             </span>
                           </div>
 
                           <div
                             onClick={() => handleToggleCheck(item.id)}
-                            className="cursor-pointer group"
+                            className="cursor-pointer"
                           >
-                            <div className="text-sm font-semibold text-white group-hover:text-zinc-200 tracking-tight">
+                            <div className="text-sm font-semibold text-white">
                               {item.task}
                             </div>
                             <div className="text-xs text-zinc-400 mt-0.5">
@@ -2091,39 +1664,30 @@ export default function CrewAndQcPage() {
                           </div>
                         </div>
 
-                        {/* Bottom Action Row: Reassign Operator + 1-Tap Verify */}
-                        <div className="flex items-center justify-between gap-2 pt-3 border-t border-white/[0.06]">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-[11px] text-zinc-500 shrink-0">
-                              Owner:
-                            </span>
-                            <select
-                              value={item.assignedToUserId || ""}
-                              onChange={(e) =>
-                                handleReassignCheckItem(
-                                  item.id,
-                                  e.target.value
-                                )
-                              }
-                              aria-label="Assign operator"
-                              className="bg-white/[0.04] border border-white/[0.1] rounded-lg px-2 py-1 text-[11px] font-medium text-zinc-200 focus:outline-none focus:border-white/30 truncate"
-                            >
-                              {users.map((u) => (
-                                <option
-                                  key={u.id}
-                                  value={u.id}
-                                  className="bg-[#121215] text-white"
-                                >
-                                  {u.name} ({u.callsign})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-white/[0.06]">
+                          <select
+                            value={item.assignedToUserId || ""}
+                            onChange={(e) =>
+                              handleReassignCheckItem(item.id, e.target.value)
+                            }
+                            aria-label="Assign operator"
+                            className="bg-white/[0.04] border border-white/[0.1] rounded-lg px-2 py-1 text-[11px] text-zinc-200 focus:outline-none truncate"
+                          >
+                            {users.map((u) => (
+                              <option
+                                key={u.id}
+                                value={u.id}
+                                className="bg-[#121215] text-white"
+                              >
+                                {u.name} ({u.callsign})
+                              </option>
+                            ))}
+                          </select>
 
                           <button
                             type="button"
                             onClick={() => handleToggleCheck(item.id)}
-                            className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0 transition"
+                            className="px-3 py-1 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0"
                           >
                             Verify
                           </button>
@@ -2135,29 +1699,22 @@ export default function CrewAndQcPage() {
               </section>
             )}
 
-            {/* ===============================================================
-                SECTION 2 (SEPARATED BELOW): VERIFIED & LOCKED BY DEPARTMENT
-               =============================================================== */}
+            {/* VERIFIED CHECKS */}
             {checkedVisible.length > 0 && (
-              <section className="rounded-3xl p-6 bg-[#111114] border border-white/[0.08] space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-4">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
-                        Verified & Locked · {checkedVisible.length} Completed
-                      </span>
-                    </div>
-                    <h2 className="text-base font-semibold text-white tracking-tight">
-                      Completed Subsystem Checks by Department
+              <section className="rounded-2xl p-5 bg-[#111114] border border-white/[0.08] space-y-4">
+                <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <h2 className="text-sm font-semibold text-white">
+                      Verified & Locked ({checkedVisible.length})
                     </h2>
                   </div>
-                  <span className="text-xs text-zinc-500">
-                    Click any card to revert to pending
+                  <span className="text-[11px] text-zinc-500">
+                    Click card to undo
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                   {checkedVisible.map((item) => {
                     const style =
                       DEPT_STYLES[item.role] || DEPT_STYLES.CAMERA;
@@ -2165,27 +1722,20 @@ export default function CrewAndQcPage() {
                       <div
                         key={item.id}
                         onClick={() => handleToggleCheck(item.id)}
-                        className={`cursor-pointer rounded-2xl p-4 transition flex items-center justify-between gap-3 select-none ${style.verifiedCard}`}
+                        className={`cursor-pointer rounded-xl p-3.5 transition flex items-center justify-between gap-3 select-none ${style.verifiedCard}`}
                       >
-                        <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div
-                            className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[11px] font-bold ${style.checkSquare}`}
+                            className={`w-5 h-5 rounded flex items-center justify-center shrink-0 text-[11px] font-bold ${style.checkSquare}`}
                           >
                             ✓
                           </div>
                           <div className="min-w-0">
-                            <div className="text-[13px] font-semibold text-white truncate tracking-[-0.01em]">
+                            <div className="text-xs font-semibold text-white truncate">
                               {item.task}
                             </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span
-                                className={`px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0 ${style.pill}`}
-                              >
-                                {item.role}
-                              </span>
-                              <span className="text-[11px] text-zinc-400 truncate">
-                                {item.detail}
-                              </span>
+                            <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                              {item.role} · {item.detail}
                             </div>
                           </div>
                         </div>
@@ -2209,164 +1759,48 @@ export default function CrewAndQcPage() {
               </section>
             )}
 
-            {/* ===============================================================
-                INSTAGRAM LIVE BROADCAST LAYOUT & QC SPECIFICATION CARD
-                (Top Blur + Centered 16:9 Landscape + Bottom Blur · RTMPS)
-               =============================================================== */}
+            {/* COMPACT IG 9:16 BLUR + 16:9 CENTER SPEC STRIP */}
             {(stationFilter === "ALL" ||
               stationFilter === "QC" ||
               stationFilter === "CAMERA" ||
               stationFilter === "DIRECTOR") && (
-              <section className="rounded-3xl p-6 bg-[#121215] border border-white/[0.08] space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
-                        Instagram Live Broadcast Standard · Go Live With Streaming Software
-                      </span>
-                    </div>
-                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                      IG 9:16 Canvas: Blurred Top + Centered 16:9 Landscape Broadcast + Blurred Bottom
-                    </h2>
-                  </div>
-
+              <section className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[11px] font-semibold">
-                      Stream Key: MAINSTREAM (Connected)
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                      IG Live 9:16 Spec · Stream Key: MAINSTREAM
                     </span>
-                    <span className="px-3 py-1 rounded-full bg-white/[0.04] text-zinc-400 border border-white/[0.08] text-[11px] font-mono">
-                      rtmps://edgetee-upload-kul2-2.xx.fbcdn.net:443/rtmp/
-                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-white">
+                    Top Blur Fill + Centered 16:9 Landscape Feed + Bottom Blur Fill
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                  {/* Left (4 Cols): Visual 9:16 IG Live Producer Preview Mockup */}
-                  <div className="lg:col-span-4 flex justify-center">
-                    <div className="w-56 rounded-2xl overflow-hidden border border-white/[0.14] bg-[#09090b] shadow-2xl flex flex-col">
-                      {/* Modal Top Bar */}
-                      <div className="px-3 py-2 bg-[#1c1c21] border-b border-white/[0.08] flex items-center justify-between text-[10px]">
-                        <span className="text-zinc-300 font-semibold">
-                          Live video
-                        </span>
-                        <span className="text-sky-400 font-semibold">
-                          Go live
-                        </span>
-                      </div>
-
-                      {/* 1. TOP BLUR ZONE */}
-                      <div className="h-20 relative overflow-hidden bg-gradient-to-b from-zinc-800/70 via-zinc-700/50 to-zinc-900/80 flex items-center justify-center border-b border-white/[0.08]">
-                        <div className="absolute inset-0 backdrop-blur-xl bg-amber-100/10" />
-                        <div className="relative z-10 text-center px-2">
-                          <span className="px-2 py-0.5 rounded bg-black/60 border border-white/15 text-[9px] font-semibold uppercase tracking-wider text-zinc-200">
-                            Top Blur Fill (Gaussian Blur)
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 2. CENTER 16:9 LANDSCAPE BROADCAST */}
-                      <div className="h-28 relative bg-[#050507] border-y border-emerald-400/50 flex flex-col items-center justify-center px-3 text-center">
-                        <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
-                          16:9 Landscape Live Feed
-                        </span>
-                        <span className="text-xs font-semibold text-white mt-0.5">
-                          Full Horizontal Broadcast
-                        </span>
-                        <span className="text-[10px] text-zinc-400 mt-0.5">
-                          Centered · Zero Side Clipping
-                        </span>
-                      </div>
-
-                      {/* 3. BOTTOM BLUR ZONE */}
-                      <div className="h-20 relative overflow-hidden bg-gradient-to-t from-zinc-800/70 via-zinc-700/50 to-zinc-900/80 flex flex-col justify-between p-2 border-t border-white/[0.08]">
-                        <div className="absolute inset-0 backdrop-blur-xl bg-amber-100/10" />
-                        <div className="relative z-10 text-center mt-2">
-                          <span className="px-2 py-0.5 rounded bg-black/60 border border-white/15 text-[9px] font-semibold uppercase tracking-wider text-zinc-200">
-                            Bottom Blur Fill (Gaussian Blur)
-                          </span>
-                        </div>
-                        <div className="relative z-10 flex items-center justify-between text-[9px] text-zinc-300 px-1">
-                          <span className="px-2 py-0.5 rounded-full bg-black/65 border border-white/10">
-                            Add link
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded-full bg-black/65 border border-white/10">
-                            Audio On
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div className="px-3 py-2 rounded-xl bg-[#09090b] border border-white/[0.06]">
+                    <span className="text-amber-400 font-semibold block">
+                      1. Top Blur
+                    </span>
+                    <span className="text-zinc-400">Gaussian fill, 0 gap</span>
                   </div>
-
-                  {/* Right (8 Cols): 4-Point IG Live QC Checklist */}
-                  <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div className="rounded-2xl p-4 bg-[#0c0c0f] border border-white/[0.08] space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
-                          1 · Top Blur Zone
-                        </span>
-                        <span className="text-[10px] font-mono text-zinc-500">
-                          CAM / OBS Scene
-                        </span>
-                      </div>
-                      <div className="text-xs font-semibold text-white">
-                        Blurred Top Background Fill Active
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        Duplicate background video layer scaled to fill the upper 9:16 area with smooth Gaussian blur and no black gap at the top border.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl p-4 bg-[#0c0c0f] border border-white/[0.08] space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                          2 · Center 16:9 Broadcast
-                        </span>
-                        <span className="text-[10px] font-mono text-zinc-500">
-                          1080p60 Landscape
-                        </span>
-                      </div>
-                      <div className="text-xs font-semibold text-white">
-                        Full Landscape Program Centered
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        Full 16:9 horizontal broadcast frame centered vertically so speakers, worship band, and lower-third scriptures are never cropped on the sides.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl p-4 bg-[#0c0c0f] border border-white/[0.08] space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
-                          3 · Bottom Blur Zone
-                        </span>
-                        <span className="text-[10px] font-mono text-zinc-500">
-                          CAM / OBS Scene
-                        </span>
-                      </div>
-                      <div className="text-xs font-semibold text-white">
-                        Blurred Bottom Fill Behind IG Chat
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        Symmetrical blurred bottom fill sits cleanly behind Instagram Live viewer comments and the &ldquo;Add link&rdquo; pill with zero hard seams.
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl p-4 bg-[#0c0c0f] border border-white/[0.08] space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-400">
-                          4 · IG Live Producer RTMPS
-                        </span>
-                        <span className="text-[10px] font-mono text-zinc-500">
-                          QC-01 / TD-01
-                        </span>
-                      </div>
-                      <div className="text-xs font-semibold text-white">
-                        MAINSTREAM Key Connected &amp; Preview Live
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        Select persistent key <span className="text-zinc-200 font-medium">MAINSTREAM (Connected)</span>, confirm preview displays in the Instagram modal, unmute preview check, then click <span className="text-sky-400 font-medium">Go live</span>.
-                      </p>
-                    </div>
+                  <div className="px-3 py-2 rounded-xl bg-[#09090b] border border-white/[0.06]">
+                    <span className="text-emerald-400 font-semibold block">
+                      2. Center 16:9
+                    </span>
+                    <span className="text-zinc-400">Uncropped 1080p60</span>
+                  </div>
+                  <div className="px-3 py-2 rounded-xl bg-[#09090b] border border-white/[0.06]">
+                    <span className="text-amber-400 font-semibold block">
+                      3. Bottom Blur
+                    </span>
+                    <span className="text-zinc-400">Clean behind chat</span>
+                  </div>
+                  <div className="px-3 py-2 rounded-xl bg-[#09090b] border border-white/[0.06]">
+                    <span className="text-sky-400 font-semibold block">
+                      4. RTMPS Key
+                    </span>
+                    <span className="text-zinc-400">MAINSTREAM preview</span>
                   </div>
                 </div>
               </section>
@@ -2378,114 +1812,79 @@ export default function CrewAndQcPage() {
             VIEW 2: LIVE STREAM TELEMETRY, FAST QC PAD & DIRECTOR QUEUE
            =================================================================== */}
         {activeTab === "QC_PAD" && (
-          <div className="space-y-6">
-            {/* Broadcast Stream Telemetry Strip */}
+          <div className="space-y-5">
+            {/* Telemetry Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
-                <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                  <span>YouTube CDN Ingest</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                </div>
-                <div className="text-lg font-semibold text-white tabular-nums mt-1">
+              <div className="rounded-2xl p-3.5 bg-[#121215] border border-white/[0.08]">
+                <div className="text-[11px] text-zinc-400">YouTube 16:9</div>
+                <div className="text-base font-semibold text-white tabular-nums mt-0.5">
                   1080p60 · 6.8 Mbps
                 </div>
-                <div className="text-[11px] text-emerald-400 mt-0.5 tabular-nums">
-                  0.0% Dropped Frames
-                </div>
+                <div className="text-[11px] text-emerald-400">0.0% Drops</div>
               </div>
 
-              <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
-                <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                  <span>Instagram Live RTMPS</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <div className="rounded-2xl p-3.5 bg-[#121215] border border-white/[0.08]">
+                <div className="text-[11px] text-zinc-400">IG Live RTMPS</div>
+                <div className="text-base font-semibold text-white mt-0.5">
+                  16:9 + Blur Fill
                 </div>
-                <div className="text-lg font-semibold text-white tabular-nums mt-1">
-                  Landscape + Blur
-                </div>
-                <div className="text-[11px] text-sky-400 mt-0.5">
-                  Top/Bottom Blur · MAINSTREAM
-                </div>
+                <div className="text-[11px] text-sky-400">Key: MAINSTREAM</div>
               </div>
 
-              <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
-                <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                  <span>Program Loudness</span>
-                  <span className="w-2 h-2 rounded-full bg-sky-400" />
-                </div>
-                <div className="text-lg font-semibold text-white tabular-nums mt-1">
+              <div className="rounded-2xl p-3.5 bg-[#121215] border border-white/[0.08]">
+                <div className="text-[11px] text-zinc-400">Audio Bus</div>
+                <div className="text-base font-semibold text-white tabular-nums mt-0.5">
                   -14.2 LUFS
                 </div>
-                <div className="text-[11px] text-sky-400 mt-0.5 tabular-nums">
-                  True Peak -1.8 dBTP
-                </div>
+                <div className="text-[11px] text-sky-400">Peak -1.8 dBTP</div>
               </div>
 
-              <div className="rounded-2xl p-4 bg-[#121215] border border-white/[0.08]">
-                <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                  <span>Director Queue</span>
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      waitingDirectorCount > 0
-                        ? "bg-amber-400"
-                        : "bg-emerald-400"
-                    }`}
-                  />
-                </div>
-                <div className="text-lg font-semibold text-white tabular-nums mt-1">
+              <div className="rounded-2xl p-3.5 bg-[#121215] border border-white/[0.08]">
+                <div className="text-[11px] text-zinc-400">Director Queue</div>
+                <div className="text-base font-semibold text-white tabular-nums mt-0.5">
                   {waitingDirectorCount} Pending
                 </div>
-                <div className="text-[11px] text-zinc-400 mt-0.5 tabular-nums">
-                  {qcLogs.length} Total Logged Today
+                <div className="text-[11px] text-zinc-400">
+                  {qcLogs.length} Logged
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* LEFT (5 Cols): FAST 1-TAP QC INCIDENT LOGGER (QC & DIRECTOR ONLY) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* LEFT: FAST 1-TAP QC LOGGER */}
               {canLogQc && (
-              <div className="lg:col-span-5 bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
-                <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
-                  <div>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
-                      Quality Control Station
-                    </span>
-                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                      Rapid Incident & Frame Capture
+                <div className="lg:col-span-5 bg-[#121215] border border-white/[0.08] rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                    <h2 className="text-sm font-semibold text-white">
+                      Log QC Issue / Frame Capture
                     </h2>
+                    <span className="text-[10px] text-emerald-400 font-semibold uppercase">
+                      Routes to Director
+                    </span>
                   </div>
-                  <span className="text-[11px] text-zinc-400 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08]">
-                    Routes to Director
-                  </span>
-                </div>
 
-                {/* 1. Platform Segmented Bar */}
-                <div className="grid grid-cols-3 gap-1.5 bg-[#09090b] p-1 rounded-full border border-white/[0.08]">
-                  {(["INSTAGRAM", "YOUTUBE", "BOTH"] as const).map((plat) => (
-                    <button
-                      key={plat}
-                      type="button"
-                      onClick={() => setQcPlatform(plat)}
-                      className={`py-1.5 rounded-full text-xs font-medium transition ${
-                        qcPlatform === plat
-                          ? "bg-white text-black font-semibold"
-                          : "text-zinc-400 hover:text-white"
-                      }`}
-                    >
-                      {plat === "INSTAGRAM"
-                        ? "IG Landscape + Blur"
-                        : plat === "YOUTUBE"
-                        ? "YouTube 16:9"
-                        : "Both Streams"}
-                    </button>
-                  ))}
-                </div>
+                  <div className="grid grid-cols-3 gap-1 bg-[#09090b] p-1 rounded-full border border-white/[0.08]">
+                    {(["INSTAGRAM", "YOUTUBE", "BOTH"] as const).map((plat) => (
+                      <button
+                        key={plat}
+                        type="button"
+                        onClick={() => setQcPlatform(plat)}
+                        className={`py-1.5 rounded-full text-xs font-medium transition ${
+                          qcPlatform === plat
+                            ? "bg-white text-black font-semibold"
+                            : "text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        {plat === "INSTAGRAM"
+                          ? "IG Live"
+                          : plat === "YOUTUBE"
+                          ? "YouTube"
+                          : "Both"}
+                      </button>
+                    ))}
+                  </div>
 
-                {/* 2. 1-Tap Broadcast Presets */}
-                <div className="space-y-2">
-                  <label className="text-[11px] font-medium text-zinc-400 block">
-                    One-Tap Observation Presets
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {QUICK_QC_PRESETS.map((preset) => {
                       const active = qcTitle === preset.label;
                       return (
@@ -2493,7 +1892,7 @@ export default function CrewAndQcPage() {
                           key={preset.label}
                           type="button"
                           onClick={() => handleSelectQcPreset(preset)}
-                          className={`text-left px-3 py-2.5 rounded-xl text-xs font-medium border transition ${
+                          className={`text-left px-3 py-2 rounded-xl text-xs font-medium border transition ${
                             active
                               ? "bg-white text-black border-white font-semibold"
                               : "bg-[#18181c] hover:bg-white/[0.06] text-zinc-200 border-white/[0.08]"
@@ -2501,7 +1900,7 @@ export default function CrewAndQcPage() {
                         >
                           <div className="truncate">{preset.label}</div>
                           <div
-                            className={`text-[10px] mt-0.5 ${
+                            className={`text-[10px] ${
                               active ? "text-zinc-700" : "text-zinc-500"
                             }`}
                           >
@@ -2511,148 +1910,137 @@ export default function CrewAndQcPage() {
                       );
                     })}
                   </div>
-                </div>
 
-                {/* 3. Custom Observation & Department */}
-                <div className="space-y-2.5">
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
-                      value={qcType}
-                      onChange={(e) => setQcType(e.target.value as any)}
-                      aria-label="Log Type"
-                      className="bg-[#18181c] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-white focus:outline-none"
-                    >
-                      <option value="ISSUE">Issue / Fault</option>
-                      <option value="IMPROVEMENT">Refinement</option>
-                      <option value="ACHIEVEMENT">Broadcast Win</option>
-                    </select>
-                    <select
-                      value={qcStation}
-                      onChange={(e) => setQcStation(e.target.value as any)}
-                      aria-label="Station"
-                      className="bg-[#18181c] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-white focus:outline-none"
-                    >
-                      <option value="CAMERA">Camera</option>
-                      <option value="AUDIO">Audio</option>
-                      <option value="MODERATOR">Moderator</option>
-                      <option value="LIGHTING">Lighting</option>
-                      <option value="NETWORK">Network</option>
-                    </select>
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="Observation headline..."
-                    value={qcTitle}
-                    onChange={(e) => setQcTitle(e.target.value)}
-                    className="w-full bg-[#18181c] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-                  />
-                </div>
-
-                {/* 4. Frame Capture / Screenshot */}
-                <div className="bg-[#09090b] border border-white/[0.08] rounded-2xl p-3.5 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-zinc-300">
-                      Reference Frame (Upload, Grab or Paste)
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        ref={screenshotInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleScreenshotUpload}
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => screenshotInputRef.current?.click()}
-                        className="px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-[11px] font-medium border border-white/[0.08] transition"
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        value={qcType}
+                        onChange={(e) => setQcType(e.target.value as any)}
+                        aria-label="Log Type"
+                        className="bg-[#18181c] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                       >
-                        Upload File
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCaptureScreen}
-                        className="px-3 py-1 rounded-full bg-white text-black hover:bg-zinc-200 text-[11px] font-semibold transition"
+                        <option value="ISSUE">Issue / Fault</option>
+                        <option value="IMPROVEMENT">Refinement</option>
+                        <option value="ACHIEVEMENT">Win</option>
+                      </select>
+                      <select
+                        value={qcStation}
+                        onChange={(e) => setQcStation(e.target.value as any)}
+                        aria-label="Station"
+                        className="bg-[#18181c] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                       >
-                        Capture Stream
-                      </button>
+                        <option value="CAMERA">Camera</option>
+                        <option value="AUDIO">Audio</option>
+                        <option value="MODERATOR">Moderator</option>
+                        <option value="LIGHTING">Lighting</option>
+                        <option value="NETWORK">Network</option>
+                      </select>
                     </div>
+
+                    <input
+                      type="text"
+                      placeholder="Observation..."
+                      value={qcTitle}
+                      onChange={(e) => setQcTitle(e.target.value)}
+                      className="w-full bg-[#18181c] border border-white/[0.1] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+                    />
                   </div>
 
-                  {qcScreenshot && (
-                    <div
-                      onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setQcMarker({
-                          x: Math.round(
-                            ((e.clientX - rect.left) / rect.width) * 100
-                          ),
-                          y: Math.round(
-                            ((e.clientY - rect.top) / rect.height) * 100
-                          ),
-                        });
-                      }}
-                      className="relative cursor-crosshair rounded-xl overflow-hidden border border-white/[0.1] bg-black max-h-44 flex items-center justify-center"
-                    >
-                      <img
-                        src={qcScreenshot}
-                        alt="Captured stream frame"
-                        className="max-h-44 w-auto object-contain"
-                      />
-                      {qcMarker && (
-                        <div
-                          style={{
-                            left: `${qcMarker.x}%`,
-                            top: `${qcMarker.y}%`,
-                          }}
-                          className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 border-rose-500 bg-rose-500/25"
+                  <div className="bg-[#09090b] border border-white/[0.08] rounded-xl p-3 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-zinc-300">
+                        Frame Screenshot
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          ref={screenshotInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleScreenshotUpload}
+                          className="hidden"
                         />
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => screenshotInputRef.current?.click()}
+                          className="px-2.5 py-1 rounded-full bg-white/[0.06] text-zinc-200 text-[11px] border border-white/[0.08]"
+                        >
+                          Upload
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCaptureScreen}
+                          className="px-2.5 py-1 rounded-full bg-white text-black text-[11px] font-semibold"
+                        >
+                          Capture
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleQueueForDirector()}
-                  className="w-full py-3 rounded-full bg-white text-black hover:bg-zinc-200 font-semibold text-xs tracking-tight transition"
-                >
-                  Send to Technical Director Queue
-                </button>
-              </div>
-              )}
-
-              {/* RIGHT (7 Cols or 12 Cols): TECHNICAL DIRECTOR DECISION QUEUE */}
-              <div
-                className={`${
-                  canLogQc ? "lg:col-span-7" : "lg:col-span-12"
-                } space-y-4`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#121215] border border-white/[0.08] rounded-3xl p-5">
-                  <div>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
-                      {canTriageDirectorQueue
-                        ? "Technical Director Review"
-                        : `${myIdentity.role} Station Directives & Queue`}
-                    </span>
-                    <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                      {canTriageDirectorQueue
-                        ? `Incident & Action Assignment Queue (${waitingDirectorCount} Awaiting Decision)`
-                        : `Live Director Directives & Stream Log (${qcLogs.length} Items)`}
-                    </h2>
+                    {qcScreenshot && (
+                      <div
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setQcMarker({
+                            x: Math.round(
+                              ((e.clientX - rect.left) / rect.width) * 100
+                            ),
+                            y: Math.round(
+                              ((e.clientY - rect.top) / rect.height) * 100
+                            ),
+                          });
+                        }}
+                        className="relative cursor-crosshair rounded-lg overflow-hidden border border-white/[0.1] bg-black max-h-40 flex items-center justify-center"
+                      >
+                        <img
+                          src={qcScreenshot}
+                          alt="Captured frame"
+                          className="max-h-40 w-auto object-contain"
+                        />
+                        {qcMarker && (
+                          <div
+                            style={{
+                              left: `${qcMarker.x}%`,
+                              top: `${qcMarker.y}%`,
+                            }}
+                            className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 border-rose-500 bg-rose-500/25"
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setActiveTab("MEETING_REPORT")}
-                    className="px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.08] text-xs font-medium transition"
+                    onClick={() => handleQueueForDirector()}
+                    className="w-full py-2.5 rounded-full bg-white text-black hover:bg-zinc-200 font-semibold text-xs transition"
                   >
-                    Open Postmortem Corner
+                    Send to Director Queue
+                  </button>
+                </div>
+              )}
+
+              {/* RIGHT: DIRECTOR DECISION QUEUE */}
+              <div
+                className={`${
+                  canLogQc ? "lg:col-span-7" : "lg:col-span-12"
+                } space-y-3.5`}
+              >
+                <div className="flex items-center justify-between gap-2 bg-[#121215] border border-white/[0.08] rounded-2xl p-4">
+                  <h2 className="text-sm font-semibold text-white">
+                    {canTriageDirectorQueue
+                      ? `Director Action Queue (${waitingDirectorCount} Awaiting)`
+                      : `Station Directives (${qcLogs.length})`}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("MEETING_REPORT")}
+                    className="px-3 py-1 rounded-full bg-white/[0.06] text-zinc-200 border border-white/[0.08] text-xs"
+                  >
+                    Postmortem →
                   </button>
                 </div>
 
-                <div className="space-y-3.5 max-h-[680px] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
                   {qcLogs.map((log) => {
                     const isWaiting = log.status === "WAITING_DIRECTOR";
                     const stStyle =
@@ -2677,7 +2065,7 @@ export default function CrewAndQcPage() {
                     return (
                       <div
                         key={log.id}
-                        className={`rounded-2xl p-5 border transition space-y-4 ${
+                        className={`rounded-2xl p-4 border transition space-y-3 ${
                           stStyle.leftBorder
                         } ${
                           isWaiting
@@ -2686,20 +2074,20 @@ export default function CrewAndQcPage() {
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-2">
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                                 log.type === "ISSUE"
-                                  ? "bg-rose-500/15 text-rose-300 border border-rose-500/25"
+                                  ? "bg-rose-500/15 text-rose-300"
                                   : log.type === "ACHIEVEMENT"
-                                  ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
-                                  : "bg-amber-500/15 text-amber-300 border border-amber-500/25"
+                                  ? "bg-emerald-500/15 text-emerald-300"
+                                  : "bg-amber-500/15 text-amber-300"
                               }`}
                             >
                               {log.type}
                             </span>
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${stStyle.pill}`}
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${stStyle.pill}`}
                             >
                               {log.station} · {log.platform}
                             </span>
@@ -2709,59 +2097,46 @@ export default function CrewAndQcPage() {
                           </div>
 
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
                               isWaiting
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                ? "bg-amber-500/20 text-amber-300"
                                 : log.status === "RESOLVED"
                                 ? "bg-emerald-500/15 text-emerald-300"
                                 : "bg-white/[0.06] text-zinc-300"
                             }`}
                           >
                             {isWaiting
-                              ? "Awaiting Director"
+                              ? "Waiting"
                               : log.status === "RESOLVED"
                               ? "Resolved"
                               : "Assigned"}
                           </span>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-white tracking-tight">
-                              {log.title}
-                            </div>
-                            {log.description && (
-                              <div className="text-xs text-zinc-400 mt-1">
-                                {log.description}
-                              </div>
-                            )}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-sm font-semibold text-white">
+                            {log.title}
                           </div>
 
                           {log.screenshotUrl && (
                             <button
                               type="button"
                               onClick={() => setPreviewImageLog(log)}
-                              className="w-28 h-16 rounded-xl overflow-hidden border border-white/[0.12] shrink-0 relative bg-black"
+                              className="w-24 h-14 rounded-lg overflow-hidden border border-white/[0.12] shrink-0 relative bg-black"
                             >
                               <img
                                 src={log.screenshotUrl}
                                 alt="QC Frame"
                                 className="w-full h-full object-cover"
                               />
-                              <span className="absolute bottom-0 inset-x-0 bg-black/80 text-[9px] text-center text-zinc-200 py-0.5 font-medium">
-                                Inspect Frame
-                              </span>
                             </button>
                           )}
                         </div>
 
                         {log.type !== "ACHIEVEMENT" &&
                           (canTriageDirectorQueue ? (
-                            <div className="bg-[#09090b] border border-white/[0.07] rounded-xl p-3.5 space-y-3">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mr-1">
-                                  Presets:
-                                </span>
+                            <div className="bg-[#09090b] border border-white/[0.07] rounded-xl p-3 space-y-2.5">
+                              <div className="flex flex-wrap items-center gap-1">
                                 {DIRECTOR_ACTION_PRESETS.map((act) => (
                                   <button
                                     key={act}
@@ -2775,7 +2150,7 @@ export default function CrewAndQcPage() {
                                         },
                                       }))
                                     }
-                                    className="px-2.5 py-1 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[10px] text-zinc-300 hover:text-white transition"
+                                    className="px-2 py-0.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[10px] text-zinc-300"
                                   >
                                     {act}
                                   </button>
@@ -2796,7 +2171,7 @@ export default function CrewAndQcPage() {
                                       },
                                     }))
                                   }
-                                  className="sm:col-span-5 bg-[#141418] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none"
+                                  className="sm:col-span-5 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
                                 />
 
                                 <select
@@ -2810,8 +2185,8 @@ export default function CrewAndQcPage() {
                                       },
                                     }))
                                   }
-                                  aria-label="Assign to operator"
-                                  className="sm:col-span-3 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                                  aria-label="Assign operator"
+                                  className="sm:col-span-3 bg-[#141418] border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
                                 >
                                   {users.map((u) => (
                                     <option key={u.id} value={u.name}>
@@ -2831,7 +2206,7 @@ export default function CrewAndQcPage() {
                                       },
                                     }))
                                   }
-                                  aria-label="Target timeline"
+                                  aria-label="Timeline"
                                   className="sm:col-span-2 bg-[#141418] border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs text-amber-300 focus:outline-none"
                                 >
                                   <option value="Immediate">Immediate</option>
@@ -2853,7 +2228,7 @@ export default function CrewAndQcPage() {
                                         : "IN_PROGRESS"
                                     )
                                   }
-                                  className="sm:col-span-2 py-1.5 px-3 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
+                                  className="sm:col-span-2 py-1.5 px-2.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold"
                                 >
                                   {isWaiting
                                     ? "Assign"
@@ -2864,28 +2239,16 @@ export default function CrewAndQcPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="bg-[#09090b] border border-white/[0.06] rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-                              <div>
-                                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block">
-                                  Director Directive
-                                </span>
-                                <span className="font-medium text-white">
-                                  {log.actionToTake ||
-                                    "Awaiting Technical Director review"}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 text-[11px] text-zinc-400">
-                                <span>
-                                  Assigned:{" "}
-                                  <strong className="text-zinc-200">
-                                    {log.assignedTo || "Pending"}
-                                  </strong>
-                                </span>
-                                <span>·</span>
-                                <span className="text-amber-300 font-medium">
-                                  {log.timelineToSolve || "Wait for Director"}
-                                </span>
-                              </div>
+                            <div className="bg-[#09090b] border border-white/[0.06] rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <span className="font-medium text-white">
+                                {log.actionToTake || "Awaiting Director review"}
+                              </span>
+                              <span className="text-[11px] text-zinc-400">
+                                {log.assignedTo} ·{" "}
+                                <strong className="text-amber-300">
+                                  {log.timelineToSolve}
+                                </strong>
+                              </span>
                             </div>
                           ))}
                       </div>
@@ -2898,639 +2261,7 @@ export default function CrewAndQcPage() {
         )}
 
         {/* ===================================================================
-            VIEW 3: USER ACCOUNT MANAGEMENT, ROLE ACCESS MATRIX & TASK ASSIGNMENT
-            (DIRECTOR EXCLUSIVE MODULE)
-           =================================================================== */}
-        {activeTab === "TEAM_ACCOUNTS" && (
-          <div className="space-y-6">
-            {/* Top Roster Header & Add Account Trigger */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#121215] border border-white/[0.08] rounded-3xl p-6">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-400">
-                  Director Master Access Control & Identity Routing
-                </span>
-                <h2 className="text-lg font-semibold text-white tracking-tight mt-0.5">
-                  Production Team Accounts, Passwords & Role Module Access ({users.length}{" "}
-                  Operators)
-                </h2>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Only the Technical Director (TD-01) manages all modules. Other roles are automatically scoped to their station modules to keep operations fast and focused.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowAddCheckModal(true)}
-                  className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/[0.1] text-xs font-medium transition"
-                >
-                  + Assign Checklist Task
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewUserForm(!showNewUserForm)}
-                  className="px-4 py-2 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition"
-                >
-                  {showNewUserForm ? "Cancel" : "+ New User Account"}
-                </button>
-              </div>
-            </div>
-
-            {/* ROLE-BASED MODULE ACCESS CONTROL MATRIX (BENTO INSPECTOR) */}
-            <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-5">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
-                <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                    Role-Based Access Control (RBAC) Architecture
-                  </span>
-                  <h3 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                    Module & Feature Access Matrix by Department Role
-                  </h3>
-                </div>
-
-                {/* Role Selector Pills */}
-                <div className="inline-flex flex-wrap items-center gap-1.5 bg-[#09090b] p-1 rounded-full border border-white/[0.08]">
-                  {(
-                    ["DIRECTOR", "QC", "MODERATOR", "CAMERA", "AUDIO"] as const
-                  ).map((r) => {
-                    const spec = ROLE_ACCESS_MATRIX[r];
-                    const active = selectedMatrixRole === r;
-                    return (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setSelectedMatrixRole(r)}
-                        className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 ${
-                          active
-                            ? "bg-white text-black font-semibold shadow-sm"
-                            : "text-zinc-400 hover:text-white"
-                        }`}
-                      >
-                        <span>{r}</span>
-                        <span
-                          className={`text-[10px] font-mono ${
-                            active ? "text-zinc-700" : "text-zinc-500"
-                          }`}
-                        >
-                          {spec.callsignPrefix}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {(() => {
-                const spec = ROLE_ACCESS_MATRIX[selectedMatrixRole];
-                return (
-                  <div className="space-y-4">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#09090b] border border-white/[0.06] rounded-2xl p-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${spec.badgeColor}`}
-                          >
-                            {spec.role} · {spec.callsignPrefix}
-                          </span>
-                          <span className="text-sm font-semibold text-white">
-                            {spec.title}
-                          </span>
-                        </div>
-                        <p className="text-xs text-zinc-400 leading-relaxed">
-                          {spec.summary}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[11px]">
-                          <span className="text-zinc-500 block text-[9px] uppercase font-semibold">
-                            Allowed Top-Level Pages
-                          </span>
-                          <span className="text-white font-mono">
-                            {spec.allowedRoutes.join(" , ")}
-                          </span>
-                        </div>
-                        <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[11px]">
-                          <span className="text-zinc-500 block text-[9px] uppercase font-semibold">
-                            Default Landing
-                          </span>
-                          <span className="text-emerald-300 font-mono">
-                            {spec.defaultLandingRoute} ({spec.defaultCrewTab})
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                      {spec.moduleBreakdown.map((item) => {
-                        const badgeClass =
-                          item.accessLevel === "FULL_CONTROL"
-                            ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                            : item.accessLevel === "CUSTODIAN"
-                            ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
-                            : item.accessLevel === "STATION_ONLY"
-                            ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
-                            : item.accessLevel === "VIEW_ONLY"
-                            ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                            : "bg-zinc-800/80 text-zinc-500 border-white/[0.06]";
-                        return (
-                          <div
-                            key={item.module}
-                            className="rounded-2xl p-4 bg-[#09090b] border border-white/[0.06] flex flex-col justify-between gap-2.5"
-                          >
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between gap-2">
-                                <span
-                                  className={`px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border ${badgeClass}`}
-                                >
-                                  {item.accessLevel.replace("_", " ")}
-                                </span>
-                              </div>
-                              <div className="text-xs font-semibold text-white">
-                                {item.module}
-                              </div>
-                              <p className="text-[11px] text-zinc-400 leading-relaxed">
-                                {item.detail}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Collapsible Create User Account Drawer */}
-            {showNewUserForm && (
-              <form
-                onSubmit={handleCreateUser}
-                className="rounded-3xl p-6 bg-[#141418] border border-white/[0.12] space-y-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-white">
-                    Create Operator Account &amp; Login Credentials
-                  </div>
-                  <span className="text-[11px] text-zinc-400">
-                    Operators sign in with their assigned username and password
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Full Name (e.g. Marcus Tan)"
-                    value={newUserName}
-                    onChange={(e) => setNewUserName(e.target.value)}
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-                  />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Login Username (e.g. marcus)"
-                    value={newUserUsername}
-                    onChange={(e) =>
-                      setNewUserUsername(
-                        e.target.value.toLowerCase().replace(/\s+/g, "")
-                      )
-                    }
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-white/30"
-                  />
-                  <input
-                    type="password"
-                    required
-                    placeholder="Login Password (e.g. cam2pass)"
-                    value={newUserPassword}
-                    onChange={(e) => setNewUserPassword(e.target.value)}
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Callsign (e.g. CAM-02)"
-                    value={newUserCallsign}
-                    onChange={(e) => setNewUserCallsign(e.target.value)}
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-                  />
-                  <select
-                    value={newUserRole}
-                    onChange={(e) => setNewUserRole(e.target.value as CrewRole)}
-                    aria-label="Department Role"
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
-                  >
-                    <option value="CAMERA">Department: Camera</option>
-                    <option value="AUDIO">Department: Audio</option>
-                    <option value="MODERATOR">Department: Moderator</option>
-                    <option value="QC">Department: Quality Control</option>
-                    <option value="DIRECTOR">Department: Director</option>
-                  </select>
-                  <select
-                    value={newUserPermission}
-                    onChange={(e) =>
-                      setNewUserPermission(e.target.value as UserPermission)
-                    }
-                    aria-label="Access Permission"
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
-                  >
-                    <option value="OPERATOR">Permission: Operator</option>
-                    <option value="LEAD">Permission: Department Lead</option>
-                    <option value="ADMIN">Permission: Admin / Director</option>
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Station / Hardware (e.g. Cam 2 PTZ)"
-                    value={newUserStation}
-                    onChange={(e) => setNewUserStation(e.target.value)}
-                    className="bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold py-2.5 px-4 transition"
-                  >
-                    Create Account
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* User Account Cards Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {users.map((user) => {
-                const style = DEPT_STYLES[user.role] || DEPT_STYLES.CAMERA;
-                const userChecks = checklists.filter(
-                  (c) => c.assignedToUserId === user.id
-                );
-                const userDone = userChecks.filter((c) => c.checked).length;
-                const userPending = userChecks.length - userDone;
-                const userQcItems = qcLogs.filter(
-                  (l) =>
-                    l.assignedTo
-                      .toLowerCase()
-                      .includes(user.name.toLowerCase()) &&
-                    l.status !== "RESOLVED"
-                );
-                const isCurrentOperator = myIdentity.id === user.id;
-                const quickDraft = userQuickTaskDrafts[user.id] || {
-                  task: "",
-                  phase: "T-30M" as PreFlightPhase,
-                };
-                const credDraft = userCredDrafts[user.id] || {
-                  username: user.username || "",
-                  password: "",
-                };
-
-                return (
-                  <div
-                    key={user.id}
-                    className={`rounded-3xl p-6 bg-[#121215] border border-white/[0.08] ${style.topBorder} flex flex-col justify-between gap-5`}
-                  >
-                    <div className="space-y-4">
-                      {/* Top User Identity & Active Session Row */}
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex items-center gap-3.5">
-                          <div
-                            className={`w-11 h-11 rounded-2xl flex items-center justify-center font-semibold text-sm ${style.pill}`}
-                          >
-                            {user.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-base font-semibold text-white tracking-tight">
-                                {user.name}
-                              </h3>
-                              <span className="text-[11px] font-mono text-zinc-300 px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08]">
-                                @{user.username}
-                              </span>
-                              <span className="text-[11px] font-mono text-zinc-400 px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.07]">
-                                {user.callsign}
-                              </span>
-                              {isCurrentOperator && (
-                                <span className="px-2 py-0.5 rounded-full bg-white text-black text-[10px] font-semibold">
-                                  Signed In
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-zinc-400 mt-0.5">
-                              {user.stationAssignment} · {user.device}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {!isCurrentOperator && (
-                            <button
-                              type="button"
-                              onClick={() => handleSwitchActiveUser(user)}
-                              className="px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white text-zinc-200 hover:text-black text-[11px] font-medium border border-white/[0.08] transition"
-                            >
-                              Sign In as {user.name.split(" ")[0]}
-                            </button>
-                          )}
-                          {users.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleDeleteUser(user.id, user.name)
-                              }
-                              className="px-2.5 py-1 rounded-full text-[11px] text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Login Credentials (Username & Password) Management */}
-                      <div className="p-3 rounded-2xl bg-[#09090b] border border-white/[0.06] space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                            Account Login Credentials
-                          </span>
-                          <span className="text-[10px] font-mono text-zinc-500">
-                            Username: @{user.username}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                          <input
-                            type="text"
-                            value={credDraft.username}
-                            onChange={(e) =>
-                              setUserCredDrafts((prev) => ({
-                                ...prev,
-                                [user.id]: {
-                                  ...credDraft,
-                                  username: e.target.value
-                                    .toLowerCase()
-                                    .replace(/\s+/g, ""),
-                                },
-                              }))
-                            }
-                            placeholder="Username"
-                            aria-label="Username"
-                            className="sm:col-span-4 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-white/30"
-                          />
-                          <input
-                            type="password"
-                            value={credDraft.password}
-                            onChange={(e) =>
-                              setUserCredDrafts((prev) => ({
-                                ...prev,
-                                [user.id]: {
-                                  ...credDraft,
-                                  password: e.target.value,
-                                },
-                              }))
-                            }
-                            placeholder="Set new password..."
-                            aria-label="New Password"
-                            className="sm:col-span-5 bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-white/30"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveUserCredentials(user)}
-                            className="sm:col-span-3 py-1.5 px-3 rounded-lg bg-white/[0.08] hover:bg-white hover:text-black text-zinc-200 text-xs font-semibold transition"
-                          >
-                            Save Login
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Role, Permission & Duty Controls */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-2xl bg-[#09090b] border border-white/[0.06]">
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">
-                            Department Role
-                          </label>
-                          <select
-                            value={user.role}
-                            onChange={(e) =>
-                              handleUpdateUser(user.id, {
-                                role: e.target.value as CrewRole,
-                              })
-                            }
-                            aria-label="Department Role"
-                            className="w-full bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs font-medium text-white focus:outline-none"
-                          >
-                            {ROLES_LIST.map((r) => (
-                              <option key={r} value={r}>
-                                {DEPT_STYLES[r].label} ({r})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">
-                            Access Level
-                          </label>
-                          <select
-                            value={user.permission}
-                            onChange={(e) =>
-                              handleUpdateUser(user.id, {
-                                permission: e.target.value as UserPermission,
-                              })
-                            }
-                            aria-label="Permission Level"
-                            className="w-full bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs font-medium text-white focus:outline-none"
-                          >
-                            <option value="ADMIN">Admin / Director</option>
-                            <option value="LEAD">Department Lead</option>
-                            <option value="OPERATOR">Crew Operator</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-1">
-                            Duty Status
-                          </label>
-                          <select
-                            value={user.status}
-                            onChange={(e) =>
-                              handleUpdateUser(user.id, {
-                                status: e.target.value as DutyStatus,
-                              })
-                            }
-                            aria-label="Duty Status"
-                            className="w-full bg-[#141418] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs font-medium text-white focus:outline-none"
-                          >
-                            <option value="ON_DUTY">On Duty</option>
-                            <option value="STANDBY">Standby</option>
-                            <option value="OFF_DUTY">Off Duty</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Operator Training & Role Certification Status */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-[#09090b] border border-white/[0.06]">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[11px] font-medium text-zinc-400 mr-1">
-                            Certifications:
-                          </span>
-                          {(user.certifiedRoles || []).length > 0 ? (
-                            (user.certifiedRoles || []).map((certRole) => (
-                              <span
-                                key={certRole}
-                                className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold"
-                              >
-                                {certRole} Certified
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-[11px] text-zinc-500">
-                              In Training ({(user.completedLessons || []).length}
-                              /20 SOPs)
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleSwitchActiveUser(user);
-                            setActiveTab("TRAINING");
-                          }}
-                          className="text-[11px] font-medium text-zinc-300 hover:text-white underline underline-offset-4 transition"
-                        >
-                          Open Training →
-                        </button>
-                      </div>
-
-                      {/* Assigned Pre-Flight Tasks List for This User */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium text-zinc-300">
-                            Assigned Pre-Flight Tasks ({userDone}/
-                            {userChecks.length} Verified)
-                          </span>
-                          {userPending > 0 ? (
-                            <span className="text-[11px] font-semibold text-rose-400">
-                              {userPending} Pending
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-semibold text-emerald-400">
-                              All Complete
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-                          {userChecks.map((chk) => (
-                            <div
-                              key={chk.id}
-                              onClick={() => handleToggleCheck(chk.id)}
-                              className={`cursor-pointer rounded-xl px-3 py-2 border flex items-center justify-between gap-2 text-xs transition ${
-                                chk.checked
-                                  ? "bg-white/[0.02] border-white/[0.06] text-zinc-300"
-                                  : "bg-rose-950/20 border-rose-500/35 text-white"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <span
-                                  className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                                    chk.checked
-                                      ? style.checkSquare
-                                      : "border border-rose-400 text-transparent"
-                                  }`}
-                                >
-                                  ✓
-                                </span>
-                                <span className="truncate font-medium">
-                                  {chk.task}
-                                </span>
-                              </div>
-                              <span className="text-[10px] font-mono text-zinc-500 shrink-0">
-                                {chk.phase}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {userQcItems.length > 0 && (
-                          <div className="pt-2 space-y-1">
-                            <span className="text-[11px] font-medium text-amber-300 block">
-                              Assigned Live QC Actions ({userQcItems.length})
-                            </span>
-                            {userQcItems.map((q) => (
-                              <div
-                                key={q.id}
-                                className="rounded-xl px-3 py-2 bg-amber-500/10 border border-amber-500/25 text-xs flex items-center justify-between gap-2"
-                              >
-                                <span className="text-amber-100 truncate">
-                                  {q.actionToTake || q.title}
-                                </span>
-                                <span className="text-[10px] text-amber-300 shrink-0">
-                                  {q.timelineToSolve}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Inline Quick-Assign New Task Directly to This User */}
-                    <div className="pt-3 border-t border-white/[0.06] flex items-center gap-2">
-                      <select
-                        value={quickDraft.phase}
-                        onChange={(e) =>
-                          setUserQuickTaskDrafts((prev) => ({
-                            ...prev,
-                            [user.id]: {
-                              ...quickDraft,
-                              phase: e.target.value as PreFlightPhase,
-                            },
-                          }))
-                        }
-                        aria-label="Task Phase"
-                        className="bg-[#09090b] border border-white/[0.1] rounded-xl px-2.5 py-2 text-xs text-zinc-300 focus:outline-none"
-                      >
-                        <option value="T-60M">T-60M</option>
-                        <option value="T-30M">T-30M</option>
-                        <option value="T-15M">T-15M</option>
-                        <option value="T-5M">T-5M</option>
-                      </select>
-                      <input
-                        type="text"
-                        placeholder={`Assign new task to ${user.name}...`}
-                        value={quickDraft.task}
-                        onChange={(e) =>
-                          setUserQuickTaskDrafts((prev) => ({
-                            ...prev,
-                            [user.id]: {
-                              ...quickDraft,
-                              task: e.target.value,
-                            },
-                          }))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAssignQuickTaskToUser(user);
-                          }
-                        }}
-                        className="flex-1 bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAssignQuickTaskToUser(user)}
-                        className="px-3.5 py-2 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0 transition"
-                      >
-                        Assign
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ===================================================================
-            VIEW 4: PRODUCTION FLOW, CALLSIGN PROTOCOL & ROLE TRAINING ACADEMY
+            VIEW 4: TRAINING ACADEMY
            =================================================================== */}
         {activeTab === "TRAINING" && (
           <CrewTrainingAcademy
@@ -3542,8 +2273,7 @@ export default function CrewAndQcPage() {
         )}
 
         {/* ===================================================================
-            VIEW 5 & 6: POST-LIVE SAFE SHUTDOWN CHECKLIST & POSTMORTEM CORNER
-            (Weekly Report Co-Held by QC Lead & Moderator Lead)
+            VIEW 5 & 6: POST-LIVE SHUTDOWN & POSTMORTEM CORNER
            =================================================================== */}
         {(activeTab === "POST_LIVE_SHUTDOWN" ||
           activeTab === "MEETING_REPORT") && (
@@ -3580,10 +2310,10 @@ export default function CrewAndQcPage() {
       {/* Assign New Check Item Modal */}
       {showAddCheckModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#121215] border border-white/[0.1] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-[#121215] border border-white/[0.1] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <h3 className="text-sm font-semibold text-white tracking-tight">
-                Assign Pre-Flight Check Task
+              <h3 className="text-sm font-semibold text-white">
+                Add Pre-Flight Check
               </h3>
               <button
                 type="button"
@@ -3620,7 +2350,7 @@ export default function CrewAndQcPage() {
 
                 <div>
                   <label className="text-[11px] text-zinc-400 block mb-1">
-                    T-Minus Phase
+                    Phase
                   </label>
                   <select
                     value={newCheckPhase}
@@ -3629,17 +2359,17 @@ export default function CrewAndQcPage() {
                     }
                     className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3 py-2 text-white"
                   >
-                    <option value="T-60M">T-60M · Rig & Signal</option>
-                    <option value="T-30M">T-30M · Optics & Audio</option>
-                    <option value="T-15M">T-15M · Stream & Cues</option>
-                    <option value="T-5M">T-5M · Final Go Poll</option>
+                    <option value="T-60M">06:00 AM · Check Start</option>
+                    <option value="T-30M">07:00 AM · Optics & Mix</option>
+                    <option value="T-15M">08:00 AM · Stream Preview</option>
+                    <option value="T-5M">08:25 AM · Early Go-Live</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="text-[11px] text-zinc-400 block mb-1">
-                  Assign to User Account
+                  Operator
                 </label>
                 <select
                   value={newCheckUserId}
@@ -3656,11 +2386,11 @@ export default function CrewAndQcPage() {
 
               <div>
                 <label className="text-[11px] text-zinc-400 block mb-1">
-                  Check Title
+                  Check Task
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Wireless Handheld 3 RF Scan"
+                  placeholder="e.g. Wireless Mic 3 RF Scan"
                   value={newCheckTask}
                   onChange={(e) => setNewCheckTask(e.target.value)}
                   className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
@@ -3669,11 +2399,11 @@ export default function CrewAndQcPage() {
 
               <div>
                 <label className="text-[11px] text-zinc-400 block mb-1">
-                  Technical Specification / Target
+                  Target Spec
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Battery > 85% and gain staged at -12dB"
+                  placeholder="e.g. Battery > 85%, gain -12 dB"
                   value={newCheckDetail}
                   onChange={(e) => setNewCheckDetail(e.target.value)}
                   className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2 text-white"
@@ -3695,8 +2425,7 @@ export default function CrewAndQcPage() {
                         phase: newCheckPhase,
                         category: newCheckCategory || "Check",
                         task: newCheckTask,
-                        detail:
-                          newCheckDetail || "Standard pre-flight verification",
+                        detail: newCheckDetail || "Verified",
                         isCritical: true,
                         assignedToUserId: newCheckUserId,
                         assignedToName: targetUser?.name || "Operator",
@@ -3706,12 +2435,12 @@ export default function CrewAndQcPage() {
                   setNewCheckTask("");
                   setNewCheckDetail("");
                   setShowAddCheckModal(false);
-                  triggerToast("Assigned pre-flight check");
+                  triggerToast("Check added");
                   fetchCrewQcData();
                 }}
                 className="w-full py-2.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition mt-2"
               >
-                Assign Check Task
+                Save Check
               </button>
             </div>
           </div>
@@ -3726,7 +2455,7 @@ export default function CrewAndQcPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#121215] border border-white/[0.1] rounded-3xl max-w-2xl w-full p-5 space-y-4"
+            className="bg-[#121215] border border-white/[0.1] rounded-2xl max-w-2xl w-full p-5 space-y-4"
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-white">
@@ -3740,7 +2469,7 @@ export default function CrewAndQcPage() {
                 Close
               </button>
             </div>
-            <div className="relative rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+            <div className="relative rounded-xl overflow-hidden bg-black flex items-center justify-center">
               <img
                 src={previewImageLog.screenshotUrl || ""}
                 alt="QC Frame"

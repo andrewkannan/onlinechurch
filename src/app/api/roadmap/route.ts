@@ -57,169 +57,180 @@ export interface MinistryAchievement {
 }
 
 const DEFAULT_GOALS: AttendanceGoals = {
-  currentWeeklyAttendance: 142,
-  currentYTViewers: 88,
-  currentIGViewers: 54,
-  phase1TargetAttendance: 200,
-  phase2TargetAttendance: 350,
-  phase3TargetAttendance: 500,
-  annualVisionAttendance: 1000,
-  targetYTViewers: 600,
-  targetIGViewers: 400,
-  currentRepeatingRate: 58,
-  targetRepeatingRate: 75,
+  currentWeeklyAttendance: 25,
+  currentYTViewers: 15,
+  currentIGViewers: 10,
+  phase1TargetAttendance: 50,
+  phase2TargetAttendance: 75,
+  phase3TargetAttendance: 100,
+  annualVisionAttendance: 150,
+  targetYTViewers: 30,
+  targetIGViewers: 20,
+  currentRepeatingRate: 65,
+  targetRepeatingRate: 80,
   currentWatchMinutes: 28,
   targetWatchMinutes: 45,
-  currentTeamSize: 4,
-  targetTeamSize: 12,
-  targetMonthlySalvations: 25,
+  currentTeamSize: 5,
+  targetTeamSize: 10,
+  targetMonthlySalvations: 10,
 };
 
 const DEFAULT_MILESTONES: RoadmapMilestone[] = [
   {
-    id: "ms-cam-1",
+    id: "ms-done-qc",
     phase: "PHASE_1",
-    phaseLabel: "Phase 1: Camera Hardware & Studio Foundation",
+    phaseLabel: "Completed Since Last Meeting",
+    category: "BROADCAST_PRODUCTION",
+    title: "1. Quality Checker on Every Service",
+    description: "Checks audio & video live and reports immediately to Online Service Director to fix on the spot.",
+    status: "COMPLETED",
+    priority: "HIGH",
+    targetDate: "2026-10-05",
+    owner: "Daniel (QC-01) & Andrew (Director)",
+    hardwareOrToolSpec: "Live QC Pad + Director Alert Queue",
+    estimatedBudget: "RM 0",
+    attendanceImpact: "Instant audio/video fixes (<60s)",
+    checklist: [
+      { id: "qc-1", text: "Assign dedicated Quality Checker every Sunday", done: true },
+      { id: "qc-2", text: "Report live faults immediately to Online Service Director", done: true },
+    ],
+  },
+  {
+    id: "ms-done-ig",
+    phase: "PHASE_1",
+    phaseLabel: "Completed Since Last Meeting",
+    category: "AUDIENCE_GROWTH",
+    title: "2. Instagram Live Streaming (Past 3 Weeks)",
+    description: "Added +5 to 10 weekly viewers; more non-believers joining; clearer video quality than YouTube.",
+    status: "COMPLETED",
+    priority: "HIGH",
+    targetDate: "2026-10-12",
+    owner: "Online Service Team",
+    hardwareOrToolSpec: "Landscape 16:9 + Top/Bottom Blur Frame",
+    estimatedBudget: "RM 0",
+    attendanceImpact: "+5 to +10 Viewers / Week",
+    checklist: [
+      { id: "ig-1", text: "Broadcast landscape live with top & bottom blur on IG", done: true },
+      { id: "ig-2", text: "Track weekly IG viewer growth (+5 to 10/wk)", done: true },
+    ],
+  },
+  {
+    id: "ms-done-cable",
+    phase: "PHASE_1",
+    phaseLabel: "Completed Since Last Meeting",
     category: "CAMERA_HARDWARE",
-    title: "Primary & Secondary Camera Upgrade (PTZ + Mirrorless Cinema Rig)",
-    description:
-      "Install dedicated 4K HDMI/SDI primary pulpit camera (tight shot on Pastor) and wide worship angle camera connected via video switcher for dynamic multi-angle cuts.",
+    title: "3. Replaced Video Cables (Zero Lag)",
+    description: "Fixed within Week 1 after last meeting — no more video lagging or freezing.",
+    status: "COMPLETED",
+    priority: "HIGH",
+    targetDate: "2026-10-05",
+    owner: "Kevin (CAM-01) & Andrew",
+    hardwareOrToolSpec: "High-Speed Shielded HDMI/SDI Run",
+    estimatedBudget: "Completed",
+    attendanceImpact: "0 Video Lagging",
+    checklist: [
+      { id: "cb-1", text: "Replace faulty camera-to-switcher video cables", done: true },
+      { id: "cb-2", text: "Verify zero frame drops across 3 Sundays", done: true },
+    ],
+  },
+  {
+    id: "ms-done-mod",
+    phase: "PHASE_1",
+    phaseLabel: "Completed Since Last Meeting",
+    category: "PASTORAL_CARE",
+    title: "4. More Media Team Live Interaction",
+    description: "Active welcome messages, sermon points, and prayer responses on livestreams.",
+    status: "COMPLETED",
+    priority: "MEDIUM",
+    targetDate: "2026-10-12",
+    owner: "Hannah (MOD-01) & Media Team",
+    hardwareOrToolSpec: "YouTube & IG Live Chat",
+    estimatedBudget: "RM 0",
+    attendanceImpact: "Higher viewer engagement",
+    checklist: [
+      { id: "md-1", text: "Welcome viewers & post sermon points in live chat", done: true },
+      { id: "md-2", text: "Log weekly views, comments & feedbacks in report", done: true },
+    ],
+  },
+  {
+    id: "ms-plan-1",
+    phase: "PHASE_1",
+    phaseLabel: "Upcoming Plan 1 · Week 1–2",
+    category: "BROADCAST_PRODUCTION",
+    title: "Plan 1 · Centralised System for Online Team",
+    description: "Role checklists, clean Monthly Serving Roster, Sunday 6:00 AM check → 8:25 AM Go-Live gate & Post-Service Report.",
     status: "IN_PROGRESS",
     priority: "HIGH",
     targetDate: "2026-11-01",
-    owner: "Media & Production Lead",
-    hardwareOrToolSpec: "Sony FX30 / Canon CR-N300 PTZ + Blackmagic ATEM Mini Extreme ISO",
-    estimatedBudget: "$2,800",
-    attendanceImpact: "+35% Viewer Watch Time & Retention",
+    owner: "Andrew (Online Service Director)",
+    hardwareOrToolSpec: "In-House Web Hub",
+    estimatedBudget: "RM 0 (In-House)",
+    attendanceImpact: "100% Sunday Readiness",
     checklist: [
-      { id: "c1", text: "Mount Main Pulpit Telephoto Camera on fluid-head tripod", done: true },
-      { id: "c2", text: "Set up Wide Angle Congregation / Worship Stage Camera", done: true },
-      { id: "c3", text: "Connect HDMI/SDI feeds into ATEM Switcher & test color matching", done: false },
-      { id: "c4", text: "Configure vertical 9:16 crop feed for Instagram Live clarity", done: false },
+      { id: "p1-1", text: "Role-based logins & Monthly Serving Roster active", done: true },
+      { id: "p1-2", text: "Sunday 6:00 AM check → 8:25 AM Director Go-Live gate", done: true },
+      { id: "p1-3", text: "Post-service QC logs & Moderator views/comments report", done: false },
     ],
   },
   {
-    id: "ms-cam-2",
-    phase: "PHASE_1",
-    phaseLabel: "Phase 1: Camera Hardware & Studio Foundation",
-    category: "CAMERA_HARDWARE",
-    title: "Dedicated Broadcast Audio Bus & Stage Lighting Calibration",
-    description:
-      "Eliminate room echo by routing a dedicated Post-Fader Aux/Matrix mix from the front-of-house digital console + ambient crowd mics directly into the stream encoder.",
-    status: "COMPLETED",
-    priority: "HIGH",
-    targetDate: "2026-10-20",
-    owner: "Sound & Lighting Engineer",
-    hardwareOrToolSpec: "XLR Broadcast Matrix Bus + 2x Room Condenser Mics + Key Light 5600K",
-    estimatedBudget: "$650",
-    attendanceImpact: "+40% First-5-Minute Viewer Retention",
-    checklist: [
-      { id: "c5", text: "Route dedicated stereo broadcast bus from soundboard to USB audio interface", done: true },
-      { id: "c6", text: "Add two ambient congregation mics for worship atmosphere", done: true },
-      { id: "c7", text: "Balance pulpit key light & backlight so camera sensor has zero grain", done: true },
-    ],
-  },
-  {
-    id: "ms-train-1",
+    id: "ms-plan-2",
     phase: "PHASE_2",
-    phaseLabel: "Phase 2: Camera Crew & Prophetic Moderator Training",
+    phaseLabel: "Upcoming Plan 2 · Nov–Dec 2026",
+    category: "CAMERA_HARDWARE",
+    title: "Plan 2 · Equipment Upgrades (Camera 2, Crowd Mic, ATEM)",
+    description: "Camera 2nd View (Nov 2026, more on crowd), Live Crowd Mic (Dec 2026, Sam's quote), and ATEM Switcher (still in checking).",
+    status: "UPCOMING",
+    priority: "HIGH",
+    targetDate: "2026-11-30",
+    owner: "Andrew & Sam",
+    hardwareOrToolSpec: "Camera 2 (RM 3k–4.5k) · Crowd Mic (RM 800–1.8k) · ATEM (Checking)",
+    estimatedBudget: "RM 3,800 – RM 6,300 + ATEM (TBC)",
+    attendanceImpact: "Target 50+ Weekly Viewers (2x)",
+    checklist: [
+      { id: "p2-1", text: "Camera (2nd View) + Tripod/Cable: RM 3,000–4,500 (Targeted Nov 2026 · Crowd/Worship)", done: false },
+      { id: "p2-2", text: "Live Crowd Mic + Stand/Cable: RM 800–1,800 (Sam's quote · Targeted Dec 2026)", done: false },
+      { id: "p2-3", text: "ATEM Switcher: Confirm final model & quotation (Still in checking)", done: false },
+    ],
+  },
+  {
+    id: "ms-plan-3",
+    phase: "PHASE_2",
+    phaseLabel: "Upcoming Plan 3 · Starting This Week",
     category: "TEAM_TRAINING",
-    title: "Camera Operator Framing, Movement & Worship Flow Training",
-    description:
-      "Train volunteer camera operators on smooth pan/tilt speeds, rule-of-thirds framing, anticipating prophetic ministry moments, and avoiding jarring zoom jumps.",
+    title: "Plan 3 · Videographers, Cameramen & Media Team Training",
+    description: "Starting this week, led by Gaby (Media Director). Training plan chart still pending.",
     status: "IN_PROGRESS",
     priority: "HIGH",
     targetDate: "2026-11-15",
-    owner: "Production Director",
-    hardwareOrToolSpec: "Wireless Tally Lights + Crew Intercom Headsets (Hollyland Solidcom)",
-    estimatedBudget: "$800",
-    attendanceImpact: "+50 Target Live Viewers (200 Peak Goal)",
+    owner: "Gaby (Media Director)",
+    hardwareOrToolSpec: "Camera 1 & 2nd Crowd/Worship View Training",
+    estimatedBudget: "RM 0",
+    attendanceImpact: "Trained rotation crew",
     checklist: [
-      { id: "c8", text: "Create 1-page Camera Shot Sheet (Worship, Welcome, Sermon, Altar Call)", done: true },
-      { id: "c9", text: "Conduct 2-hour Saturday rehearsal with 4 volunteer camera operators", done: false },
-      { id: "c10", text: "Train switcher director on lower-thirds scripture & cue timing", done: false },
+      { id: "p3-1", text: "Kickoff training this week (Led by Gaby - Media Director)", done: true },
+      { id: "p3-2", text: "Finalise training plan chart for Videographers & Cameramen", done: false },
+      { id: "p3-3", text: "Complete hands-on framing & 2-camera practice", done: false },
     ],
   },
   {
-    id: "ms-train-2",
-    phase: "PHASE_2",
-    phaseLabel: "Phase 2: Camera Crew & Prophetic Moderator Training",
-    category: "TEAM_TRAINING",
-    title: "Online Moderator Team: Fast Prophetic Cue & PDF Sermon Sync Drill",
-    description:
-      "Train chat moderators to upload Pastor's PDF sermon notes before service, fire one-click prophetic declarations in real-time as the Pastor speaks, and welcome viewers by name within 15 seconds.",
+    id: "ms-plan-4",
+    phase: "PHASE_3",
+    phaseLabel: "Upcoming Plan 4 · Weekly Routine",
+    category: "AUDIENCE_GROWTH",
+    title: "Plan 4 · Social Media Awareness (Pre-Sunday Reels & Stories)",
+    description: "Led by Gaby (Media Director) & Social Media Director to reach 50+ weekly viewers.",
     status: "IN_PROGRESS",
     priority: "HIGH",
-    targetDate: "2026-11-22",
-    owner: "Online Church Lead & Moderators",
-    hardwareOrToolSpec: "Online Church Live Hub (Sermon Cue Queue + Dual Chat Bridge)",
-    estimatedBudget: "$0 (In-House System)",
-    attendanceImpact: "+30% Repeating Viewer Return Rate",
+    targetDate: "2026-11-01",
+    owner: "Gaby (Media Director) & Social Media Director",
+    hardwareOrToolSpec: "IG Reels, Story Countdown & WhatsApp Re-Share",
+    estimatedBudget: "RM 0",
+    attendanceImpact: "Target 50+ Viewers / Week (2x)",
     checklist: [
-      { id: "c11", text: "Train moderators on PDF Sermon Notes auto-import 30 mins pre-service", done: true },
-      { id: "c12", text: "Practice 'Amen / Declaration' rapid release within 3 seconds of Pastor's point", done: true },
-      { id: "c13", text: "Train Prayer Triage leads on AI pastoral prayer responses & private DM care", done: false },
-    ],
-  },
-  {
-    id: "ms-growth-1",
-    phase: "PHASE_3",
-    phaseLabel: "Phase 3: Repeating Audience & Multi-Platform Funnel",
-    category: "AUDIENCE_GROWTH",
-    title: "Pre-Service Digital Lobby & Repeating Viewer Check-In Ritual",
-    description:
-      "Launch a 10-minute pre-service countdown with a live digital host greeting returning regulars by name ('Where are you watching from today?') to boost YouTube & IG algorithm push.",
-    status: "UPCOMING",
-    priority: "MEDIUM",
-    targetDate: "2026-12-06",
-    owner: "Digital Hospitality Team",
-    hardwareOrToolSpec: "OBS Countdown Scene + Live Chat Check-In Roster",
-    estimatedBudget: "$150",
-    attendanceImpact: "+150 Live Viewers (350 Peak Goal)",
-    checklist: [
-      { id: "c14", text: "Design 10-minute high-energy countdown with chat prompt overlays", done: false },
-      { id: "c15", text: "Log every chatting viewer into Repeating Audience CRM during first 15 mins", done: false },
-      { id: "c16", text: "Set up Instagram keyword DM automation ('Type PRAY or NEW in chat')", done: false },
-    ],
-  },
-  {
-    id: "ms-growth-2",
-    phase: "PHASE_3",
-    phaseLabel: "Phase 3: Repeating Audience & Multi-Platform Funnel",
-    category: "PASTORAL_CARE",
-    title: "24-Hour Visitor & Prayer Request Follow-Up Pipeline",
-    description:
-      "Ensure every first-time online visitor and prayer requester receives a personal message or 30-second video prayer from the team before Monday evening.",
-    status: "UPCOMING",
-    priority: "HIGH",
-    targetDate: "2026-12-20",
-    owner: "Pastoral Care & Follow-Up Team",
-    hardwareOrToolSpec: "Online Church Visitor & Prayer Report Export",
-    estimatedBudget: "$0",
-    attendanceImpact: "Converts 45% of First-Timers into Repeating Viewers",
-    checklist: [
-      { id: "c17", text: "Export Sunday Visitor & Prayer Report immediately after benediction", done: false },
-      { id: "c18", text: "Assign follow-up pastors to every 'OPEN' and 'FOLLOW_UP' prayer request", done: false },
-    ],
-  },
-  {
-    id: "ms-exp-1",
-    phase: "PHASE_4",
-    phaseLabel: "Phase 4: Digital Campus & 1,000+ Viewer Expansion",
-    category: "BROADCAST_PRODUCTION",
-    title: " Mid-Week Prophetic Reels/Shorts Engine & Online Watch Parties",
-    description:
-      "Repurpose Sunday's top 3 prophetic moments into vertical Reels/Shorts with direct reminders for Sunday Live, and launch regional home Watch Parties.",
-    status: "UPCOMING",
-    priority: "MEDIUM",
-    targetDate: "2027-02-01",
-    owner: "Digital Campus Pastor & Social Media Team",
-    hardwareOrToolSpec: "4K ISO Recording Files + Vertical Clip Templates",
-    estimatedBudget: "$300",
-    attendanceImpact: "Breakthrough to 500–1,000+ Weekly Viewers",
-    checklist: [
-      { id: "c19", text: "Cut 3 vertical 60-second prophetic clips every Monday from ISO recordings", done: false },
-      { id: "c20", text: "Recruit 5 Online Watch Party hosts in different cities/timezones", done: false },
+      { id: "p4-1", text: "Mid-Week Sermon Highlight Reel", done: false },
+      { id: "p4-2", text: "Saturday Reel + IG Story with Countdown for Sunday 8:30 AM Live", done: false },
+      { id: "p4-3", text: "Member & Media Team Re-Share to IG Stories & WhatsApp", done: false },
+      { id: "p4-4", text: "Sunday Morning 8:00 AM Reminder Story", done: false },
     ],
   },
 ];
@@ -227,89 +238,53 @@ const DEFAULT_MILESTONES: RoadmapMilestone[] = [
 const DEFAULT_ACHIEVEMENTS: MinistryAchievement[] = [
   {
     id: "ach-1",
-    title: "Broadcast Studio Sound & Light Ready",
-    description: "Configured clean soundboard matrix audio feed and calibrated stage lighting for stream clarity.",
+    title: "Zero Video Lag (Cables Fixed Wk 1)",
+    description: "Replaced faulty video cables in Week 1 — 0 frame drops.",
     category: "HARDWARE",
     targetValue: 1,
     currentValue: 1,
-    unit: "milestone",
+    unit: "completed",
     unlocked: true,
-    unlockedAt: "2026-10-10",
+    unlockedAt: "2026-10-05",
     badgeColor: "emerald",
   },
   {
     id: "ach-2",
-    title: "Prophetic Sermon Cue Speed",
-    description: "Uploaded Pastor's PDF sermon notes and released 25+ instant prophetic cues into live chat.",
-    category: "ENGAGEMENT",
-    targetValue: 25,
-    currentValue: 25,
-    unit: "cues",
+    title: "IG Live Launch (+5–10 Viewers/Wk)",
+    description: "3 weeks live on Instagram reaching new non-believers.",
+    category: "ATTENDANCE",
+    targetValue: 3,
+    currentValue: 3,
+    unit: "weeks",
     unlocked: true,
-    unlockedAt: "2026-10-14",
+    unlockedAt: "2026-10-19",
     badgeColor: "indigo",
   },
   {
     id: "ach-3",
-    title: "Multi-Cam Broadcast Upgrade",
-    description: "Complete 4K multi-camera setup with switcher cuts for YouTube 16:9 and Instagram 9:16.",
-    category: "HARDWARE",
-    targetValue: 4,
-    currentValue: 2,
-    unit: "steps",
+    title: "Double Weekly Viewership (50+ / Wk)",
+    description: "Reach 50+ combined weekly viewers across YouTube & Instagram.",
+    category: "ATTENDANCE",
+    targetValue: 50,
+    currentValue: 25,
+    unit: "viewers/wk",
     unlocked: false,
     unlockedAt: null,
     badgeColor: "amber",
-  },
-  {
-    id: "ach-4",
-    title: "Certified Moderator & Camera Squad",
-    description: "Train and certify 12 volunteer camera operators and prophetic chat moderators.",
-    category: "TRAINING",
-    targetValue: 12,
-    currentValue: 4,
-    unit: "volunteers",
-    unlocked: false,
-    unlockedAt: null,
-    badgeColor: "violet",
-  },
-  {
-    id: "ach-5",
-    title: "Phase 1 Attendance Breakthrough (200+ Live)",
-    description: "Reach 200+ combined peak concurrent viewers across YouTube Live and Instagram Live.",
-    category: "ATTENDANCE",
-    targetValue: 200,
-    currentValue: 142,
-    unit: "viewers",
-    unlocked: false,
-    unlockedAt: null,
-    badgeColor: "amber",
-  },
-  {
-    id: "ach-6",
-    title: "Loyal Online Congregation (70% Repeating)",
-    description: "Build a sticky online church family where 70%+ of weekly viewers are returning regulars.",
-    category: "ATTENDANCE",
-    targetValue: 70,
-    currentValue: 58,
-    unit: "% retention",
-    unlocked: false,
-    unlockedAt: null,
-    badgeColor: "rose",
   },
 ];
 
 function getRoadmapState() {
   const store = readFallbackStore();
-  if (!store.roadmap) {
-    store.roadmap = {
+  if (!store.roadmap_v2) {
+    store.roadmap_v2 = {
       goals: DEFAULT_GOALS,
       milestones: DEFAULT_MILESTONES,
       achievements: DEFAULT_ACHIEVEMENTS,
     };
-    writeFallbackStore("roadmap", store.roadmap);
+    writeFallbackStore("roadmap_v2", store.roadmap_v2);
   }
-  return store.roadmap as {
+  return store.roadmap_v2 as {
     goals: AttendanceGoals;
     milestones: RoadmapMilestone[];
     achievements: MinistryAchievement[];
@@ -326,7 +301,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const current = getRoadmapState();
 
-    // Action 1: Update attendance goals
     if (body.action === "UPDATE_GOALS" && body.goals) {
       current.goals = {
         ...current.goals,
@@ -335,43 +309,33 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // Action 2: Add a new timeline milestone
     if (body.action === "ADD_MILESTONE" && body.milestone) {
       const m = body.milestone;
       const newMilestone: RoadmapMilestone = {
         id: `ms-${Date.now()}`,
         phase: m.phase || "PHASE_1",
-        phaseLabel:
-          m.phase === "PHASE_1"
-            ? "Phase 1: Camera Hardware & Studio Foundation"
-            : m.phase === "PHASE_2"
-            ? "Phase 2: Camera Crew & Prophetic Moderator Training"
-            : m.phase === "PHASE_3"
-            ? "Phase 3: Repeating Audience & Multi-Platform Funnel"
-            : "Phase 4: Digital Campus & 1,000+ Viewer Expansion",
+        phaseLabel: m.phaseLabel || "Action Plan",
         category: m.category || "CAMERA_HARDWARE",
-        title: String(m.title || "New Upgrade Milestone").trim(),
+        title: String(m.title || "New Action Item").trim(),
         description: String(m.description || "").trim(),
         status: m.status || "UPCOMING",
         priority: m.priority || "MEDIUM",
         targetDate: m.targetDate || new Date().toISOString().slice(0, 10),
-        owner: m.owner || "Online Ministry Team",
+        owner: m.owner || "Online Service Team",
         hardwareOrToolSpec: m.hardwareOrToolSpec || "",
-        estimatedBudget: m.estimatedBudget || "$0",
-        attendanceImpact: m.attendanceImpact || "+15% Engagement",
+        estimatedBudget: m.estimatedBudget || "RM 0",
+        attendanceImpact: m.attendanceImpact || "50+ Viewers Goal",
         checklist: Array.isArray(m.checklist) ? m.checklist : [],
       };
       current.milestones = [newMilestone, ...current.milestones];
     }
 
-    // Action 3: Toggle or update a milestone
     if (body.action === "UPDATE_MILESTONE" && body.id) {
       current.milestones = current.milestones.map((m) =>
         m.id === body.id ? { ...m, ...body.updates } : m
       );
     }
 
-    // Action 4: Toggle a checklist item inside a milestone
     if (body.action === "TOGGLE_CHECKLIST" && body.milestoneId && body.checkId) {
       current.milestones = current.milestones.map((m) => {
         if (m.id !== body.milestoneId) return m;
@@ -393,12 +357,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Action 5: Delete a milestone
     if (body.action === "DELETE_MILESTONE" && body.id) {
       current.milestones = current.milestones.filter((m) => m.id !== body.id);
     }
 
-    // Action 6: Unlock or update an achievement
     if (body.action === "TOGGLE_ACHIEVEMENT" && body.id) {
       current.achievements = current.achievements.map((a) => {
         if (a.id !== body.id) return a;
@@ -414,25 +376,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Action 7: Add custom achievement
-    if (body.action === "ADD_ACHIEVEMENT" && body.achievement) {
-      const a = body.achievement;
-      const newAch: MinistryAchievement = {
-        id: `ach-${Date.now()}`,
-        title: String(a.title || "New Ministry Achievement").trim(),
-        description: String(a.description || "").trim(),
-        category: a.category || "ATTENDANCE",
-        targetValue: Number(a.targetValue) || 100,
-        currentValue: Number(a.currentValue) || 0,
-        unit: a.unit || "viewers",
-        unlocked: Boolean(a.unlocked),
-        unlockedAt: a.unlocked ? new Date().toISOString().slice(0, 10) : null,
-        badgeColor: a.badgeColor || "amber",
-      };
-      current.achievements = [newAch, ...current.achievements];
-    }
-
-    writeFallbackStore("roadmap", current);
+    writeFallbackStore("roadmap_v2", current);
     return NextResponse.json({ success: true, ...current });
   } catch (err: any) {
     return NextResponse.json(

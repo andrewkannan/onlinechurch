@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
 import {
   fetchChurchConfig,
@@ -16,10 +17,21 @@ import {
   resolveRobotAvatarUrl,
   generateCustomRobotAvatar,
 } from "@/lib/robotAvatars";
-import WeeklyServingRosterTable, {
+import type {
   WeeklyServiceRoster,
   OperatorBlockoutDate,
 } from "@/components/WeeklyServingRosterTable";
+
+const WeeklyServingRosterTable = dynamic(
+  () => import("@/components/WeeklyServingRosterTable"),
+  {
+    loading: () => (
+      <div className="rounded-2xl p-6 bg-[#111114] border border-white/[0.08] text-xs text-zinc-400">
+        Loading Weekly Roster...
+      </div>
+    ),
+  }
+);
 
 type UserPermission = "ADMIN" | "LEAD" | "OPERATOR";
 type DutyStatus = "ON_DUTY" | "STANDBY" | "OFF_DUTY";
@@ -576,28 +588,20 @@ export default function SettingsPage() {
         {/* ===================================================================
             TOP SETTINGS HEADER & SEGMENTED MODULE SWITCHER
            =================================================================== */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                System Administration &amp; Master Settings
-              </span>
-              <span className="text-zinc-700">·</span>
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    dbConnected ? "bg-emerald-400" : "bg-amber-400"
-                  }`}
-                />
-                {dbConnected ? "SQLite & Local Sync Active" : "Local Sync Active"}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-[-0.03em]">
-              User Account Management, Role Access &amp; System Settings
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-white/[0.08] pb-3.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-lg sm:text-xl font-semibold text-white tracking-[-0.025em]">
+              Users, Roles &amp; System Settings
             </h1>
-            <p className="text-xs text-zinc-400">
-              Manage operator accounts, login usernames/passwords, department role assignments, module permissions, and broadcast API keys.
-            </p>
+            <span className="text-zinc-700">·</span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  dbConnected ? "bg-emerald-400" : "bg-amber-400"
+                }`}
+              />
+              {dbConnected ? "SQLite Sync" : "Local Sync"}
+            </span>
           </div>
 
           {/* Apple-Style Segmented Control */}
