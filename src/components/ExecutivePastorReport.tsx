@@ -181,53 +181,65 @@ export default function ExecutivePastorReport() {
             </div>
           </div>
 
-          {/* ==================== 1. LIVESTREAM VIEWER ANALYTICS ==================== */}
+          {/* ==================== 1. LIVESTREAM VIEWER & YOUTUBE STUDIO ANALYTICS ==================== */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
               <h3 className="text-lg sm:text-xl font-bold tracking-[-0.02em] text-[#1d1d1f]">
-                1. Livestream Viewer Analytics
+                1. Livestream Viewer &amp; YouTube Studio Analytics (Sep vs. Oct 2026)
               </h3>
               <span className="text-xs font-medium text-[#6e6e73]">
-                Existing YouTube baseline vs. adding Instagram Live (past 3 weeks)
+                Channel Total: 1,716 Views · 296.9 Watch Hrs (YouTube Studio Verified)
               </span>
             </div>
 
             <div className="bg-[#f5f5f7] rounded-2xl p-5 border border-[#e5e5ea] space-y-5">
-              {/* 3 Big Apple Number Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 4 Big Apple Number Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-2xl p-5 border border-[#e5e5ea]">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-[#6e6e73]">
-                    Before (YouTube Only)
+                    Before (YouTube Live)
                   </div>
                   <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#1d1d1f] my-1.5">
                     10 – 20
                   </div>
                   <div className="text-xs text-[#6e6e73]">
-                    Existing weekly viewers on YouTube alone
+                    Weekly live viewers on YouTube alone
                   </div>
                 </div>
 
                 <div className="bg-white rounded-2xl p-5 border border-[#e5e5ea]">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-[#0066cc]">
-                    Added via Instagram Live
+                    Added via IG Live (3 Wks)
                   </div>
                   <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0066cc] my-1.5">
                     +5 – 10
                   </div>
                   <div className="text-xs text-[#6e6e73]">
-                    Extra weekly viewers (past 3 weeks) · More non-believers joining
+                    Extra weekly live viewers · More non-believers joining
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-[#e5e5ea]">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#15732b]">
+                    YT Watch Time (Oct vs Sep)
+                  </div>
+                  <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#15732b] my-1.5">
+                    +45.7%
+                  </div>
+                  <div className="text-xs text-[#6e6e73]">
+                    84.5 hrs (Oct) vs. 58.0 hrs (Sep) · 2x longer retention
                   </div>
                 </div>
 
                 <div className="bg-[#1d1d1f] text-white rounded-2xl p-5 border border-[#1d1d1f]">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-[#30d158]">
-                    Next Target Goal (Double Viewership · 2x)
+                    Next Target Goal (2x)
                   </div>
                   <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white my-1.5">
                     50+ / wk
                   </div>
                   <div className="text-xs text-[#a1a1a6]">
-                    Combined YouTube &amp; Instagram with a stable weekly increase
+                    Combined YouTube &amp; IG live viewers with stable increase
                   </div>
                 </div>
               </div>
@@ -236,7 +248,7 @@ export default function ExecutivePastorReport() {
               <div className="bg-white rounded-2xl p-5 border border-[#e5e5ea] space-y-3.5">
                 <div className="flex items-center justify-between text-xs font-bold text-[#1d1d1f]">
                   <span>
-                    Weekly Viewer Growth Comparison (Previous YT Only vs. Now YT + IG vs. Target Goal)
+                    A. Weekly Live Concurrent Viewers (Previous YT Only vs. Now YT + IG vs. Target Goal)
                   </span>
                   <span className="text-[#15732b]">Target Goal: 50+ / wk (2x)</span>
                 </div>
@@ -288,7 +300,7 @@ export default function ExecutivePastorReport() {
 
                 <div className="pt-3 border-t border-[#f0f0f5] flex flex-wrap gap-5 text-xs text-[#424245]">
                   <span>
-                    • <strong>YouTube:</strong> 10–20 weekly viewers
+                    • <strong>YouTube Live:</strong> 10–20 weekly viewers
                   </span>
                   <span>
                     • <strong>Instagram Live (Past 3 Wks):</strong> Added +5–10 weekly viewers (more non-believers joining; clearer video quality than YouTube)
@@ -299,16 +311,194 @@ export default function ExecutivePastorReport() {
                 </div>
               </div>
 
+              {/* YouTube Studio Monthly Comparison (Sep vs. Oct 2026) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-[#e5e5ea]">
+                  <div className="flex items-center justify-between text-xs font-bold text-[#1d1d1f] mb-3">
+                    <span>B. YouTube Studio Broadcast Data (Sep vs. Oct 2026)</span>
+                    <span className="text-[#0066cc]">Channel Total: 1,716 Views · 296.9 hrs</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-[#e5e5ea] text-[10px] font-bold uppercase tracking-wider text-[#86868b]">
+                          <th className="pb-2 pr-2">Sunday Service (8:30 AM)</th>
+                          <th className="pb-2 px-2">Month</th>
+                          <th className="pb-2 px-2 text-right">YT Views</th>
+                          <th className="pb-2 pl-2 text-right">Watch Time</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f0f0f5]">
+                        <tr className="bg-[#f8fbff]">
+                          <td className="py-2 pr-2 font-semibold text-[#1d1d1f]">
+                            City Wide Crusade | Oct 18, 2026{" "}
+                            <span className="text-[#86868b] font-normal">(2:19:22)</span>
+                          </td>
+                          <td className="py-2 px-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[#e8f2ff] text-[#0066cc] text-[10px] font-bold">
+                              Oct (W3)
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 text-right font-bold text-[#1d1d1f]">
+                            115 <span className="text-[#86868b] font-normal">(6.7%)</span>
+                          </td>
+                          <td className="py-2 pl-2 text-right font-bold text-[#15732b]">
+                            28.3 hrs <span className="text-[#86868b] font-normal">(9.5%)</span>
+                          </td>
+                        </tr>
+                        <tr className="bg-[#f8fbff]">
+                          <td className="py-2 pr-2 font-semibold text-[#1d1d1f]">
+                            Sunday Celebration | Oct 11, 2026{" "}
+                            <span className="text-[#86868b] font-normal">(2:09:26)</span>
+                          </td>
+                          <td className="py-2 px-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[#e8f2ff] text-[#0066cc] text-[10px] font-bold">
+                              Oct (W2)
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 text-right font-bold text-[#1d1d1f]">
+                            130 <span className="text-[#86868b] font-normal">(7.6%)</span>
+                          </td>
+                          <td className="py-2 pl-2 text-right font-bold text-[#15732b]">
+                            27.8 hrs <span className="text-[#86868b] font-normal">(9.4%)</span>
+                          </td>
+                        </tr>
+                        <tr className="bg-[#f8fbff]">
+                          <td className="py-2 pr-2 font-semibold text-[#1d1d1f]">
+                            Sunday Celebration | Oct 04, 2026{" "}
+                            <span className="text-[#86868b] font-normal">(2:35:25)</span>
+                          </td>
+                          <td className="py-2 px-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[#e8f2ff] text-[#0066cc] text-[10px] font-bold">
+                              Oct (W1)
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 text-right font-bold text-[#1d1d1f]">
+                            129 <span className="text-[#86868b] font-normal">(7.5%)</span>
+                          </td>
+                          <td className="py-2 pl-2 text-right font-bold text-[#15732b]">
+                            28.4 hrs <span className="text-[#86868b] font-normal">(9.6%)</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-2 font-medium text-[#424245]">
+                            Sunday Celebration | Sep 27, 2026{" "}
+                            <span className="text-[#86868b] font-normal">(2:00:11)</span>
+                          </td>
+                          <td className="py-2 px-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[#f0f0f5] text-[#6e6e73] text-[10px] font-bold">
+                              Sep
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 text-right font-semibold text-[#424245]">
+                            252 <span className="text-[#86868b] font-normal">(14.7%)</span>
+                          </td>
+                          <td className="py-2 pl-2 text-right font-semibold text-[#424245]">
+                            19.0 hrs <span className="text-[#86868b] font-normal">(6.4%)</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-2 font-medium text-[#424245]">
+                            Sunday Celebration | Sep 20, 2026{" "}
+                            <span className="text-[#86868b] font-normal">(2:03:11)</span>
+                          </td>
+                          <td className="py-2 px-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[#f0f0f5] text-[#6e6e73] text-[10px] font-bold">
+                              Sep
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 text-right font-semibold text-[#424245]">
+                            80 <span className="text-[#86868b] font-normal">(4.7%)</span>
+                          </td>
+                          <td className="py-2 pl-2 text-right font-semibold text-[#424245]">
+                            21.9 hrs <span className="text-[#86868b] font-normal">(7.4%)</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-2 font-medium text-[#424245]">
+                            Sunday Celebration | Sep 13, 2026{" "}
+                            <span className="text-[#86868b] font-normal">(2:23:55)</span>
+                          </td>
+                          <td className="py-2 px-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[#f0f0f5] text-[#6e6e73] text-[10px] font-bold">
+                              Sep
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 text-right font-semibold text-[#424245]">
+                            185 <span className="text-[#86868b] font-normal">(10.8%)</span>
+                          </td>
+                          <td className="py-2 pl-2 text-right font-semibold text-[#424245]">
+                            17.1 hrs <span className="text-[#86868b] font-normal">(5.8%)</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 bg-white rounded-2xl p-5 border border-[#e5e5ea] flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between text-xs font-bold text-[#1d1d1f] mb-3">
+                      <span>C. Last Month (Sep) vs. This Month (Oct)</span>
+                      <span className="text-[#15732b]">2x Longer Watch Duration</span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs mb-3.5">
+                      <div className="grid grid-cols-12 items-center gap-2">
+                        <div className="col-span-4 font-semibold text-[#424245]">Sep Watch Hrs</div>
+                        <div className="col-span-5 h-3.5 bg-[#f0f0f5] rounded-full overflow-hidden">
+                          <div className="bg-[#8e8e93] h-full" style={{ width: "68%" }} />
+                        </div>
+                        <div className="col-span-3 text-right font-bold text-[#424245]">58.0 hrs</div>
+                      </div>
+                      <div className="grid grid-cols-12 items-center gap-2">
+                        <div className="col-span-4 font-semibold text-[#1d1d1f]">Oct Watch Hrs</div>
+                        <div className="col-span-5 h-3.5 bg-[#f0f0f5] rounded-full overflow-hidden">
+                          <div
+                            className="h-full"
+                            style={{
+                              width: "100%",
+                              background: "linear-gradient(90deg, #0066cc 0%, #30d158 100%)",
+                            }}
+                          />
+                        </div>
+                        <div className="col-span-3 text-right font-bold text-[#15732b]">
+                          84.5 hrs (+46%)
+                        </div>
+                      </div>
+                    </div>
+
+                    <ul className="space-y-2 text-xs text-[#424245]">
+                      <li>
+                        • <strong>Watch Hours Up +45.7%:</strong> Jumped from{" "}
+                        <strong>19.3 hrs/wk</strong> in Sep (17.1h–21.9h) to a rock-solid{" "}
+                        <strong>28.2 hrs/wk</strong> in Oct (28.4h, 27.8h, 28.3h).
+                      </li>
+                      <li>
+                        • <strong>2x Viewer Retention (13.6m vs 6.7m):</strong> In Sep, video
+                        lagging caused early drop-offs (even 252 views only gave 19.0 hrs). After{" "}
+                        <strong>Week 1 cable replacement + Live QC</strong>, viewers stay twice as
+                        long.
+                      </li>
+                      <li>
+                        • <strong>Consistent Views:</strong> Oct held a steady{" "}
+                        <strong>115–130 YT views/wk</strong> (374 total) + IG Live new reach.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               {/* Editable Note Box for Section 1 */}
               <div className="bg-white rounded-xl p-3.5 border border-dashed border-[#c7c7cc]">
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-[#0066cc] mb-1">
-                  ✎ Notes &amp; Remarks — Viewer Analytics
+                  ✎ Notes &amp; Remarks — Viewer &amp; YouTube Studio Analytics
                 </label>
                 <textarea
                   rows={2}
                   value={notes.analyticsRemarks}
                   onChange={(e) => updateNote("analyticsRemarks", e.target.value)}
-                  placeholder="Click to add meeting notes or Pastor's feedback on the 50+/wk viewer target..."
+                  placeholder="Click to add meeting notes or Pastor's feedback on the 50+/wk viewer target & +45.7% YouTube watch time jump..."
                   className="w-full text-xs text-[#1d1d1f] placeholder-[#86868b] bg-transparent focus:outline-none resize-y"
                 />
               </div>
