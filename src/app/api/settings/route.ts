@@ -8,7 +8,12 @@ const DEFAULT_CONFIG = {
   logoUrl: null as string | null,
   defaultTranslation: "NIV",
   youtubeApiKey: "",
+  youtubeChannelId: "",
   youtubeLiveChatId: "",
+  googleClientId: "",
+  googleClientSecret: "",
+  youtubeOAuthAccessToken: "",
+  youtubeOAuthRefreshToken: "",
   instagramAccessToken: "",
   instagramLiveVideoId: "",
   geminiApiKey: "",
@@ -37,8 +42,8 @@ export async function GET() {
 
     const merged = {
       ...DEFAULT_CONFIG,
-      ...(store.appConfig || {}),
       ...config,
+      ...(store.appConfig || {}),
     };
 
     return NextResponse.json({
@@ -81,8 +86,23 @@ export async function POST(req: NextRequest) {
       ...(body.youtubeApiKey !== undefined
         ? { youtubeApiKey: body.youtubeApiKey }
         : {}),
+      ...(body.youtubeChannelId !== undefined
+        ? { youtubeChannelId: body.youtubeChannelId }
+        : {}),
       ...(body.youtubeLiveChatId !== undefined
         ? { youtubeLiveChatId: body.youtubeLiveChatId }
+        : {}),
+      ...(body.googleClientId !== undefined
+        ? { googleClientId: body.googleClientId }
+        : {}),
+      ...(body.googleClientSecret !== undefined
+        ? { googleClientSecret: body.googleClientSecret }
+        : {}),
+      ...(body.youtubeOAuthAccessToken !== undefined
+        ? { youtubeOAuthAccessToken: body.youtubeOAuthAccessToken }
+        : {}),
+      ...(body.youtubeOAuthRefreshToken !== undefined
+        ? { youtubeOAuthRefreshToken: body.youtubeOAuthRefreshToken }
         : {}),
       ...(body.instagramAccessToken !== undefined
         ? { instagramAccessToken: body.instagramAccessToken }
@@ -131,7 +151,10 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        config: dbSaved,
+        config: {
+          ...dbSaved,
+          ...nextConfig,
+        },
         dbConnected: true,
       });
     } catch (dbErr: any) {

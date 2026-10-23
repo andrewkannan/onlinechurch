@@ -1,7 +1,19 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
+
+const YouTubeStudioAnalyticsPanel = dynamic(
+  () => import("@/components/YouTubeStudioAnalyticsPanel"),
+  {
+    loading: () => (
+      <div className="rounded-2xl p-6 bg-[#121215] border border-white/[0.08] text-xs text-zinc-400">
+        Loading YouTube Studio &amp; IG Live Monthly Analytics...
+      </div>
+    ),
+  }
+);
 
 const LOCAL_ANALYTICS_KEY = "church_live_hub_analytics_v1";
 
@@ -526,6 +538,9 @@ export default function ReportsPage() {
             </button>
           </div>
         </div>
+
+        {/* YouTube Studio Data API v3 + OAuth2 Monthly Comparison Panel */}
+        <YouTubeStudioAnalyticsPanel onTriggerToast={triggerToast} />
 
         {/* 8 Executive KPI Bento Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">

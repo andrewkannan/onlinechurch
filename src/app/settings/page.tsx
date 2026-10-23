@@ -241,7 +241,11 @@ export default function SettingsPage() {
   const [defaultTranslation, setDefaultTranslation] = useState("NIV");
   const [geminiKey, setGeminiKey] = useState("");
   const [youtubeApiKey, setYoutubeApiKey] = useState("");
+  const [youtubeChannelId, setYoutubeChannelId] = useState("");
   const [youtubeLiveChatId, setYoutubeLiveChatId] = useState("");
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleClientSecret, setGoogleClientSecret] = useState("");
+  const [youtubeOAuthAccessToken, setYoutubeOAuthAccessToken] = useState("");
   const [instagramToken, setInstagramToken] = useState("");
   const [instagramLiveVideoId, setInstagramLiveVideoId] = useState("");
 
@@ -263,7 +267,11 @@ export default function SettingsPage() {
       setDefaultTranslation(cached.defaultTranslation || "NIV");
       setGeminiKey(cached.geminiApiKey || "");
       setYoutubeApiKey(cached.youtubeApiKey || "");
+      setYoutubeChannelId(cached.youtubeChannelId || "");
       setYoutubeLiveChatId(cached.youtubeLiveChatId || "");
+      setGoogleClientId(cached.googleClientId || "");
+      setGoogleClientSecret(cached.googleClientSecret || "");
+      setYoutubeOAuthAccessToken(cached.youtubeOAuthAccessToken || "");
       setInstagramToken(cached.instagramAccessToken || "");
       setInstagramLiveVideoId(cached.instagramLiveVideoId || "");
     }
@@ -276,7 +284,11 @@ export default function SettingsPage() {
       setDefaultTranslation(config.defaultTranslation || "NIV");
       setGeminiKey(config.geminiApiKey || "");
       setYoutubeApiKey(config.youtubeApiKey || "");
+      setYoutubeChannelId(config.youtubeChannelId || "");
       setYoutubeLiveChatId(config.youtubeLiveChatId || "");
+      setGoogleClientId(config.googleClientId || "");
+      setGoogleClientSecret(config.googleClientSecret || "");
+      setYoutubeOAuthAccessToken(config.youtubeOAuthAccessToken || "");
       setInstagramToken(config.instagramAccessToken || "");
       setInstagramLiveVideoId(config.instagramLiveVideoId || "");
       setDbConnected(isOnline);
@@ -542,7 +554,11 @@ export default function SettingsPage() {
         defaultTranslation,
         geminiApiKey: geminiKey,
         youtubeApiKey,
+        youtubeChannelId,
         youtubeLiveChatId,
+        googleClientId,
+        googleClientSecret,
+        youtubeOAuthAccessToken,
         instagramAccessToken: instagramToken,
         instagramLiveVideoId,
       });
@@ -1754,30 +1770,85 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* 3. YouTube Live */}
+                {/* 3. YouTube Live & Studio Analytics API */}
                 <div className="bg-[#121215] border border-white/[0.08] rounded-3xl p-6 space-y-4">
                   <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
                     <div>
                       <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-400">
-                        Section 03 · 16:9 Stream
+                        Section 03 · 16:9 Stream &amp; Studio Analytics
                       </span>
                       <h2 className="text-base font-semibold text-white tracking-tight mt-0.5">
-                        YouTube Live Data API
+                        YouTube Data API v3 &amp; Google OAuth2 Studio Analytics
                       </h2>
                     </div>
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    <Link
+                      href="/reports"
+                      className="text-xs text-rose-300 hover:text-white underline underline-offset-4 transition"
+                    >
+                      Open Analytics →
+                    </Link>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-zinc-400 font-medium block mb-1.5">
-                        YouTube Data API Key / OAuth Token
+                        YouTube Channel ID or @Handle
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="@graceonlinechurch or UC..."
+                        value={youtubeChannelId}
+                        onChange={(e) => setYoutubeChannelId(e.target.value)}
+                        className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                        YouTube Data API v3 Key
                       </label>
                       <input
                         type="password"
                         placeholder="AIzaSy..."
                         value={youtubeApiKey}
                         onChange={(e) => setYoutubeApiKey(e.target.value)}
+                        className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                        Google OAuth 2.0 Client ID (Studio Analytics)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="123456-abc.apps.googleusercontent.com"
+                        value={googleClientId}
+                        onChange={(e) => setGoogleClientId(e.target.value)}
+                        className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                        Google OAuth 2.0 Client Secret
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="GOCSPX-..."
+                        value={googleClientSecret}
+                        onChange={(e) => setGoogleClientSecret(e.target.value)}
+                        className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-400 font-medium block mb-1.5">
+                        YouTube OAuth2 Access Token (Optional)
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="ya29.a0..."
+                        value={youtubeOAuthAccessToken}
+                        onChange={(e) =>
+                          setYoutubeOAuthAccessToken(e.target.value)
+                        }
                         className="w-full bg-[#09090b] border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-white/30"
                       />
                     </div>

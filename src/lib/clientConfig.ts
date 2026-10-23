@@ -4,7 +4,12 @@ export interface ChurchConfig {
   logoUrl: string | null;
   defaultTranslation: string;
   youtubeApiKey?: string;
+  youtubeChannelId?: string;
   youtubeLiveChatId?: string;
+  googleClientId?: string;
+  googleClientSecret?: string;
+  youtubeOAuthAccessToken?: string;
+  youtubeOAuthRefreshToken?: string;
   instagramAccessToken?: string;
   instagramLiveVideoId?: string;
   geminiApiKey?: string;
@@ -18,7 +23,12 @@ export const DEFAULT_CHURCH_CONFIG: ChurchConfig = {
   logoUrl: null,
   defaultTranslation: "NIV",
   youtubeApiKey: "",
+  youtubeChannelId: "",
   youtubeLiveChatId: "",
+  googleClientId: "",
+  googleClientSecret: "",
+  youtubeOAuthAccessToken: "",
+  youtubeOAuthRefreshToken: "",
   instagramAccessToken: "",
   instagramLiveVideoId: "",
   geminiApiKey: "",
